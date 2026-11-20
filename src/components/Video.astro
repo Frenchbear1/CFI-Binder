@@ -1,0 +1,29 @@
+---
+// Click-to-load video embed. Shows a thumbnail; the real player (with its own controls)
+// loads only on tap, so pages stay fast. Supports YouTube, Vimeo, or a direct file (src).
+interface Props {
+  youtube?: string; vimeo?: string; src?: string; poster?: string;
+  title: string; channel?: string; start?: number; note?: string; compact?: boolean;
+}
+const { youtube, vimeo, src, poster, title, channel, start, note, compact = false } = Astro.props;
+const provider = youtube ? 'youtube' : vimeo ? 'vimeo' : 'file';
+const vid = youtube || vimeo;
+const thumb = poster || (youtube ? `https://i.ytimg.com/vi/${youtube}/hqdefault.jpg` : undefined);
+const watch = youtube ? `https://www.youtube.com/watch?v=${youtube}${start ? `&t=${start}s` : ''}` : vimeo ? `https://vimeo.com/${vimeo}` : src;
+const mm = start ? `${Math.floor(start / 60)}:${String(start % 60).padStart(2, '0')}` : '';
+---
+<figure class:list={['video', { compact }]}>
+  <div class="video-frame">
+    {provider === 'file'
+      ? <video controls preload="none" playsinline poster={poster} src={src} title={title}></video>
+      : <button type="button" data-video data-provider={provider} data-vid={vid} data-start={start} data-watch={watch} aria-label={`Play: ${title}`} style={thumb ? `background-image:url(${thumb})` : undefined}>
+          <span class="play" aria-hidden="true"></span>
+          <span class="video-label">{title}</span>
+        </button>}
+  </div>
+  <figcaption>
+    <strong>{title}</strong>{channel && <> · {channel}</>}{mm && <> · starts at {mm}</>}
+    {note && <><br />{note}</>}
+    {watch && <> · <a href={watch}>Open on {provider === 'youtube' ? 'YouTube' : provider === 'vimeo' ? 'Vimeo' : 'source'}</a></>}
+  </figcaption>
+</figure>

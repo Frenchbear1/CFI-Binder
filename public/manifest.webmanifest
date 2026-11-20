@@ -1,0 +1,1 @@
+{ "name": "CFI Binder", "short_name": "CFI Binder", "start_url": "./", "display": "standalone", "background_color": "#fbfbfa", "theme_color": "#1d5fd1", "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }] }

@@ -1,0 +1,12 @@
+---
+// Wraps a diagram (inline SVG component or <img>) with caption + source credit.
+interface Props { caption: string; credit?: string; creditHref?: string }
+const { caption, credit, creditHref } = Astro.props;
+---
+<figure class="figure">
+  <div class="figure-art"><slot /></div>
+  <figcaption>
+    {caption}
+    {credit && <span class="credit"> Source: {creditHref ? <a href={creditHref}>{credit}</a> : credit}.</span>}
+  </figcaption>
+</figure>

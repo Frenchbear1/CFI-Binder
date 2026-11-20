@@ -1,0 +1,13 @@
+---
+type Kind = 'teach' | 'fleet' | 'warn' | 'acs' | 'note';
+interface Props { kind?: Kind; title?: string }
+const { kind = 'note', title } = Astro.props;
+const icons: Record<Kind, string> = { teach: '🎓', fleet: '✈️', warn: '⚠️', acs: '✅', note: '💡' };
+---
+<aside class={`callout ${kind}`}>
+  <span class="callout-icon" aria-hidden="true">{icons[kind]}</span>
+  <div class="callout-body">
+    {title && <p class="callout-title">{title}</p>}
+    <slot />
+  </div>
+</aside>

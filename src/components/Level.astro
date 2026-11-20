@@ -1,0 +1,13 @@
+---
+// Content that only shows for certain student levels.
+// <Level ir ca> … </Level>  → visible when Instrument or Commercial is selected.
+interface Props { pa?: boolean; ir?: boolean; ca?: boolean; label?: string }
+const { pa, ir, ca, label } = Astro.props;
+const names = { pa: 'Private', ir: 'Instrument', ca: 'Commercial' } as const;
+const lv = (['pa', 'ir', 'ca'] as const).filter((k) => Astro.props[k]);
+const tag = label ?? lv.map((k) => names[k]).join(' · ');
+---
+<div class="lvl" data-lv={lv.join(' ')}>
+  <p class="lvl-tag">{tag}</p>
+  <slot />
+</div>

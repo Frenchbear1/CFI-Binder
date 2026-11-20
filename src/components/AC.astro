@@ -1,0 +1,6 @@
+---
+// Inline aircraft-specific text: <AC c172>…</AC> hides when PA-28 is selected, and vice versa.
+interface Props { c172?: boolean; pa28?: boolean }
+const only = Astro.props.c172 ? 'c172' : 'pa28';
+---
+<span data-only={only}><slot /></span>

@@ -1,0 +1,333 @@
+---
+title: Stability & Controllability
+summary: Why our airplanes want to fly straight, how the C172 and PA-28-181 are built to do it, and how to show a student in the air.
+area: Aerodynamics
+acs: ["CFI II.D (K2)", "PHAK Ch. 5"]
+levels: [pa, ir, ca]
+order: 3
+updated: Nov 2026
+---
+import Level from '../../../components/Level.astro';
+import Compare from '../../../components/Compare.astro';
+import Specs from '../../../components/Specs.astro';
+import Callout from '../../../components/Callout.astro';
+import Figure from '../../../components/Figure.astro';
+import Video from '../../../components/Video.astro';
+import Toggle from '../../../components/Toggle.astro';
+import Refs from '../../../components/Refs.astro';
+import AC from '../../../components/AC.astro';
+import StaticDynamic from '../../../components/figures/StaticDynamic.astro';
+import PitchBalance from '../../../components/figures/PitchBalance.astro';
+import Dihedral from '../../../components/figures/Dihedral.astro';
+import TailCompare from '../../../components/figures/TailCompare.astro';
+import Washout from '../../../components/figures/Washout.astro';
+
+<ul class="keypoints">
+  <li><strong>Stable</strong> means the airplane tries to get back to where it was trimmed. Both of our airplanes are stable on purpose.</li>
+  <li><strong>CG location</strong> is the one stability factor the pilot controls. Forward CG is more stable but heavier on the controls.</li>
+  <li><strong>The C172</strong> gets roll stability mostly from its high wing. <strong>The PA-28</strong> uses lots of dihedral instead.</li>
+  <li><strong>Both</strong> slowly roll into a spiral if you let go in a bank. That’s why trim and a scan matter.</li>
+</ul>
+
+## What stability means
+
+**Stability** is the airplane’s built-in habit of returning to where it was trimmed after something bumps it, like a gust. It’s designed in by the engineers. The pilot can only change it by where the weight goes (the CG).
+
+**Controllability** is how well the airplane answers your inputs. **Maneuverability** is how easily it can change its flight path.
+
+These trade against each other. A very stable airplane is easy to fly hands-off but feels heavy and slow to maneuver. A very maneuverable airplane (like an aerobatic plane) needs your hands on it all the time. Trainers like ours are built on the stable side, because that’s what you want for a new pilot.
+
+<Callout kind="teach" title="The one-line version for a student">
+“If you trim it and let go, the airplane will try to keep doing what you trimmed it for. Your job is mostly to set it up and then stop fighting it.”
+</Callout>
+
+## Static vs. dynamic stability
+
+**Static stability** is the *first* reaction after a bump. **Dynamic stability** is what happens *over time* after that.
+
+<Figure caption="Static stability is the ball’s first move. Dynamic stability is whether the swinging dies out, keeps going, or grows." credit="Original diagram for this binder, based on PHAK Chapter 5">
+  <StaticDynamic />
+</Figure>
+
+- **Positive:** heads back toward where it started.
+- **Neutral:** stays wherever it ends up.
+- **Negative:** keeps moving away.
+
+An airplane needs positive static stability to have positive dynamic stability, but having the first doesn’t guarantee the second. The swing back can overshoot and keep swinging.
+
+<Level ir ca>
+### The two "modes" you’ll actually see
+
+You can see these in the airplane, so it’s worth naming them:
+
+- **Phugoid (long, slow pitch swing):** Pull the nose up a few degrees and let go. Airspeed bleeds off, the nose drops, the airplane picks up speed, the nose rises again. One cycle takes something like half a minute to a minute, and it slowly dies out in our airplanes. Altitude and airspeed trade back and forth while the angle of attack stays almost the same.
+- **Spiral mode (slow roll-off):** Covered below under [spiral instability](#spiral-instability-both-airplanes). It’s the one that kills pilots in clouds.
+
+Short-period pitch motion and Dutch roll also exist, but they damp out so fast in a C172 or PA-28 that a student will barely notice them.
+</Level>
+
+## The three axes
+
+Stability is described around each of the three axes:
+
+| Stability | Axis | Motion | Main thing that provides it |
+|---|---|---|---|
+| Longitudinal | Lateral (wingtip to wingtip) | Pitch | CG ahead of the lift + horizontal tail |
+| Lateral | Longitudinal (nose to tail) | Roll | Dihedral, high wing (keel/pendulum effect) |
+| Directional | Vertical | Yaw | Vertical fin and side area behind the CG |
+
+## Longitudinal stability (pitch)
+
+This is the one students feel most, and the one the CG changes.
+
+<Figure caption="The CG sits ahead of where the wing lifts, so the airplane wants to pitch nose-down. The horizontal tail pushes down to balance it, like a seesaw." credit="Original diagram for this binder, based on PHAK Chapter 5">
+  <PitchBalance />
+</Figure>
+
+**How it works, simply:**
+
+1. The CG is ahead of the center of lift, so the nose wants to drop.
+2. The horizontal tail makes a small *downward* force to hold the nose up.
+3. If a gust pitches the nose up, the airplane slows down. Less speed means less tail-down force, so the nose drops back.
+4. If the nose drops, speed builds, the tail pushes down harder, and the nose comes back up.
+
+That is why a trimmed airplane holds an *airspeed*, not an altitude. Trim sets the speed. Power sets whether you climb or descend at that speed.
+
+### How our tails do it
+
+<Figure caption="The C172 has a fixed stabilizer with a hinged elevator. The PA-28-181 moves the whole horizontal tail (a stabilator)." credit="Original diagram for this binder, based on the PHAK Chapter 6 and the PA-28-181 POH">
+  <TailCompare />
+</Figure>
+
+<Compare>
+  <Fragment slot="c172">
+    - **Fixed horizontal stabilizer + elevator.** Only the back part moves.
+    - **Trim tab** on the elevator. You roll the trim wheel, the tab moves the opposite way, and the airflow holds the elevator where you want it.
+    - Feels **heavier and more solid** in pitch, especially with only two people up front. Landing flare with full flaps and a forward CG takes a real pull.
+  </Fragment>
+  <Fragment slot="pa28">
+    - **Stabilator:** the whole horizontal tail is one piece that pivots. A small movement of the yoke makes a big change, so it could feel twitchy.
+    - To fix that, an **anti-servo tab** moves the *same* direction as the stabilator. It pushes back against you, which adds feel. It’s also the trim tab.
+    - Pitch feels **lighter** than the 172. Students coming from Cessnas often over-control at first, especially in the flare.
+  </Fragment>
+</Compare>
+
+<Callout kind="teach" title="Teach it on the walk-around">
+Have the student move the yoke while you stand at the tail. In the C172 they see only the elevator move. In the PA-28 they see the whole stabilator move and the anti-servo tab follow it in the same direction. Then roll the trim wheel and watch the tab. Seeing it beats any diagram.
+</Callout>
+
+### CG and pitch stability
+
+The CG is the only stability factor the pilot gets to choose, through loading.
+
+| | Forward CG | Aft CG |
+|---|---|---|
+| Stability | More stable | Less stable |
+| Control feel | Heavy, needs more trim | Light, easy to over-control |
+| Stall speed | Higher | Lower |
+| Cruise speed | A bit slower | A bit faster |
+| Stall/spin recovery | Easier | Harder. Behind the aft limit it may not recover |
+| Landing flare | May run out of elevator with full flaps | Easy to balloon |
+
+<Level pa>
+**What a Private student needs to know:** forward CG makes the airplane heavier on the controls and raises the stall speed. Aft CG makes it lighter, a little faster, and harder to recover from a stall. Out of limits either way is not legal and not safe. They should be able to run a weight and balance and tell you where the CG landed.
+</Level>
+
+<Level ca>
+**The why (Commercial):** With a forward CG the tail has to push down harder. That extra down-force is extra weight the wing has to lift, so the wing flies at a higher angle of attack. That means more induced drag (slower cruise) and a higher stall speed. Move the CG aft and the tail load drops, so you get the opposite. If the CG goes behind the aft limit, the tail can’t make enough nose-down force to break a stall, and the airplane may pitch up on its own. The certified CG range is the zone where the airplane is still stable *and* still controllable.
+</Level>
+
+<Compare c172Title="Cessna 172: where CG bites" pa28Title="PA-28-181: where CG bites">
+  <Fragment slot="c172">
+    Two pilots up front with full fuel tends to sit near the **forward** limit. Four adults plus bags pushes it **aft**. The **Utility category** has a tighter aft CG limit, so check it before stalls or steep turns.
+  </Fragment>
+  <Fragment slot="pa28">
+    The rear seats and baggage area are well aft of the CG, so **full back seats plus bags** is the classic way to get aft. Two pilots up front is comfortable mid-range. The POH also has a **Utility category** envelope.
+  </Fragment>
+</Compare>
+
+<Callout kind="fleet" title="Check your own airplane">
+CG limits are in Section 6 (Weight & Balance) of each airplane’s POH, and they differ by model and year. Always use the actual airplane’s weight and balance sheet, not a generic one.
+</Callout>
+
+## Lateral stability (roll)
+
+Lateral stability is the airplane’s tendency to roll back toward wings-level after a gust lifts a wing. In our airplanes it’s **weak on purpose**, so you can still bank easily.
+
+Four things help:
+
+- **Dihedral:** The wings angle up from the root to the tip. When the airplane slips toward the low wing, that wing meets the air at a higher angle and makes more lift, which rolls it back toward level.
+- **Keel (pendulum) effect:** In a high-wing airplane, the heavy fuselage hangs below the wing. Together with the side area of the fuselage, this helps bring the wings back to level in a slip.
+- **Sweepback:** Not a factor in our airplanes. They have essentially straight wings.
+- **Weight distribution:** Uneven fuel makes the heavy side want to drop.
+
+<Figure caption="Front views, angles exaggerated. The high-wing 172 gets help from its hanging fuselage, so it needs little dihedral. The low-wing PA-28 makes up for it with a lot more." credit="Original diagram for this binder. Dihedral values are approximate design figures, so check the type’s maintenance manual if you need exact numbers">
+  <Dihedral />
+</Figure>
+
+<Compare>
+  <Fragment slot="c172">
+    - **High wing**, strut-braced, **small dihedral (about 1.7°)**.
+    - Most of the roll stability comes from the **keel/pendulum effect** of the cabin hanging below the wing.
+    - Feels **very settled** in roll. Gusts lift a wing and it tends to come back.
+    - Fuel: left and right tanks, selector usually on **BOTH**, so the wings stay balanced.
+  </Fragment>
+  <Fragment slot="pa28">
+    - **Low wing**, cantilever (no struts), **lots of dihedral (about 7°)**. You can see it from behind the airplane.
+    - The fuselage sits *above* the wing, so there’s no pendulum help. The extra dihedral makes up for it.
+    - Feels **a bit more lively** in roll than the 172, but still stable.
+    - Fuel: left and right tanks with **no BOTH position**. You feed from one at a time and switch on a schedule (often every 30 minutes) to keep the wings balanced. An out-of-balance tank shows up as a wing that wants to drop.
+  </Fragment>
+</Compare>
+
+<Callout kind="warn" title="Common misconception">
+“High-wing airplanes are stable because the weight hangs like a pendulum.” That’s only part of it. The pendulum idea alone doesn’t explain it well. It’s really the combination of the wing above the CG and the airflow on the fuselage side during a slip. Keep it simple for a Private student (“the high wing and dihedral help level the wings”), and save the nuance for CFI candidates.
+</Callout>
+
+## Directional stability (yaw)
+
+Directional stability keeps the nose pointed into the relative wind, like a weathervane or the feathers on an arrow. If the nose yaws left, the air hits the side of the **vertical fin** and pushes the tail back, bringing the nose back to center.
+
+The key is having **more side area behind the CG than ahead of it**. Both of our airplanes have a big vertical fin. The C172 also has a **dorsal fin** (the strip running forward from the base of the tail), which adds side area and helps at high angles of attack.
+
+## Spiral instability (both airplanes)
+
+Here’s the practical part that matters most. Our airplanes have **strong directional stability and weak lateral stability**. That combination makes them slightly **spirally unstable**:
+
+1. A wing drops a little and nobody fixes it.
+2. The airplane slips toward the low wing. The strong tail yaws the nose toward the low wing.
+3. The outside wing now goes faster than the inside wing, makes more lift, and rolls the airplane steeper.
+4. The nose drops, speed builds, and the bank keeps steepening. This is the start of a **spiral dive** (the "graveyard spiral").
+
+It happens slowly, over 30 seconds or more. That’s exactly why it’s dangerous: it’s easy to miss when you’re looking at a chart or the ground.
+
+<Callout kind="teach" title="Show it in the air (safe altitude, clear the area)">
+1. Trim for cruise, roll into a 15° bank, then let go of the yoke and keep your feet off the pedals.
+2. Watch together: the bank slowly steepens, the nose drops, the airspeed climbs.
+3. Recover before about 30° of bank: power to idle, level the wings, then raise the nose gently.
+
+Then tie it to real life. This is what happens when a VFR pilot flies into a cloud, or when anyone gets busy and stops scanning.
+</Callout>
+
+<Level ir>
+### Why it matters in IMC
+
+In the clouds your inner ear stops telling the truth. A slow roll-off of under about 2° per second can’t be felt, so the spiral above can build with the pilot feeling level. Then the dangerous part: the pilot sees the altitude dropping, pulls back *without leveling the wings first*, and only tightens the spiral.
+
+**Teach the fix in this order:** reduce power, level the wings with the attitude indicator, then ease the nose back to level. Tie it to the Recovery from Unusual Attitudes lesson and stress that trim plus a steady scan is what keeps the airplane from starting down this path in the first place. A well-trimmed airplane is the best autopilot a single-pilot IFR pilot has.
+</Level>
+
+<Level ca>
+### Overbanking tendency (steep turns)
+
+In steep turns (more than about 30°), the outside wing travels a bigger circle than the inside wing, so it goes faster and makes more lift. The airplane wants to keep rolling steeper. This is the same thing that drives the spiral. In a Commercial 50° steep turn, students will need a little **opposite aileron** to hold the bank, plus back pressure and power. Expect the PA-28’s lighter pitch to make altitude control feel touchier than in the 172.
+</Level>
+
+## Wing design and stall behavior
+
+Both airplanes are designed so the **wing root stalls before the tips**. That way the buffet warns you while the ailerons near the tips are still flying, so you keep roll control. The main tool is **washout**: the wing is twisted so the tip meets the air at a smaller angle than the root.
+
+<Figure caption="Washout: the root runs at a higher angle than the tip, so it stalls first and the ailerons keep working." credit="Original diagram for this binder, based on Boldmethod’s washout article" creditHref="https://www.boldmethod.com/learn-to-fly/aircraft-systems/wing-washout-makes-your-plane-more-stable/">
+  <Washout />
+</Figure>
+
+<Compare>
+  <Fragment slot="c172">
+    About **3° of washout**. Constant-chord inner wing with a tapered outer section. Stalls are gentle and usually well announced by the stall horn and a light buffet. A wing may drop if the ball isn’t centered.
+  </Fragment>
+  <Fragment slot="pa28">
+    The Archer’s **semi-tapered wing** (constant chord inboard, tapered outboard) also has washout so the root stalls first. Stalls are mild with a clear buffet, and the nose drops cleanly when the stall breaks. A wing drop shows up when the ball isn’t centered.
+  </Fragment>
+</Compare>
+
+<Level pa ca>
+**Coordination is what keeps both wings stalling evenly.** If the student is skidding (too much rudder into the turn), the outside wing gets more lift, the inside wing stalls first, and that’s how a stall turns into a spin. Tie this lesson to the Power-Off Stalls, Power-On Stalls and Spin Awareness lessons.
+</Level>
+
+## Numbers that matter for this lesson
+
+<Specs rows={[
+  ['Wing', 'High, strut-braced', 'Low, cantilever, semi-tapered'],
+  ['Dihedral (approx.)', 'About 1.7°', 'About 7°'],
+  ['Horizontal tail', 'Stabilizer + elevator + trim tab', 'Stabilator + anti-servo/trim tab'],
+  ['Fuel selector', 'LEFT / RIGHT / BOTH', 'LEFT / RIGHT / OFF (no BOTH)'],
+  ['V<sub>A</sub> at max gross', '105 KIAS at 2,550 lb (172S)', '113 KIAS at 2,550 lb'],
+  ['V<sub>A</sub> at light weight', '90 KIAS at 1,900 lb (172S)', '89 KIAS at 1,634 lb'],
+  ['Flaps', 'Up to 30° (172S; older models 40°)', '10°, 25°, 40°'],
+]} />
+
+<Callout kind="fleet" title="Verify against your airplanes">
+These are typical values for a 172S and an Archer. Model years differ, so confirm against the POH in each airplane before you teach from them.
+</Callout>
+
+## Teaching it
+
+### Round dials or glass?
+
+Stability itself is the same no matter what’s on the panel, but what the student *sees* changes:
+
+- **Round dials:** The phugoid shows up as the airspeed needle and altimeter swinging opposite each other. Great for teaching the energy trade.
+- **Glass (G1000, G5, Aspen):** The trend vectors on the airspeed and altitude tapes show the swing earlier. Have the student watch the trend lines, not just the numbers.
+
+Teach the demos on whatever your airplane has. If the fleet is mixed, do the phugoid demo on round dials at least once, since that’s where students learn to read the needle trends.
+
+### In-flight demonstrations
+
+<Toggle title="1. Pitch stability (the phugoid)" open>
+Trim for cruise. Pull the nose up about 5–10° and let go. Watch the airplane slow, nose over, speed up and climb again, with each swing smaller. Lesson: the airplane goes back to its trimmed **airspeed**. Repeat with a nose-down push.
+</Toggle>
+
+<Toggle title="2. Roll stability and spiral tendency">
+From level, trimmed flight, use rudder only to yaw slightly and see the wing drop toward the yaw. Then do the 15° bank, hands-off spiral demo above.
+</Toggle>
+
+<Toggle title="3. Directional stability">
+Give a quick rudder push and let go. The nose swings back, maybe overshoots once, and settles. That’s the vertical fin working.
+</Toggle>
+
+<Toggle title="4. CG you can feel">
+Fly the same airplane solo with the instructor, then with backseat passengers. Have the student notice how much trim it takes and how the flare feels. One flight with a heavy back seat teaches more than a whole briefing.
+</Toggle>
+
+### Common student errors
+
+- Fighting the airplane instead of trimming it. Rule of thumb: if they’re holding pressure for more than a few seconds, they need trim.
+- Thinking trim sets the altitude. It sets the **airspeed**.
+- Over-controlling the PA-28’s stabilator in pitch, especially in the flare.
+- Letting the bank creep up while looking outside or at a chart (spiral tendency).
+- Not keeping PA-28 fuel balanced, then fighting a heavy wing with aileron.
+
+<Level pa ir ca label="What the examiner expects">
+<Callout kind="acs" title="Checkride standard">
+<Level pa>
+**Private:** Explain stability in simple terms, what CG does to stability and stall speed, and why we trim. Show you can trim the airplane and fly it hands-off.
+</Level>
+<Level ir>
+**Instrument:** Explain spiral instability and how to recognize and recover from it on instruments. Show good trim technique and a scan that catches small deviations early.
+</Level>
+<Level ca>
+**Commercial:** Explain *why* the design works (tail-down force, CG and performance, dihedral vs. high wing, washout) and how it shows up in steep turns, chandelles and lazy eights. Expect “why” follow-up questions.
+</Level>
+</Callout>
+</Level>
+
+## Videos
+
+<Video youtube="uldtTHIO4AY" title="Lateral Stability Explained: Dihedral, Keel Effect, Sweepback & Weight" note="Good visual for the four lateral stability factors. Skip the sweepback part, since it doesn’t apply to our airplanes." />
+
+<Video compact youtube="Dm2BtGeVtd0" title="Mastering Lateral, Longitudinal, and Directional Stability" note="Overview of all three axes. Good homework before the ground lesson." />
+
+## References
+
+Also use Sections 2 (Limitations) and 6 (Weight & Balance) of the POH in the airplane you’re flying.
+
+<Refs items={[
+  { label: 'Pilot’s Handbook of Aeronautical Knowledge, Chapter 5: Aerodynamics of Flight', href: 'https://www.faa.gov/sites/faa.gov/files/07_phak_ch5.pdf', note: 'stability, dihedral, CG' },
+  { label: 'Pilot’s Handbook of Aeronautical Knowledge, Chapter 6: Flight Controls', href: 'https://www.faa.gov/sites/faa.gov/files/08_phak_ch6.pdf', note: 'stabilator and anti-servo tab' },
+  { label: 'Airplane Flying Handbook', href: 'https://www.faa.gov/regulations_policies/handbooks_manuals/aviation/airplane_handbook', note: 'trim technique, steep turns' },
+  { label: 'Instrument Flying Handbook', href: 'https://www.faa.gov/regulations_policies/handbooks_manuals/aviation/instrument_flying_handbook', note: 'spatial disorientation, unusual attitudes' },
+  { label: 'Airman Certification Standards (Private, Instrument, Commercial, CFI)', href: 'https://www.faa.gov/training_testing/testing/acs' },
+  { label: 'Boldmethod: How wing washout makes your plane more stable', href: 'https://www.boldmethod.com/learn-to-fly/aircraft-systems/wing-washout-makes-your-plane-more-stable/' },
+  { label: 'Boldmethod: The 3 types of static and dynamic aircraft stability', href: 'https://www.boldmethod.com/learn-to-fly/aerodynamics/3-types-of-static-and-dynamic-stability-in-aircraft/' },
+  { label: 'CFI Notebook: Aircraft Stability', href: 'https://www.cfinotebook.net/notebook/aerodynamics-and-performance/aircraft-stability' },
+]} />

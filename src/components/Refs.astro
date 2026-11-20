@@ -1,0 +1,8 @@
+---
+// Plain-text reference links that go straight to the source.
+interface Props { items: { label: string; href: string; note?: string }[] }
+const { items } = Astro.props;
+---
+<ul class="refs">
+  {items.map((r) => <li><a href={r.href}>{r.label}</a>{r.note && <span class="ref-note"> · {r.note}</span>}</li>)}
+</ul>

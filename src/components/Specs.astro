@@ -1,0 +1,16 @@
+---
+// Comparison table. rows: [label, c172, pa28][]
+interface Props { rows: [string, string, string][]; caption?: string }
+const { rows, caption } = Astro.props;
+---
+<div class="table-wrap">
+  <table>
+    {caption && <caption class="sr-only">{caption}</caption>}
+    <thead><tr><th></th><th data-only="c172">Cessna 172</th><th data-only="pa28">PA-28-181</th></tr></thead>
+    <tbody>
+      {rows.map(([k, a, b]) => (
+        <tr><td>{k}</td><td data-only="c172" set:html={a} /><td data-only="pa28" set:html={b} /></tr>
+      ))}
+    </tbody>
+  </table>
+</div>

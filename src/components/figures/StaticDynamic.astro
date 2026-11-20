@@ -1,0 +1,46 @@
+---
+// Original diagram: static (ball in bowl) and dynamic (oscillation over time) stability.
+const cols = [
+  { x: 120, t: 'Positive', s: 'Returns' },
+  { x: 360, t: 'Neutral', s: 'Stays put' },
+  { x: 600, t: 'Negative', s: 'Keeps going' },
+];
+---
+<svg viewBox="0 0 720 400" role="img" aria-label="Static stability shown as a ball in a bowl, on a flat surface, and on a hill; dynamic stability shown as damped, constant and growing oscillations.">
+  <style>
+    .k { stroke: var(--ink-2); stroke-width: 2.5; fill: none; }
+    .ball { fill: var(--accent); }
+    .t { fill: var(--ink); font: 600 15px var(--font); text-anchor: middle; }
+    .s { fill: var(--ink-3); font: 13px var(--font); text-anchor: middle; }
+    .h { fill: var(--ink-3); font: 700 11px var(--font); letter-spacing: .08em; }
+    .ax { stroke: var(--line); stroke-width: 1.5; }
+    .w { stroke-width: 3; fill: none; stroke-linecap: round; }
+    .arr { stroke: var(--ink-3); stroke-width: 1.5; fill: none; marker-end: url(#ah); }
+  </style>
+  <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="var(--ink-3)"/></marker></defs>
+  <text x="16" y="24" class="h">STATIC: FIRST REACTION</text>
+  <!-- bowl -->
+  <path class="k" d="M50,70 Q120,170 190,70" />
+  <circle class="ball" cx="120" cy="108" r="11" />
+  <circle cx="84" cy="98" r="11" fill="none" stroke="var(--accent)" stroke-dasharray="3 3" />
+  <path class="arr" d="M92,90 Q104,104 110,106" />
+  <!-- flat -->
+  <path class="k" d="M290,130 L430,130" />
+  <circle class="ball" cx="380" cy="119" r="11" />
+  <circle cx="340" cy="119" r="11" fill="none" stroke="var(--accent)" stroke-dasharray="3 3" />
+  <!-- hill -->
+  <path class="k" d="M530,140 Q600,40 670,140" />
+  <circle cx="600" cy="79" r="11" fill="none" stroke="var(--accent)" stroke-dasharray="3 3" />
+  <circle class="ball" cx="640" cy="104" r="11" />
+  <path class="arr" d="M612,82 Q628,88 634,94" />
+  {cols.map((c) => (<><text x={c.x} y="170" class="t">{c.t}</text><text x={c.x} y="188" class="s">{c.s}</text></>))}
+
+  <text x="16" y="232" class="h">DYNAMIC: WHAT HAPPENS OVER TIME</text>
+  {cols.map((c) => <line class="ax" x1={c.x - 90} y1="310" x2={c.x + 90} y2="310" />)}
+  <path class="w" stroke="var(--pa)" d="M30,270 C45,270 50,350 65,350 S85,285 100,285 S118,330 130,330 S148,298 160,298 S175,318 185,318 S200,308 210,310" />
+  <path class="w" stroke="var(--ir)" d="M270,270 C285,270 290,350 305,350 S325,270 340,270 S360,350 375,350 S395,270 410,270 S430,350 450,350" />
+  <path class="w" stroke="var(--pa28)" d="M510,295 C520,295 525,325 535,325 S550,285 560,285 S578,340 590,340 S610,268 625,268 S645,360 660,360 S680,254 690,254" />
+  <text x="120" y="378" class="t">Damped</text><text x="120" y="396" class="s">Settles back (what we want)</text>
+  <text x="360" y="378" class="t">Undamped</text><text x="360" y="396" class="s">Oscillates forever</text>
+  <text x="600" y="378" class="t">Divergent</text><text x="600" y="396" class="s">Grows until you fix it</text>
+</svg>

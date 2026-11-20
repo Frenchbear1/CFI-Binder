@@ -1,0 +1,190 @@
+// Client behavior: preferences, sheets, table of contents, search, video facades.
+const root = document.documentElement;
+const base = new URL(document.body.dataset.base || '/', document.baseURI).href;
+const portable = document.body.hasAttribute('data-portable');
+// Portable builds (single-folder previews) need explicit index.html in links.
+const fixUrl = (u: string) => {
+  const abs = new URL(u, location.href); // Pagefind already returns site-rooted paths
+  if (portable && abs.pathname.endsWith('/')) abs.pathname += 'index.html';
+  return abs.href;
+};
+const LEVEL_SHORT: Record<string, string> = { pa: 'PVT', ir: 'IFR', ca: 'COM' };
+const AC_SHORT: Record<string, string> = { both: 'Both', c172: 'C172', pa28: 'PA-28' };
+
+/* ---------- Preferences (level + aircraft) ---------- */
+function applyPrefs() {
+  const lvl = root.dataset.level || 'pa';
+  const ac = root.dataset.ac || 'both';
+  document.querySelectorAll<HTMLElement>('[data-pref]').forEach((g) => {
+    const v = g.dataset.pref === 'level' ? lvl : ac;
+    g.querySelectorAll<HTMLButtonElement>('button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === v)));
+  });
+  document.querySelectorAll('[data-chip-level]').forEach((e) => (e.textContent = LEVEL_SHORT[lvl]));
+  document.querySelectorAll('[data-chip-ac]').forEach((e) => (e.textContent = AC_SHORT[ac]));
+  buildToc();
+}
+document.querySelectorAll<HTMLElement>('[data-pref]').forEach((g) => {
+  g.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest('button');
+    if (!b?.dataset.v) return;
+    const key = g.dataset.pref === 'level' ? 'level' : 'ac';
+    root.dataset[key] = b.dataset.v;
+    try { localStorage.setItem('cfi.' + key, b.dataset.v); } catch {}
+    applyPrefs();
+  });
+});
+
+/* ---------- Sheets ---------- */
+const sheets: Record<string, HTMLDialogElement | null> = {
+  nav: document.getElementById('sheet-nav') as HTMLDialogElement,
+  search: document.getElementById('sheet-search') as HTMLDialogElement,
+  prefs: document.getElementById('sheet-prefs') as HTMLDialogElement,
+};
+function openSheet(name: string) {
+  Object.values(sheets).forEach((s) => s?.open && s.close());
+  const s = sheets[name];
+  if (!s) return;
+  s.showModal();
+  if (name === 'search') {
+    const input = s.querySelector<HTMLInputElement>('[data-search-input]');
+    input?.focus(); input?.select();
+    if (!portable) loadPagefind();
+  }
+  if (name === 'nav') s.querySelector('.toc a.active')?.scrollIntoView({ block: 'center' });
+}
+document.querySelectorAll<HTMLElement>('[data-open]').forEach((b) => b.addEventListener('click', () => openSheet(b.dataset.open!)));
+Object.values(sheets).forEach((s) => {
+  if (!s) return;
+  // Tap the backdrop to close.
+  s.addEventListener('click', (e) => { if (e.target === s) s.close(); });
+  s.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => s.close()));
+  // Following a link inside a sheet closes it.
+  s.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('a')) s.close(); });
+  // Swipe down on the grab handle area to dismiss.
+  let y0 = 0;
+  s.addEventListener('touchstart', (e) => { y0 = s.scrollTop <= 0 ? e.touches[0].clientY : -1; }, { passive: true });
+  s.addEventListener('touchend', (e) => { if (y0 >= 0 && e.changedTouches[0].clientY - y0 > 90) s.close(); }, { passive: true });
+});
+document.addEventListener('keydown', (e) => {
+  const t = e.target as HTMLElement;
+  const typing = t.matches('input, textarea, [contenteditable]');
+  if ((e.key === '/' && !typing) || (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey))) {
+    e.preventDefault(); openSheet('search');
+  }
+});
+
+/* ---------- Table of contents (built from visible headings, so it follows the level) ---------- */
+let spy: IntersectionObserver | null = null;
+function buildToc() {
+  const article = document.querySelector('[data-article]');
+  const lists = document.querySelectorAll<HTMLOListElement>('[data-toc]');
+  if (!article || !lists.length) return;
+  const heads = [...article.querySelectorAll<HTMLHeadingElement>('h2[id], h3[id]')].filter((h) => h.offsetParent !== null || h.getClientRects().length);
+  const html = heads.map((h) => `<li class="t-${h.tagName.toLowerCase()}"><a href="#${h.id}" data-id="${h.id}">${h.textContent?.replace(/#$/, '').trim()}</a></li>`).join('');
+  lists.forEach((l) => (l.innerHTML = html));
+  spy?.disconnect();
+  const current = document.querySelector('[data-current]');
+  const setActive = (id: string, label: string) => {
+    document.querySelectorAll('.toc a').forEach((a) => a.classList.toggle('active', (a as HTMLElement).dataset.id === id));
+    if (current) current.textContent = label;
+  };
+  spy = new IntersectionObserver((entries) => {
+    // Active heading = the last one that has scrolled above 30% of the viewport.
+    const line = window.innerHeight * 0.3;
+    let active: HTMLHeadingElement | undefined;
+    for (const h of heads) { if (h.getBoundingClientRect().top < line) active = h; }
+    if (active) setActive(active.id, active.textContent?.trim() || '');
+    else setActive('', document.querySelector('h1')?.textContent?.trim() || '');
+    void entries;
+  }, { rootMargin: '0px 0px -60% 0px', threshold: [0, 1] });
+  heads.forEach((h) => spy!.observe(h));
+}
+
+/* ---------- Search (Pagefind: static index, runs entirely in the browser) ---------- */
+type PF = { search: (q: string) => Promise<{ results: { data: () => Promise<any> }[] }>; options?: (o: object) => Promise<void> };
+let pf: PF | null = null;
+let pfLoading: Promise<PF | null> | null = null;
+function loadPagefind() {
+  if (pf || pfLoading) return pfLoading;
+  const url = base + 'pagefind/pagefind.js';
+  pfLoading = import(/* @vite-ignore */ url).then(async (m) => { await m.options?.({ excerptLength: 18 }); pf = m; return m; }).catch(() => null);
+  return pfLoading;
+}
+const input = document.querySelector<HTMLInputElement>('[data-search-input]');
+const out = document.querySelector<HTMLElement>('[data-search-results]');
+let seq = 0;
+input?.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { e.preventDefault(); sheets.search?.close(); }
+  if (e.key === 'Enter') { out?.querySelector<HTMLAnchorElement>('a')?.click(); }
+});
+input?.addEventListener('input', async () => {
+  const q = input.value.trim();
+  const my = ++seq;
+  if (!out) return;
+  if (!q) { out.innerHTML = '<p class="muted">Try “dihedral”, “stabilator”, “aft CG” or “spiral”.</p>'; return; }
+  if (portable) { renderSimple(q, my); return; }
+  const lib = pf || (await loadPagefind());
+  if (!lib) { out.innerHTML = '<p class="muted">Search index is built with <code>npm run build</code>. It isn’t available in dev mode.</p>'; return; }
+  const res = await lib.search(q);
+  const data = await Promise.all(res.results.slice(0, 8).map((r) => r.data()));
+  if (my !== seq) return;
+  if (!data.length) { out.innerHTML = `<p class="muted">No matches for “${q.replace(/</g, '&lt;')}”.</p>`; return; }
+  out.innerHTML = data.map((d) => {
+    const subs = (d.sub_results || []).filter((s: any) => s.url !== d.url).slice(0, 4);
+    return `<div class="hit">
+      <a class="hit-title" href="${fixUrl(d.url)}">${d.meta?.title || 'Untitled'}</a>
+      ${subs.length ? `<ul>${subs.map((s: any) => `<li><a href="${fixUrl(s.url)}"><span class="hit-sec">${s.title}</span><span class="hit-ex">${s.excerpt}</span></a></li>`).join('')}</ul>` : `<p class="hit-ex">${d.excerpt}</p>`}
+    </div>`;
+  }).join('');
+});
+
+// Fallback search for sandboxed previews (no Pagefind): plain substring matching over sections.
+let simple: { url: string; page: string; section: string; text: string }[] | null = null;
+async function renderSimple(q: string, my: number) {
+  if (!out) return;
+  simple ??= await fetch(new URL('search-index.json', base)).then((r) => r.json()).catch(() => []);
+  const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]!));
+  const hits = (simple || []).map((s) => {
+    const hay = (s.section + ' ' + s.text).toLowerCase();
+    if (!terms.every((t) => hay.includes(t))) return null;
+    const score = terms.reduce((n, t) => n + (s.section.toLowerCase().includes(t) ? 5 : 0) + hay.split(t).length - 1, 0);
+    const i = Math.max(0, s.text.toLowerCase().indexOf(terms[0]) - 60);
+    let ex = esc(s.text.slice(i, i + 160));
+    terms.forEach((t) => { ex = ex.replace(new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), (m) => `<mark>${m}</mark>`); });
+    return { s, score, ex: (i > 0 ? '…' : '') + ex + '…' };
+  }).filter(Boolean).sort((a, b) => b!.score - a!.score).slice(0, 10) as { s: any; ex: string }[];
+  if (my !== seq) return;
+  out.innerHTML = hits.length ? `<div class="hit"><ul>${hits.map((h) => `<li><a href="${new URL(h.s.url.replace(/\/(#|$)/, '/index.html$1'), base).href}"><span class="hit-sec">${esc(h.s.section)} <span class="muted">· ${esc(h.s.page)}</span></span><span class="hit-ex">${h.ex}</span></a></li>`).join('')}</ul></div>`
+    : `<p class="muted">No matches for “${esc(q)}”.</p>`;
+}
+
+/* ---------- Video facades: load the real player only when tapped ---------- */
+document.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-video]');
+  if (!btn) return;
+  const { provider, vid, start } = btn.dataset;
+  const frame = document.createElement('iframe');
+  frame.allow = 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen';
+  frame.allowFullscreen = true;
+  frame.title = btn.getAttribute('aria-label') || 'Video';
+  if (provider === 'youtube') frame.src = `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&rel=0&playsinline=1${start ? `&start=${start}` : ''}`;
+  else if (provider === 'vimeo') frame.src = `https://player.vimeo.com/video/${vid}?autoplay=1${start ? `#t=${start}s` : ''}`;
+  btn.replaceWith(frame);
+});
+
+// In a sandboxed preview, outside players can't be embedded, so videos open on the source site instead.
+if (portable) document.querySelectorAll<HTMLButtonElement>('[data-video]').forEach((btn) => {
+  const a = document.createElement('a');
+  a.href = btn.dataset.watch || '#'; a.target = '_blank'; a.rel = 'noopener';
+  a.className = 'video-link'; a.innerHTML = btn.innerHTML; a.setAttribute('style', btn.getAttribute('style') || '');
+  btn.replaceWith(a);
+});
+
+applyPrefs();
+window.addEventListener('load', buildToc);
+
+// Offline support: cache pages as they're visited so the binder works with no signal.
+if (!portable && 'serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register(base + 'sw.js').catch(() => {});
+}

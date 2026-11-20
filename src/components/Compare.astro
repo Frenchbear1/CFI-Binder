@@ -1,0 +1,9 @@
+---
+// Side-by-side C172 vs PA-28-181. Stacks on phones; follows the aircraft setting.
+interface Props { c172Title?: string; pa28Title?: string }
+const { c172Title = 'Cessna 172', pa28Title = 'Piper PA-28-181' } = Astro.props;
+---
+<div class="compare">
+  <div class="ac-card" data-only="c172"><p class="ac-name">{c172Title}</p><slot name="c172" /></div>
+  <div class="ac-card" data-only="pa28"><p class="ac-name">{pa28Title}</p><slot name="pa28" /></div>
+</div>

@@ -1,0 +1,26 @@
+---
+import Base from '../layouts/Base.astro';
+import { outline } from '../data/outline';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
+---
+<Base title="CFI Binder">
+  <div class="home">
+    <h1>CFI Binder</h1>
+    <p class="lede">What to teach, how to teach it, and what the ACS expects, for Private, Instrument and Commercial students in the Cessna 172 and Piper PA-28-181.</p>
+    <p class="muted small">Pick the student level and aircraft from the bar at the bottom (or the top on a laptop). Lessons and topics that don’t apply to that level drop out.</p>
+    <div class="areas">
+      {outline.map((a) => (
+        <section class="area" data-for={[...new Set(a.topics.flatMap((t) => t.levels))].join(' ')}>
+          <h2>{a.title}</h2>
+          <ul>
+            {a.topics.map((t) => (
+              <li data-for={t.levels.join(' ')}>
+                {t.slug ? <><a href={base + t.slug + '/'}>{t.title}</a><span class="badge-ready">Ready</span></> : <span class="planned">{t.title}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  </div>
+</Base>

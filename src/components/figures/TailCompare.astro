@@ -1,0 +1,32 @@
+---
+// Original diagram: C172 stabilizer + elevator + trim tab vs PA-28 stabilator + anti-servo tab (side views).
+---
+<svg viewBox="0 0 720 230" role="img" aria-label="Side view of tails. Cessna 172: fixed horizontal stabilizer with a hinged elevator and trim tab. PA-28-181: one-piece stabilator that pivots, with an anti-servo tab that moves the same direction as the stabilator.">
+  <style>
+    .fx { fill: var(--surface-2); stroke: var(--ink-2); stroke-width: 2; }
+    .mv1 { fill: color-mix(in srgb, var(--c172) 25%, transparent); stroke: var(--c172); stroke-width: 2; }
+    .mv2 { fill: color-mix(in srgb, var(--pa28) 25%, transparent); stroke: var(--pa28); stroke-width: 2; }
+    .tab { fill: var(--ink-2); }
+    .t { fill: var(--ink); font: 700 15px var(--font); text-anchor: middle; }
+    .s { fill: var(--ink-3); font: 12.5px var(--font); }
+    .p { stroke: var(--ink-3); stroke-width: 1; }
+  </style>
+  <!-- C172 -->
+  <path class="fx" d="M40,110 C60,98 130,98 190,104 L190,118 C130,122 60,122 40,110Z" />
+  <path class="mv1" d="M192,104 L270,110 L192,118 Z" transform="rotate(8 192 111)" />
+  <rect class="tab" x="250" y="112" width="26" height="5" rx="2" transform="rotate(-6 250 114)" />
+  <circle cx="192" cy="111" r="3.5" fill="var(--ink)" />
+  <line class="p" x1="110" y1="96" x2="110" y2="60" /><text x="70" y="54" class="s">Fixed stabilizer</text>
+  <line class="p" x1="228" y1="114" x2="228" y2="150" /><text x="200" y="164" class="s" fill="var(--c172)">Elevator (hinged)</text>
+  <line class="p" x1="268" y1="112" x2="300" y2="80" /><text x="270" y="74" class="s">Trim tab</text>
+  <text x="170" y="210" class="t">Cessna 172</text>
+  <!-- PA-28 -->
+  <path class="mv2" d="M420,110 C440,97 520,96 600,105 L640,110 L600,116 C520,124 440,123 420,110Z" transform="rotate(-6 500 110)" />
+  <rect class="tab" x="636" y="108" width="34" height="5" rx="2" transform="rotate(-14 636 110)" />
+  <circle cx="500" cy="110" r="4.5" fill="var(--ink)" />
+  <path d="M472,84 A40,40 0 0 1 528,84" fill="none" stroke="var(--pa28)" stroke-width="1.5" />
+  <text x="440" y="62" class="s" fill="var(--pa28)">Whole surface pivots</text>
+  <line class="p" x1="500" y1="114" x2="500" y2="150" /><text x="470" y="164" class="s">Pivot point</text>
+  <line class="p" x1="660" y1="104" x2="672" y2="74" /><text x="600" y="68" class="s">Anti-servo tab</text>
+  <text x="560" y="210" class="t">PA-28-181</text>
+</svg>

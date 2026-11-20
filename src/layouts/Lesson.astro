@@ -1,0 +1,17 @@
+---
+import Base from './Base.astro';
+interface Props { title: string; summary: string; area: string; acs: string[]; updated?: string }
+const { title, summary, area, acs, updated } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
+---
+<Base title={title} description={summary} isLesson>
+  <article class="article" data-article data-pagefind-body>
+    <p class="crumbs" data-pagefind-ignore><a href={base}>Binder</a> / {area}</p>
+    <h1 data-pagefind-meta="title">{title}</h1>
+    <p class="lede">{summary}</p>
+    <p class="meta-line" data-pagefind-ignore>
+      {acs.length > 0 && <>ACS: {acs.join(', ')}</>}{updated && <> · Updated {updated}</>}
+    </p>
+    <slot />
+  </article>
+</Base>
