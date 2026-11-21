@@ -1,5 +1,5 @@
 {
-  "_about": "Documents the in-lesson reader can open. scripts/fetch-sources.mjs downloads each one (only if it changed) and pulls out the text of every page. Page labels: 'chapter' gives 5-1, 5-2\u2026 for PHAK-style chapter PDFs.",
+  "_about": "Documents the in-lesson reader can open. scripts/fetch-sources.mjs downloads each one (only if it changed) and pulls out the text of every page. Page labels: 'chapter' gives 5-1, 5-2… for PHAK-style chapter PDFs.",
   "docs": [
     {
       "id": "phak-5",
@@ -36,6 +36,397 @@
       "type": "ecfr",
       "title_no": 14,
       "part": 91
+    },
+    {
+      "id": "acs-pa",
+      "short": "ACS",
+      "title": "Private Pilot Airplane ACS (FAA-S-ACS-6C)",
+      "url": "https://www.faa.gov/training_testing/testing/acs/private_airplane_acs_6.pdf",
+      "type": "pdf"
+    },
+    {
+      "id": "phak-4",
+      "short": "PHAK",
+      "title": "PHAK Chapter 4: Principles of Flight",
+      "url": "https://www.faa.gov/sites/faa.gov/files/06_phak_ch4.pdf",
+      "type": "pdf",
+      "labels": {
+        "chapter": 4
+      }
+    },
+    {
+      "id": "phak-8",
+      "short": "PHAK",
+      "title": "PHAK Chapter 8: Flight Instruments",
+      "url": "https://www.faa.gov/sites/faa.gov/files/10_phak_ch8.pdf",
+      "type": "pdf",
+      "labels": {
+        "chapter": 8
+      }
+    },
+    {
+      "id": "phak-15",
+      "short": "PHAK",
+      "title": "PHAK Chapter 15: Airspace",
+      "url": "https://www.faa.gov/sites/faa.gov/files/17_phak_ch15.pdf",
+      "type": "pdf",
+      "labels": {
+        "chapter": 15
+      }
+    },
+    {
+      "id": "phak-16",
+      "short": "PHAK",
+      "title": "PHAK Chapter 16: Navigation",
+      "url": "https://www.faa.gov/sites/faa.gov/files/18_phak_ch16.pdf",
+      "type": "pdf",
+      "labels": {
+        "chapter": 16
+      }
+    },
+    {
+      "id": "afh-2",
+      "short": "AFH",
+      "title": "AFH Chapter 2: Ground Operations",
+      "url": "https://www.faa.gov/sites/faa.gov/files/regulations_policies/handbooks_manuals/aviation/airplane_handbook/03_afh_ch2.pdf",
+      "type": "pdf",
+      "labels": {
+        "chapter": 2
+      }
+    },
+    {
+      "id": "afh-5",
+      "short": "AFH",
+      "title": "AFH Chapter 5: Maintaining Aircraft Control: Upset Prevention and Recovery",
+      "url": "https://www.faa.gov/sites/faa.gov/files/regulations_policies/handbooks_manuals/aviation/airplane_handbook/06_afh_ch5.pdf",
+      "type": "pdf",
+      "labels": {
+        "chapter": 5
+      }
+    },
+    {
+      "id": "ifh",
+      "short": "IFH",
+      "title": "Instrument Flying Handbook (FAA-H-8083-15B)",
+      "url": "https://www.faa.gov/sites/faa.gov/files/pilots/FAA-H-8083-15B.pdf",
+      "type": "pdf"
+    },
+    {
+      "id": "aim-1-1",
+      "short": "AIM",
+      "title": "AIM Chapter 1, Section 1",
+      "url": "https://www.faa.gov/air_traffic/publications/atpubs/aim_html/chap1_section_1.html",
+      "type": "aim"
+    },
+    {
+      "id": "aim-3-1",
+      "short": "AIM",
+      "title": "AIM Chapter 3, Section 1",
+      "url": "https://www.faa.gov/air_traffic/publications/atpubs/aim_html/chap3_section_1.html",
+      "type": "aim"
+    },
+    {
+      "id": "aim-3-2",
+      "short": "AIM",
+      "title": "AIM Chapter 3, Section 2",
+      "url": "https://www.faa.gov/air_traffic/publications/atpubs/aim_html/chap3_section_2.html",
+      "type": "aim"
+    },
+    {
+      "id": "aim-3-3",
+      "short": "AIM",
+      "title": "AIM Chapter 3, Section 3",
+      "url": "https://www.faa.gov/air_traffic/publications/atpubs/aim_html/chap3_section_3.html",
+      "type": "aim"
+    },
+    {
+      "id": "aim-3-4",
+      "short": "AIM",
+      "title": "AIM Chapter 3, Section 4",
+      "url": "https://www.faa.gov/air_traffic/publications/atpubs/aim_html/chap3_section_4.html",
+      "type": "aim"
+    },
+    {
+      "id": "aim-3-5",
+      "short": "AIM",
+      "title": "AIM Chapter 3, Section 5",
+      "url": "https://www.faa.gov/air_traffic/publications/atpubs/aim_html/chap3_section_5.html",
+      "type": "aim"
+    },
+    {
+      "id": "aim-4-1",
+      "short": "AIM",
+      "title": "AIM Chapter 4, Section 1",
+      "url": "https://www.faa.gov/air_traffic/publications/atpubs/aim_html/chap4_section_1.html",
+      "type": "aim"
+    },
+    {
+      "id": "aim-7-1",
+      "short": "AIM",
+      "title": "AIM Chapter 7, Section 1",
+      "url": "https://www.faa.gov/air_traffic/publications/atpubs/aim_html/chap7_section_1.html",
+      "type": "aim"
+    },
+    {
+      "id": "cfr-1",
+      "short": "14 CFR",
+      "title": "14 CFR Part 1",
+      "url": "https://www.ecfr.gov/current/title-14/part-1",
+      "type": "ecfr",
+      "title_no": 14,
+      "part": 1
+    },
+    {
+      "id": "cfr-61",
+      "short": "14 CFR",
+      "title": "14 CFR Part 61",
+      "url": "https://www.ecfr.gov/current/title-14/part-61",
+      "type": "ecfr",
+      "title_no": 14,
+      "part": 61
+    },
+    {
+      "id": "cfr-71",
+      "short": "14 CFR",
+      "title": "14 CFR Part 71",
+      "url": "https://www.ecfr.gov/current/title-14/part-71",
+      "type": "ecfr",
+      "title_no": 14,
+      "part": 71
+    },
+    {
+      "id": "web-chart-users-guide",
+      "short": "FAA",
+      "title": "FAA Aeronautical Chart Users' Guide (sectional airspace symbols)",
+      "url": "https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/aero_guide/",
+      "type": "web"
+    },
+    {
+      "id": "web-faa-ads-b",
+      "short": "FAA",
+      "title": "FAA: ADS-B Out airspace and equipment requirements",
+      "url": "https://www.faa.gov/air_traffic/technology/equipadsb/research/airspace",
+      "type": "web"
+    },
+    {
+      "id": "web-faa-sua",
+      "short": "FAA",
+      "title": "FAA Special Use Airspace (live status by area)",
+      "url": "https://sua.faa.gov/",
+      "type": "web"
+    },
+    {
+      "id": "web-faa-tfrs",
+      "short": "FAA",
+      "title": "FAA Temporary Flight Restrictions list",
+      "url": "https://tfr.faa.gov/",
+      "type": "web"
+    },
+    {
+      "id": "cfr-73",
+      "short": "14 CFR",
+      "title": "14 CFR Part 73",
+      "url": "https://www.ecfr.gov/current/title-14/part-73",
+      "type": "ecfr",
+      "title_no": 14,
+      "part": 73
+    },
+    {
+      "id": "cfr-99",
+      "short": "14 CFR",
+      "title": "14 CFR Part 99",
+      "url": "https://www.ecfr.gov/current/title-14/part-99",
+      "type": "ecfr",
+      "title_no": 14,
+      "part": 99
+    },
+    {
+      "id": "cfr-93",
+      "short": "14 CFR",
+      "title": "14 CFR Part 93",
+      "url": "https://www.ecfr.gov/current/title-14/part-93",
+      "type": "ecfr",
+      "title_no": 14,
+      "part": 93
+    },
+    {
+      "id": "cfr-105",
+      "short": "14 CFR",
+      "title": "14 CFR Part 105",
+      "url": "https://www.ecfr.gov/current/title-14/part-105",
+      "type": "ecfr",
+      "title_no": 14,
+      "part": 105
+    },
+    {
+      "id": "aim-5-6",
+      "short": "AIM",
+      "title": "AIM Chapter 5, Section 6",
+      "url": "https://www.faa.gov/air_traffic/publications/atpubs/aim_html/chap5_section_6.html",
+      "type": "aim"
+    },
+    {
+      "id": "aim-7-4",
+      "short": "AIM",
+      "title": "AIM Chapter 7, Section 4",
+      "url": "https://www.faa.gov/air_traffic/publications/atpubs/aim_html/chap7_section_4.html",
+      "type": "aim"
+    },
+    {
+      "id": "ac-91-36d",
+      "short": "AC 91-36D",
+      "title": "AC 91-36D: VFR Flight Near Noise-Sensitive Areas",
+      "url": "https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_91-36D.pdf",
+      "type": "pdf"
+    },
+    {
+      "id": "web-faa-vfr-charts",
+      "short": "FAA",
+      "title": "FAA digital VFR sectional and terminal area charts (free, current)",
+      "url": "https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/vfr/",
+      "type": "web"
+    },
+    {
+      "id": "acs-ca",
+      "short": "ACS",
+      "title": "Commercial Pilot Airplane ACS (FAA-S-ACS-7B)",
+      "url": "https://www.faa.gov/training_testing/testing/acs/commercial_airplane_acs_7.pdf",
+      "type": "pdf"
+    },
+    {
+      "id": "afh-3",
+      "short": "AFH",
+      "title": "AFH Chapter 3: Basic Flight Maneuvers",
+      "url": "https://www.faa.gov/sites/faa.gov/files/regulations_policies/handbooks_manuals/aviation/airplane_handbook/04_afh_ch3.pdf",
+      "type": "pdf",
+      "labels": {
+        "chapter": 3
+      }
+    },
+    {
+      "id": "afh-10",
+      "short": "AFH",
+      "title": "AFH Chapter 10: Performance Maneuvers",
+      "url": "https://www.faa.gov/sites/faa.gov/files/regulations_policies/handbooks_manuals/aviation/airplane_handbook/11_afh_ch10.pdf",
+      "type": "pdf",
+      "labels": {
+        "chapter": 10
+      }
+    },
+    {
+      "id": "cfr-23-2017",
+      "short": "14 CFR",
+      "title": "14 CFR Part 23 (as of 2017-08-29)",
+      "url": "https://www.ecfr.gov/on/2017-08-29/title-14/part-23",
+      "type": "ecfr",
+      "title_no": 14,
+      "part": 23,
+      "date": "2017-08-29"
+    },
+    {
+      "id": "doc-saib-ce-11-17",
+      "short": "SAIB CE-11-17",
+      "title": "FAA Special Airworthiness Information Bulletin CE-11-17: Airplane maneuvering speed",
+      "url": "https://www.safepilots.org/library/contributed/Aerodynamics_SAIBManeuveringSpeed_2-02-11.pdf",
+      "type": "pdf"
+    },
+    {
+      "id": "phak-10",
+      "short": "PHAK",
+      "title": "PHAK Chapter 10: Weight and Balance",
+      "url": "https://www.faa.gov/sites/faa.gov/files/12_phak_ch10.pdf",
+      "type": "pdf",
+      "labels": {
+        "chapter": 10
+      }
+    },
+    {
+      "id": "wbh",
+      "short": "W&B HB",
+      "title": "Aircraft Weight and Balance Handbook (FAA-H-8083-1B)",
+      "url": "https://www.faa.gov/sites/faa.gov/files/2023-09/Weight_Balance_Handbook.pdf",
+      "type": "pdf"
+    },
+    {
+      "id": "phak-2",
+      "short": "PHAK",
+      "title": "PHAK Chapter 2: Aeronautical Decision-Making",
+      "url": "https://www.faa.gov/sites/faa.gov/files/04_phak_ch2.pdf",
+      "type": "pdf",
+      "labels": {
+        "chapter": 2
+      }
+    },
+    {
+      "id": "phak-12",
+      "short": "PHAK",
+      "title": "PHAK Chapter 12: Weather Theory",
+      "url": "https://www.faa.gov/sites/faa.gov/files/14_phak_ch12.pdf",
+      "type": "pdf",
+      "labels": {
+        "chapter": 12
+      }
+    },
+    {
+      "id": "phak-13",
+      "short": "PHAK",
+      "title": "PHAK Chapter 13: Aviation Weather Services",
+      "url": "https://www.faa.gov/sites/faa.gov/files/15_phak_ch13.pdf",
+      "type": "pdf",
+      "labels": {
+        "chapter": 13
+      }
+    },
+    {
+      "id": "awh",
+      "short": "AWH",
+      "title": "Aviation Weather Handbook (FAA-H-8083-28B)",
+      "url": "https://www.faa.gov/sites/faa.gov/files/FAA-H-8083-28B.pdf",
+      "type": "pdf"
+    },
+    {
+      "id": "ac-91-92",
+      "short": "AC 91-92",
+      "title": "AC 91-92: Pilot’s Guide to a Preflight Briefing",
+      "url": "https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_91-92.pdf",
+      "type": "pdf"
+    },
+    {
+      "id": "phak-11",
+      "short": "PHAK",
+      "title": "PHAK Chapter 11: Aircraft Performance",
+      "url": "https://www.faa.gov/sites/faa.gov/files/13_phak_ch11.pdf",
+      "type": "pdf",
+      "labels": {
+        "chapter": 11
+      }
+    },
+    {
+      "id": "afh-6",
+      "short": "AFH",
+      "title": "AFH Chapter 6: Takeoffs and Departure Climbs",
+      "url": "https://www.faa.gov/sites/faa.gov/files/regulations_policies/handbooks_manuals/aviation/airplane_handbook/07_afh_ch6.pdf",
+      "type": "pdf",
+      "labels": {
+        "chapter": 6
+      }
+    },
+    {
+      "id": "afh-9",
+      "short": "AFH",
+      "title": "AFH Chapter 9: Approaches and Landings",
+      "url": "https://www.faa.gov/sites/faa.gov/files/regulations_policies/handbooks_manuals/aviation/airplane_handbook/10_afh_ch9.pdf",
+      "type": "pdf",
+      "labels": {
+        "chapter": 9
+      }
+    },
+    {
+      "id": "doc-caa-safetysense-7c",
+      "short": "CAA SafetySense",
+      "title": "UK CAA SafetySense Leaflet 7c: Aeroplane Performance (surface, slope and tailwind factors; ×1.33 takeoff, ×1.43 landing)",
+      "url": "https://caa.co.uk/publication/download/13044",
+      "type": "pdf"
     }
   ]
 }

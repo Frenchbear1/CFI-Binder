@@ -24,7 +24,7 @@ const normUrl = (u) => { try { const x = new URL(u); x.hash = ''; return x.href;
 const webId = (u) => 'web-' + createHash('sha1').update(u).digest('hex').slice(0, 10);
 function walk(dir) { return readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)])); }
 const linked = new Set();
-for (const f of [...walk('src/content/lessons').filter((f) => /\.mdx?$/.test(f)), 'src/data/sources.ts']) {
+for (const f of [...walk('src/content/lessons').filter((f) => /\.mdx?$/.test(f)), 'src/data/sources.ts', 'src/sims/kit.js']) {
   for (const m of readFileSync(f, 'utf8').matchAll(/https?:\/\/[^\s"'`)<>\]]+/g)) {
     const u = normUrl(m[0].replace(/[.,;]+$/, ''));
     if (u && !SKIP_HOSTS.test(new URL(u).hostname)) linked.add(u);
@@ -76,6 +76,11 @@ async function textDoc(doc) {
     }
   } else {
     for (const m of body.matchAll(/<DIV8[^>]*N="([^"]+)"[^>]*TYPE="SECTION"[^>]*>([\s\S]*?)<\/DIV8>/g)) {
+      labels.push(m[1]);
+      pages.push(htmlText(m[2].replace(/<\/HEAD>/g, '\n\n').replace(/<\/P>/g, '\n\n')));
+    }
+    // Appendices (e.g. Part 91 Appendix D) are pages too, labelled by their heading.
+    for (const m of body.matchAll(/<DIV9[^>]*N="([^"]+)"[^>]*TYPE="APPENDIX"[^>]*>([\s\S]*?)<\/DIV9>/g)) {
       labels.push(m[1]);
       pages.push(htmlText(m[2].replace(/<\/HEAD>/g, '\n\n').replace(/<\/P>/g, '\n\n')));
     }
@@ -274,7 +279,7 @@ function webDoc(doc, html, finalUrl) {
 async function ecfrUrl(doc) {
   const titles = await (await fetch('https://www.ecfr.gov/api/versioner/v1/titles.json', { headers: { 'user-agent': UA } })).json();
   const t = titles.titles.find((x) => x.number === doc.title_no);
-  const date = t.up_to_date_as_of || t.latest_issue_date;
+  const date = doc.date || t.up_to_date_as_of || t.latest_issue_date; // date: an older edition (e.g. pre-2017 Part 23)
   return `https://www.ecfr.gov/api/versioner/v1/full/${date}/title-${doc.title_no}.xml?part=${doc.part}`;
 }
 

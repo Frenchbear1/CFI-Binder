@@ -8,7 +8,7 @@
 import { compile } from '../lib/is/search.js';
 import { renderPdfPage } from '../lib/is/pdf.js';
 
-type Ref = { doc: string; page: number; at?: string; label: string; href: string; q: string };
+type Ref = { doc: string; page: number; at?: string; find?: string; label: string; href: string; q: string };
 type DocData = { id: string; title: string; short: string; url: string; kind?: 'text'; labels: string[]; pages: string[] };
 type Drawn = { frame: HTMLElement; cleanup: () => void };
 
@@ -58,10 +58,12 @@ const norm = (u: string) => { try { const x = new URL(u, location.href); x.hash 
 const isPdfUrl = (u: string) => /\.pdf($|[?#])/i.test(u);
 function docFor(a: HTMLAnchorElement): string | undefined {
   if (a.dataset.doc) return a.dataset.doc;
+  if (a.dataset.via) return links[norm(a.dataset.via)]; // a sim's reference: the library copy of its document
   if (!/^https?:/.test(a.href) || a.closest('.video, [data-noreader]')) return;
   return links[norm(a.href)];
 }
-const READABLE = '[data-article] a[href]';
+const READABLE = '[data-article] a[href], .sim-root a[href], .kit-dlg a[href]';
+const SIM_REFS = '.kit-refs, .kit-dlg, .kit-deep';
 const getLibrary = async () => (library ??= await fetch(new URL('library/index.json', base)).then((r) => r.json()).catch(() => []));
 
 /* ---------- which words to highlight ---------- */
@@ -73,12 +75,24 @@ function queryFor(a: HTMLAnchorElement) {
 }
 function refOf(x: HTMLAnchorElement): Ref {
   const pdfPage = !x.dataset.doc && isPdfUrl(x.href) ? Number((x.href.match(/#page=(\d+)/) || [])[1] || 1) - 1 : -1;
-  return { doc: docFor(x)!, page: x.dataset.page ? Number(x.dataset.page) : pdfPage, at: x.dataset.at, label: x.textContent || '', href: x.href, q: queryFor(x) };
+  return { doc: docFor(x)!, page: x.dataset.page ? Number(x.dataset.page) : pdfPage, at: x.dataset.at, find: x.dataset.find, label: x.textContent || '', href: x.href, q: queryFor(x) };
 }
 // All library refs in the same section (between the h2s around the tapped one), in reading order.
 function sectionRefs(a: HTMLAnchorElement): { list: Ref[]; at: number } {
+  // In a sim: the references shown together with this one (the step's chips, or the Sources list).
+  const group = a.closest(SIM_REFS);
+  if (group) {
+    const list: Ref[] = [];
+    let at = 0;
+    for (const x of group.querySelectorAll<HTMLAnchorElement>('a[href]')) {
+      if (!docFor(x)) continue;
+      if (x === a) at = list.length;
+      list.push(refOf(x));
+    }
+    return { list, at };
+  }
   const article = a.closest('[data-article]');
-  const all = [...(article?.querySelectorAll<HTMLAnchorElement>(READABLE) || [])].filter((x) => docFor(x) && (x.offsetParent !== null || x === a));
+  const all = [...(article?.querySelectorAll<HTMLAnchorElement>(READABLE) || [])].filter((x) => docFor(x) && !x.closest('.sim-root') && (x.offsetParent !== null || x === a));
   const h2s = [...(article?.querySelectorAll('h2') || [])];
   const sectionOf = (el: Element) => h2s.filter((h) => h.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).length;
   const sec = sectionOf(a);
@@ -98,7 +112,19 @@ function sectionRefs(a: HTMLAnchorElement): { list: Ref[]; at: number } {
 const stage = $('[data-rd-stage]');
 const host = $('[data-rd-page]');
 const pageWidth = () => Math.min(900, (stage?.clientWidth || innerWidth) - 20);
-const pageIndex = (doc: DocData, ref: Ref) => Math.max(0, Math.min(ref.at ? Math.max(0, doc.labels.indexOf(ref.at)) : ref.page, doc.pages.length - 1));
+// find: words that must all be on the page ("a|b"); contents pages (rows of dot leaders) are passed over.
+const plain = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+function findPage(doc: DocData, find: string) {
+  const want = find.split('|').map(plain).filter(Boolean);
+  const hits = doc.pages.map((p, i) => [plain(p), i, (p.match(/\.{4,}/g) || []).length] as const).filter(([t]) => want.every((w) => t.includes(w)));
+  return (hits.find((h) => h[2] < 4) || hits[0])?.[1] ?? -1;
+}
+const pageIndex = (doc: DocData, ref: Ref) => {
+  let p = ref.at ? doc.labels.indexOf(ref.at) : -1;
+  if (p < 0 && ref.find) p = findPage(doc, ref.find);
+  if (p < 0) p = ref.at ? 0 : ref.page;
+  return Math.max(0, Math.min(p, doc.pages.length - 1));
+};
 const CACHE_MAX = 10;
 const drawn = new Map<string, Promise<Drawn | null>>();
 const keyOf = (doc: string, n: number, q: string, w: number, sharp: boolean) => `${doc}|${n}|${q}|${Math.round(w)}|${sharp ? 2 : 1}`;

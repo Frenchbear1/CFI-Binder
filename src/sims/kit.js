@@ -132,13 +132,42 @@ const REFS={
   vorWiki:{lab:'VOR overview',t:'Wikipedia: VHF omnidirectional range (signal structure, DVOR)',u:'https://en.wikipedia.org/wiki/VHF_omnidirectional_range'},
 };
 let deepOpen=false,pauseFn=null,moreBtn,refsEl,deepEl;
-function chip(k){const r=REFS[k];if(!r)return'';return`<a class="kit-chip${r.faa?'':' web'}" href="${r.u}" target="_blank" rel="noopener" title="${r.t.replace(/"/g,'&quot;')}">${r.lab}</a>`;}
+// Every reference opens in the binder's own reader, like the lessons' references: `via` is the document in the
+// binder's library, `at` a section in it (CFR section, AIM paragraph), `find` words on the page to open at.
+const PHAKPDF=c=>`https://www.faa.gov/sites/faa.gov/files/${String(+c+2).padStart(2,'0')}_phak_ch${c}.pdf`;
+const ACS_PA='https://www.faa.gov/training_testing/testing/acs/private_airplane_acs_6.pdf';
+const ACS_CA='https://www.faa.gov/training_testing/testing/acs/commercial_airplane_acs_7.pdf';
+const IFH='https://www.faa.gov/sites/faa.gov/files/pilots/FAA-H-8083-15B.pdf';
+const WBH='https://www.faa.gov/sites/faa.gov/files/2023-09/Weight_Balance_Handbook.pdf';
+const AWH='https://www.faa.gov/sites/faa.gov/files/FAA-H-8083-28B.pdf';
+const FIND={acs:[ACS_PA,'Private Pilot|Airplane|Airman Certification Standards'],acsI_C:[ACS_PA,'Task C. Weather Information|Objective'],acsI_E:[ACS_PA,'Task E. National Airspace System|Objective'],
+  acsI_F:[ACS_PA,'Task F. Performance and Limitations|Objective'],acsV_A:[ACS_PA,'Task A. Steep Turns|Objective'],acsVI_B:[ACS_PA,'Task B. Navigation Systems and Radar Services|Objective'],
+  acsVI_C:[ACS_PA,'Task C. Diversion|Objective'],acsVII:[ACS_PA,'Slow Flight and Stalls|Task A|Objective'],caV_A:[ACS_CA,'Task A. Steep Turns|Objective'],
+  ifh9:[IFH,'Very High Frequency (VHF) Omnidirectional Range (VOR)'],wbh:[WBH,'Weight and Balance Control'],wbh2:[WBH,'Weight and Balance Theory'],wbh4:[WBH,'Single-Engine Aircraft Weight and Balance Computations'],
+  awh11:[AWH,'Air Masses, Fronts, and the Wave Cyclone Model'],awh18:[AWH,'Weather and Obstructions to Visibility'],awh19:[AWH,'Turbulence|Introduction'],awh22:[AWH,'Thunderstorms|Introduction'],
+  awh24:[AWH,'Observations|Introduction'],awh26:[AWH,'Advisories|Introduction'],awh27:[AWH,'Forecasts|Introduction'],
+  p91appD:['https://www.ecfr.gov/current/title-14/part-91','Appendix D to Part 91'],
+  ac91_36:['https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_91-36D.pdf','']};
+function where(k){
+  const r=REFS[k],u=r.u;let m;
+  if(k==='p93V')return{href:r.u,via:'https://www.ecfr.gov/current/title-14/part-93',at:'93.331'};
+  if(FIND[k])return{href:FIND[k][0],via:FIND[k][0],find:FIND[k][1]};
+  if((m=u.match(/phak\/chapter-(\d+)-/)))return{href:PHAKPDF(m[1]),via:PHAKPDF(m[1])};
+  if((m=u.match(/ecfr\.gov\/(current|on\/[\d-]+)\/title-14\/section-(\d+)\.(\w+)/)))return{href:u,via:`https://www.ecfr.gov/${m[1]}/title-14/part-${m[2]}`,at:`${m[2]}.${m[3]}`};
+  if((m=u.match(/ecfr\.gov\/current\/title-14\/.*part-(\d+)$/)))return{href:u,via:`https://www.ecfr.gov/current/title-14/part-${m[1]}`};
+  if((m=r.lab.match(/^AIM (\d+-\d+-\d+)$/)))return{href:u,via:u,at:m[1]};
+  return{href:u,via:u};
+}
+const ea=v=>String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+function link(k,cls,inner){const r=REFS[k],w=where(k);
+  return`<a class="${cls}${r.faa?'':' web'}" href="${ea(w.href)}" target="_blank" rel="noopener" data-via="${ea(w.via)}"${w.at?` data-at="${ea(w.at)}"`:''}${w.find?` data-find="${ea(w.find)}"`:''} title="${ea(r.t)}">${inner}</a>`;}
+function chip(k){const r=REFS[k];if(!r)return'';return link(k,'kit-chip',r.lab);}
 function mount(opt){
   pauseFn=opt.pause||null;
   const hb=document.querySelector('.homebar');hb.classList.add('kit-hb');
   const sb=document.createElement('button');sb.type='button';sb.className='kit-srcbtn';sb.textContent='Sources';hb.appendChild(sb);
   const keys=opt.sources||[];const faa=keys.filter(k=>REFS[k]&&REFS[k].faa),web=keys.filter(k=>REFS[k]&&!REFS[k].faa);
-  const row=k=>{const r=REFS[k];return`<a class="kr${r.faa?'':' web'}" href="${r.u}" target="_blank" rel="noopener"><span>${r.lab}</span><span class="kt">${r.t}</span></a>`;};
+  const row=k=>{const r=REFS[k];return link(k,'kr',`<span>${r.lab}</span><span class="kt">${r.t}</span>`);};
   const dlg=document.createElement('dialog');dlg.className='kit-dlg';dlg.setAttribute('aria-label','Sources');
   dlg.innerHTML=`<div class="kh"><span>Sources</span><button type="button" aria-label="Close">×</button></div><div class="kb">
     <h3>FAA</h3>${faa.map(row).join('')}${web.length?'<h3>Other</h3>'+web.map(row).join(''):''}
