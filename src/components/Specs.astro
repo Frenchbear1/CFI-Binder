@@ -9,7 +9,7 @@ const { rows, caption } = Astro.props;
     <thead><tr><th></th><th data-only="c172">Cessna 172</th><th data-only="pa28">PA-28-181</th></tr></thead>
     <tbody>
       {rows.map(([k, a, b]) => (
-        <tr><td>{k}</td><td data-only="c172" set:html={a} /><td data-only="pa28" set:html={b} /></tr>
+        <tr><td set:html={k} /><td data-only="c172" set:html={a} /><td data-only="pa28" set:html={b} /></tr>
       ))}
     </tbody>
   </table>
