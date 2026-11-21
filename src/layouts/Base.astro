@@ -192,11 +192,55 @@ const href = (slug: string) => base + slug + '/';
     <button type="button" data-cmd="italic" aria-label="Italic" title="Italic"><i>I</i></button>
     <button type="button" data-cmd="link" aria-label="Make a link" title="Make a link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7L11.5 6.8"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.5-1.5"/></svg></button>
     <button type="button" data-cmd="ref" aria-label="Add a reference" title="Add a reference (PHAK 5-15, AIM 1-2-3, 14 CFR 91.3…)">§</button>
+    <button type="button" data-cmd="add" aria-label="Add a block" title="Add a block (or type / on an empty line)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
     <button type="button" data-cmd="source" aria-label="Edit the whole lesson's source" title="Edit source (videos, figures, callouts…)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg></button>
     <span class="eb-status" data-eb-status aria-live="polite"></span>
     <button type="button" class="eb-save" data-cmd="save" disabled>Save</button>
     <button type="button" class="eb-done" data-cmd="done">Done</button>
   </div>
+  <div class="blk-tools" data-blk-tools hidden>
+    <button type="button" data-act="add" aria-label="Add a block below" title="Add a block below">+</button>
+    <button type="button" data-act="up" aria-label="Move up" title="Move up">↑</button>
+    <button type="button" data-act="down" aria-label="Move down" title="Move down">↓</button>
+    <button type="button" data-act="del" aria-label="Delete this block" title="Delete"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
+  </div>
+
+  <dialog class="sheet insert-sheet" id="sheet-insert" aria-label="Add a block">
+    <div class="grab" aria-hidden="true"></div>
+    <p class="sheet-h">Basic</p>
+    <div class="ins-grid">
+      <button type="button" data-kind="p"><b>¶</b>Text</button>
+      <button type="button" data-kind="h2"><b>H2</b>Section</button>
+      <button type="button" data-kind="h3"><b>H3</b>Sub-heading</button>
+      <button type="button" data-kind="ul"><b>•</b>Bullets</button>
+      <button type="button" data-kind="ol"><b>1.</b>Numbered</button>
+      <button type="button" data-kind="table"><b>▦</b>Table</button>
+      <button type="button" data-kind="toggle"><b>▸</b>Toggle</button>
+      <button type="button" data-kind="hr"><b>—</b>Divider</button>
+    </div>
+    <p class="sheet-h">Callouts</p>
+    <div class="ins-grid">
+      <button type="button" data-kind="callout" data-k="teach"><b>🎓</b>Teaching tip</button>
+      <button type="button" data-kind="callout" data-k="fleet"><b>✈️</b>Our airplanes</button>
+      <button type="button" data-kind="callout" data-k="warn"><b>⚠️</b>Warning</button>
+      <button type="button" data-kind="callout" data-k="acs"><b>✅</b>ACS standard</button>
+      <button type="button" data-kind="callout" data-k="note"><b>💡</b>Note</button>
+    </div>
+    <p class="sheet-h">Binder</p>
+    <div class="ins-grid">
+      <button type="button" data-kind="compare"><b>⇆</b>C172 vs PA-28</button>
+      <button type="button" data-kind="level" data-lv="ir ca"><b>IR·CA</b>Instrument + Commercial only</button>
+      <button type="button" data-kind="level" data-lv="ir"><b>IR</b>Instrument only</button>
+      <button type="button" data-kind="level" data-lv="ca"><b>CA</b>Commercial only</button>
+      <button type="button" data-kind="level" data-lv="pa"><b>PVT</b>Private only</button>
+    </div>
+    <p class="sheet-h">Media</p>
+    <div class="ins-grid">
+      <button type="button" data-kind="video"><b>▶</b>YouTube video</button>
+      <button type="button" data-kind="image"><b>🖼</b>Picture</button>
+    </div>
+  </dialog>
+
   <form class="eb-pop" data-eb-pop hidden>
     <label data-eb-label>Link to</label>
     <input data-eb-input autocomplete="off" />
