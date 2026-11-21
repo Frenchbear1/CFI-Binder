@@ -205,12 +205,14 @@ function webDoc(doc, html, finalUrl) {
   const { document } = parseHTML(html);
   const site = document.querySelector('meta[property="og:site_name"]')?.getAttribute('content') || new URL(finalUrl).hostname.replace(/^www\./, '');
   if (process.env.WEB_DEBUG) {
-    const imgs = [...document.querySelectorAll('img, picture, figure, iframe, video, [style*="background-image"], [data-bg], noscript')];
-    console.log(`debug ${doc.id}: ${imgs.length} media-ish elements`);
-    for (const el of imgs.slice(0, 40)) {
-      const chain = []; for (let p = el.parentElement, i = 0; p && i < 4; p = p.parentElement, i++) chain.push(p.tagName.toLowerCase() + (p.className ? '.' + String(p.className).trim().split(/\s+/).slice(0, 2).join('.') : '') + (p.tagName === 'A' ? `[${p.getAttribute('href')}]` : ''));
-      console.log('  ' + el.outerHTML.replace(/\s+/g, ' ').slice(0, 260) + '  <- ' + chain.join(' < '));
-    }
+    // where the article's own pictures are referenced in the raw page (any attribute, script or style)
+    const og = document.querySelector('meta[property="og:image"]')?.getAttribute('content') || '';
+    const dir = og.replace(/^https?:/, '').replace(/[^/]*$/, '');
+    console.log(`debug ${doc.id}: og=${og}`);
+    let at = 0, n = 0;
+    while (dir && (at = html.indexOf(dir, at + 1)) >= 0 && n++ < 12) console.log('  …' + html.slice(Math.max(0, at - 220), at + 120).replace(/\s+/g, ' ') + '…');
+    const cred = [...document.querySelectorAll('a')].filter((x) => x.textContent.trim() === 'Boldmethod').slice(0, 2);
+    for (const c of cred) console.log('  credit: ' + (c.parentElement?.parentElement?.outerHTML || '').replace(/\s+/g, ' ').slice(0, 700));
   }
   const keep = prepMedia(document, finalUrl);
   const art = new Readability(document, { charThreshold: 300, keepClasses: false }).parse();
