@@ -20,6 +20,7 @@ if (article && bar) {
   const status = head.querySelector<HTMLElement>('[data-eb-status]')!;
   const saveBtn = head.querySelector<HTMLButtonElement>('[data-cmd="save"]')!;
   const doneBtn = head.querySelector<HTMLButtonElement>('[data-cmd="done"]')!;
+  saveBtn.hidden = true; // saving is automatic now
   const moreMenu = head.querySelector<HTMLElement>('[data-more-menu]')!;
   const panel = document.querySelector<HTMLElement>('.blk-panel')!;
   const pop = document.querySelector<HTMLFormElement>('[data-eb-pop]')!;
@@ -36,12 +37,24 @@ if (article && bar) {
   const blocks = () => [...article.querySelectorAll<HTMLElement>('[data-src]:not([data-comp]):not([data-kind]), [data-fm], [data-ed]')];
   const pending = () => dirty.size + article.querySelectorAll('[data-deleted]').length + [...article.querySelectorAll<HTMLElement>('[data-new]')].filter((x) => !(x.tagName === 'P' && !(x.textContent || '').trim())).length;
   const say = (t: string, kind = '') => { status.textContent = t; status.dataset.kind = kind; };
+  const edits = new WeakMap<HTMLElement, number>(); // bumps on every change, so a save knows what changed while it ran
+  let autoT = 0, saving: Promise<void> | null = null, again = false;
   const refresh = () => {
     const n = pending();
     saveBtn.disabled = !n;
     saveBtn.textContent = n ? `Save ${n}` : 'Save';
     armedDiscard = false; doneBtn.textContent = 'Done';
+    if (n && on) { clearTimeout(autoT); autoT = window.setTimeout(autoSave, 600); }
   };
+  // Saving happens by itself a moment after you stop typing (it only writes to this device, so it's quick).
+  function autoSave(): Promise<void> {
+    clearTimeout(autoT);
+    if (saving) { again = true; return saving; }
+    if (!pending()) return Promise.resolve();
+    saving = save().finally(() => { saving = null; if (again) { again = false; if (pending()) autoSave(); } });
+    return saving;
+  }
+  const flush = async () => { clearTimeout(autoT); for (let i = 0; i < 5 && (saving || pending()); i++) { await autoSave(); if (status.dataset.kind === 'err') return false; } return true; };
   // The page as you see it, for showing again after a reload until it's uploaded and live.
   const snapshot = () => {
     const c = article.cloneNode(true) as HTMLElement;
@@ -63,7 +76,7 @@ if (article && bar) {
   const selEl = () => { const s = sel(); const n = s?.anchorNode; return n ? (n.nodeType === 1 ? n as HTMLElement : n.parentElement) : null; };
   const markDirty = (n: Element | null) => {
     const el = n?.closest<HTMLElement>('[data-new], [data-src], [data-fm]');
-    if (el && el.dataset.new === undefined && !el.dataset.comp) dirty.add(el);
+    if (el && el.dataset.new === undefined && !el.dataset.comp) { dirty.add(el); edits.set(el, (edits.get(el) || 0) + 1); }
     refresh();
   };
 
@@ -263,8 +276,8 @@ if (article && bar) {
       case 'delpage': deletePage(); break;
       case 'save': save(); break;
       case 'done':
-        if (pending() && !armedDiscard) { armedDiscard = true; doneBtn.textContent = 'Discard?'; say(`${pending()} unsaved`); return; }
-        if (pending()) { dirty.clear(); article.querySelectorAll('[data-new], [data-deleted]').forEach((x) => x.remove()); location.reload(); return; }
+        (document.activeElement as HTMLElement)?.blur?.();
+        if (saving || pending()) { doneBtn.disabled = true; flush().then((ok) => { doneBtn.disabled = false; if (ok) setEditing(false); }); return; }
         setEditing(false);
     }
   }
@@ -835,7 +848,10 @@ if (article && bar) {
 
   async function save() {
     if (!pending()) return;
-    say('Saving…'); saveBtn.disabled = true;
+    say('Saving…', 'busy'); saveBtn.disabled = true;
+    const was = new Map([...dirty].map((el) => [el, edits.get(el) || 0]));
+    const gone = [...article.querySelectorAll<HTMLElement>('[data-deleted]')];
+    const mdOf = new Map<HTMLElement, string>();
     try {
       const done = await (async () => {
         const [built, curText] = await Promise.all([builtFrom(), readLocal(file)]);
@@ -858,9 +874,9 @@ if (article && bar) {
           const orig = el.dataset.mdNow ?? built.slice(s, e);
           const b = { el, s, e, orig };
           if (el.dataset.deleted !== undefined) ops.push({ ...b, key: s, md: '', ins: false });
-          else if (dirty.has(el)) ops.push({ ...b, key: s, md: toMdx(el), ins: false });
+          else if (was.has(el)) ops.push({ ...b, key: s, md: toMdx(el), ins: false });
           const run = runAfter(el);
-          if (run.length) ops.push({ ...b, key: e + 0.5, md: run.map(toMdx).filter(Boolean).join('\n\n'), ins: true, run });
+          if (run.length) { run.forEach((n) => mdOf.set(n, toMdx(n))); ops.push({ ...b, key: e + 0.5, md: run.map((n) => mdOf.get(n)!).filter(Boolean).join('\n\n'), ins: true, run }); }
         }
         for (const op of ops) if (!(same && op.el.dataset.mdNow === undefined)) {
           const at = cur.text.indexOf(op.orig);
@@ -885,14 +901,15 @@ if (article && bar) {
           if (c.matches('[data-src]')) break;
           if (c.dataset.new !== undefined && !(c.tagName === 'P' && !(c.textContent || '').trim())) lead.push(c);
         }
-        const leadMd = lead.map(toMdx).filter(Boolean).join('\n\n');
+        lead.forEach((n) => mdOf.set(n, toMdx(n)));
+        const leadMd = lead.map((n) => mdOf.get(n)!).filter(Boolean).join('\n\n');
         if (leadMd) {
           const head = text.match(/^---\n[\s\S]*?\n---\n(?:[ \t]*import [^\n]*\n|[ \t]*\n)*/);
           const at = head ? head[0].length : 0;
           text = text.slice(0, at).replace(/\n*$/, '\n\n') + leadMd + '\n\n' + text.slice(at).replace(/^\n+/, '');
         }
         let newTitle = '';
-        for (const el of dirty) {
+        for (const el of was.keys()) {
           if (!el.dataset.fm) continue;
           const key = el.dataset.fm;
           const re = new RegExp(`^${key}:.*$`, 'm');
@@ -917,15 +934,23 @@ if (article && bar) {
         return { ops, lead, none: false };
       })();
       // The page now matches GitHub: remember each block's new text so later saves can find it.
-      done.lead.forEach((n) => { n.dataset.mdNow = toMdx(n); n.dataset.src = 'x'; delete n.dataset.new; delete n.dataset.upload; });
+      // Remember each block's saved text so later saves can find it. Anything typed while this save ran
+      // stays marked and goes in the next one.
+      const settle = (n: HTMLElement) => {
+        n.dataset.mdNow = mdOf.get(n) ?? toMdx(n); n.dataset.src = 'x'; delete n.dataset.new; delete n.dataset.upload;
+        if (toMdx(n) !== n.dataset.mdNow) dirty.add(n);
+      };
+      done.lead.forEach(settle);
       for (const op of done.ops) {
-        if (op.ins) op.run!.forEach((n) => { n.dataset.mdNow = toMdx(n); n.dataset.src = 'x'; delete n.dataset.new; delete n.dataset.upload; });
+        if (op.ins) op.run!.forEach(settle);
         else if (op.md) op.el.dataset.mdNow = op.md;
       }
-      article.querySelectorAll('[data-deleted]').forEach((x) => x.remove());
-      dirty.clear(); undoStack.length = redoStack.length = 0; refresh();
+      gone.forEach((x) => x.remove());
+      for (const [el, n] of was) if ((edits.get(el) || 0) === n) dirty.delete(el);
+      undoStack.length = redoStack.length = 0;
       if (!done.none) await savePage(slug, snapshot());
-      say(done.none ? 'No changes' : 'Saved on this device', 'ok');
+      refresh();
+      say(done.none ? '' : 'Saved', 'ok');
     } catch (err: any) {
       say(err.message || 'Couldn’t save', 'err');
       refresh();
@@ -1028,5 +1053,9 @@ if (article && bar) {
     document.addEventListener('focusin', () => { ask(); setTimeout(ask, 350); });
     document.addEventListener('focusout', () => setTimeout(ask, 350));
   }
-  window.addEventListener('beforeunload', (e) => { if (pending()) e.preventDefault(); });
+  // Leaving or switching apps saves straight away.
+  const now = () => { if (on && (pending() || saving)) autoSave(); };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') now(); });
+  window.addEventListener('pagehide', now);
+  window.addEventListener('beforeunload', (e) => { if (pending()) { now(); e.preventDefault(); } });
 }
