@@ -731,3 +731,6 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
 .panel-acts button { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: var(--surface-2); color: var(--ink); border-radius: 12px; padding: 10px 4px; font-size: .8rem; }
 .panel-acts svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .panel-acts .danger { color: #d0453a; }
+/* Editing looks like reading, like Notion: no box around the line you're typing in. */
+html.editing [data-src]:focus, html.editing [data-fm]:focus, html.editing [data-ed]:focus, html.editing [contenteditable="true"]:focus { outline: none; }
+.toc-rail:has(.toc:empty) { visibility: hidden; }

@@ -834,7 +834,7 @@ if (article && bar) {
         const lead: HTMLElement[] = [];
         for (const c of article.children as unknown as HTMLElement[]) {
           if (c.matches('[data-src]')) break;
-          if (c.dataset.new !== undefined) lead.push(c);
+          if (c.dataset.new !== undefined && !(c.tagName === 'P' && !(c.textContent || '').trim())) lead.push(c);
         }
         const leadMd = lead.map(toMdx).filter(Boolean).join('\n\n');
         if (leadMd) {
@@ -862,13 +862,14 @@ if (article && bar) {
             extra.push({ path: 'src/data/outline.json', content: JSON.stringify(data, null, 2) + '\n' });
           }
         }
-        if (!extra.length) return { ops, none: true };
+        if (!extra.length) return { ops, lead, none: true };
         const title = document.querySelector('h1')?.textContent?.trim() || slug;
         await commitFiles(extra, `Edit “${title}” in the binder`);
-        return { ops, none: false };
+        return { ops, lead, none: false };
       }, save);
       if (!done) { refresh(); say(''); return; }
       // The page now matches GitHub: remember each block's new text so later saves can find it.
+      done.lead.forEach((n) => { n.dataset.mdNow = toMdx(n); n.dataset.src = 'x'; delete n.dataset.new; delete n.dataset.upload; });
       for (const op of done.ops) {
         if (op.ins) op.run!.forEach((n) => { n.dataset.mdNow = toMdx(n); n.dataset.src = 'x'; delete n.dataset.new; delete n.dataset.upload; });
         else if (op.md) op.el.dataset.mdNow = op.md;
