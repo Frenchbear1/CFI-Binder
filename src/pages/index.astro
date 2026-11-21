@@ -73,7 +73,11 @@ const pageIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v1
   <dialog class="sheet new-sheet" id="sheet-new" aria-label="New page">
     <div class="grab" aria-hidden="true"></div>
     <form data-new-form>
-      <p class="sheet-h" data-new-h>New page</p>
+      <div class="new-top">
+        <button type="button" class="link-btn" data-close>Cancel</button>
+        <p class="sheet-h" data-new-h>New page</p>
+        <button type="submit" class="eb-save" data-new-go>Create</button>
+      </div>
       <input class="new-title" name="title" placeholder="Untitled" autocomplete="off" required data-new-title />
       <div data-page-only>
         <label class="new-row"><span>Folder</span>
@@ -87,10 +91,6 @@ const pageIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v1
         </div>
       </div>
       <p class="muted small" data-new-note>It’s saved to your binder and goes live in about 2 minutes.</p>
-      <div class="new-actions">
-        <button type="button" class="link-btn" data-close>Cancel</button>
-        <button type="submit" class="eb-save" data-new-go>Create</button>
-      </div>
     </form>
   </dialog>
 </Base>

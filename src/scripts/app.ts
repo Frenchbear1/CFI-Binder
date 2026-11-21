@@ -75,6 +75,38 @@ function fitSearch() {
   s.style.height = matchMedia('(max-width: 699px)').matches ? `${vv.height}px` : '';
 }
 window.visualViewport?.addEventListener('resize', () => { if (sheets.search?.open) fitSearch(); });
+/* ---------- Sheets ride on top of the on-screen keyboard ----------
+   iOS doesn't shrink the page for the keyboard, so a sheet pinned to the bottom ends up behind it.
+   While a field in an open sheet has focus, lift the sheet to sit on the keyboard and keep the field in view. */
+{
+  const vv = window.visualViewport;
+  let raf = 0;
+  const lift = () => {
+    raf = 0;
+    if (!vv) return;
+    const layoutH = document.documentElement.clientHeight;
+    const kb = Math.max(0, layoutH - (vv.offsetTop + vv.height));
+    const up = vv.height < layoutH - 80;
+    document.querySelectorAll<HTMLDialogElement>('dialog[open]').forEach((d) => {
+      if (d.classList.contains('sheet-search') && matchMedia('(max-width: 699px)').matches) {
+        d.style.top = up ? `${vv.offsetTop}px` : ''; d.style.height = `${vv.height}px`; return;
+      }
+      if (!d.classList.contains('sheet')) return;
+      if (!up) { d.style.marginBottom = d.style.maxHeight = ''; return; }
+      d.style.marginBottom = `${kb}px`;
+      d.style.maxHeight = `${Math.max(160, vv.height - 16)}px`;
+      const f = document.activeElement as HTMLElement | null;
+      if (f && d.contains(f) && f.matches('input, textarea, select, [contenteditable="true"]')) {
+        const r = f.getBoundingClientRect(), dr = d.getBoundingClientRect();
+        if (r.bottom > dr.bottom - 8 || r.top < dr.top) d.scrollTop += r.top - dr.top - 40;
+      }
+    });
+  };
+  const ask = () => { if (!raf) raf = requestAnimationFrame(lift); };
+  vv?.addEventListener('resize', ask); vv?.addEventListener('scroll', ask);
+  document.addEventListener('focusin', () => { ask(); setTimeout(ask, 300); setTimeout(ask, 600); });
+  document.addEventListener('focusout', () => setTimeout(ask, 300));
+}
 document.querySelectorAll<HTMLElement>('[data-open]').forEach((b) => b.addEventListener('click', () => openSheet(b.dataset.open!)));
 Object.values(sheets).forEach((s) => {
   if (!s) return;

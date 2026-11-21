@@ -493,6 +493,7 @@ html.editing [data-src]:focus, html.editing [data-fm]:focus { outline: 2px solid
 html.editing .r { user-select: all; }
 html.editing .dock { display: none; }
 html.editing main { padding-bottom: 120px; }
+html.editing.kb-up main { padding-bottom: 55vh; }
 /* Editor top bar: Done · status · more · Save */
 .edit-head {
   position: fixed; z-index: 32; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 6px;
@@ -760,3 +761,7 @@ html.editing [data-src]:focus, html.editing [data-fm]:focus, html.editing [data-
 .toc-rail:has(.toc:empty) { visibility: hidden; }
 
 html.local-wait [data-article] { visibility: hidden; }
+html.editing article p:empty, html.editing article p[data-new]:has(> br:only-child) { min-height: 1.6em; }
+.new-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin: 0 0 6px; }
+.new-top .sheet-h { margin: 0; text-align: center; }
+.new-top .link-btn { justify-self: start; } .new-top .eb-save { justify-self: end; }

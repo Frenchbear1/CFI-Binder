@@ -743,6 +743,38 @@ if (article && bar) {
   article.addEventListener('pointerover', (e) => { if (on && matchMedia('(hover: hover)').matches) { const t = target(e.target); if (t && t !== current) place(t); } });
   article.addEventListener('focusin', (e) => { if (on) { place(target(e.target)); lastEditable = (e.target as HTMLElement).closest<HTMLElement>('[contenteditable="true"]'); } });
   article.addEventListener('click', (e) => { if (on) { const t = target(e.target); if (t) place(t); } });
+  // Tap in empty space while editing: put the cursor on that line, like Notion. Below the last block,
+  // that's a new empty line (or the empty one already there).
+  const mainEl = article.closest('main') || document.body;
+  const caretAt = (el: HTMLElement, x: number, y: number) => {
+    const ed = el.matches('[contenteditable="true"]') ? el : el.querySelector<HTMLElement>('[contenteditable="true"], [data-ed]');
+    if (!ed) return false;
+    const b = ed.getBoundingClientRect();
+    const cx = Math.min(Math.max(x, b.left + 2), b.right - 2), cy = Math.min(Math.max(y, b.top + 2), b.bottom - 2);
+    let r: Range | null = (document as any).caretRangeFromPoint?.(cx, cy) || null;
+    if (!r) { const p = (document as any).caretPositionFromPoint?.(cx, cy); if (p) { r = document.createRange(); r.setStart(p.offsetNode, p.offset); } }
+    if (!r || !ed.contains(r.startContainer)) { r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); }
+    ed.focus(); sel()!.removeAllRanges(); sel()!.addRange(r);
+    return true;
+  };
+  document.addEventListener('click', (e) => {
+    if (!on) return;
+    const t = e.target as HTMLElement;
+    if (!(t === document.body || t === html || mainEl.contains(t))) return;
+    if (t.closest('[contenteditable="true"], a, button, input, select, textarea, summary, iframe, video, .blk-tools, .editbar, .edit-head')) return;
+    const kids = [...article.children].filter((c) => (c as HTMLElement).offsetParent && (c as HTMLElement).dataset.deleted === undefined && !c.matches('.crumbs, .meta-line')) as HTMLElement[];
+    if (!kids.length) return;
+    const y = e.clientY, x = e.clientX;
+    const last = kids[kids.length - 1];
+    if (y > last.getBoundingClientRect().bottom) {
+      if (last.tagName === 'P' && last.dataset.new !== undefined && !(last.textContent || '').trim()) { caretAt(last, x, y); return; }
+      insertAfterReady(last, 'p', {}, undefined, true);
+      return;
+    }
+    let best = kids[0], d = Infinity;
+    for (const k of kids) { const r = k.getBoundingClientRect(); const dd = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0; if (dd < d) { d = dd; best = k; } }
+    caretAt(best, x, y);
+  });
   window.addEventListener('scroll', () => { if (on && current && !tools.hidden) place(current); }, { passive: true });
   tools.addEventListener('pointerdown', (e) => e.preventDefault());
   tools.addEventListener('click', (e) => {
@@ -975,8 +1007,22 @@ if (article && bar) {
       bar.style.bottom = 'auto'; bar.style.top = `${barTop}px`;
       head.style.top = `${vv.offsetTop}px`;
       pop.style.bottom = 'auto'; pop.style.top = `${barTop - (pop.offsetHeight || 52) - 8}px`;
+      showCaret(barTop - 10, vv.offsetTop + head.offsetHeight + 8);
     };
+    // Keep the line you're typing on in view: between the top bar and the bar on the keyboard.
+    const showCaret = (bottom: number, top: number) => {
+      const s = sel();
+      if (!s?.rangeCount || !article.contains(s.anchorNode)) return;
+      const r = s.getRangeAt(0);
+      let rect = r.getClientRects()[0] || r.getBoundingClientRect();
+      if (!rect || (!rect.height && !rect.top)) { const el = selEl(); if (!el) return; rect = el.getBoundingClientRect(); }
+      if (rect.bottom > bottom) window.scrollBy(0, rect.bottom - bottom);
+      else if (rect.top < top) window.scrollBy(0, rect.top - top);
+    };
+
     const ask = () => { if (!raf) raf = requestAnimationFrame(fit); };
+    document.addEventListener('selectionchange', () => { if (on && html.classList.contains('kb-up')) ask(); });
+    article.addEventListener('input', () => { if (html.classList.contains('kb-up')) ask(); });
     vv.addEventListener('resize', ask); vv.addEventListener('scroll', ask);
     addEventListener('scroll', ask, { passive: true });
     document.addEventListener('focusin', () => { ask(); setTimeout(ask, 350); });
