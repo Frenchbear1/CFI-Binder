@@ -6,4 +6,4 @@ import { resolveRef } from '../data/sources';
 const { to, q } = Astro.props as { to: string; q?: string };
 const refs = to.split(';').map(resolveRef);
 ---
-<span class="r">{refs.map((r, i) => <>{i > 0 && <span class="r-sep"> · </span>}{r.href ? <a href={r.href} data-doc={r.doc} data-page={r.page} data-q={q}>{r.label}</a> : <span>{r.label}</span>}</>)}</span>
+<span class="r">{refs.map((r, i) => <>{i > 0 && <span class="r-sep"> · </span>}{r.href ? <a href={r.href} data-doc={r.doc} data-page={r.page} data-at={r.at} data-q={q}>{r.label}</a> : <span>{r.label}</span>}</>)}</span>

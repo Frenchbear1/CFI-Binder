@@ -1,7 +1,41 @@
 {
-  "_about": "Documents the in-lesson reader can open. scripts/fetch-sources.mjs downloads each one (only if it changed) and pulls out the text of every page. Page labels: 'chapter' gives 5-1, 5-2… for PHAK-style chapter PDFs.",
+  "_about": "Documents the in-lesson reader can open. scripts/fetch-sources.mjs downloads each one (only if it changed) and pulls out the text of every page. Page labels: 'chapter' gives 5-1, 5-2\u2026 for PHAK-style chapter PDFs.",
   "docs": [
-    { "id": "phak-5", "short": "PHAK", "title": "PHAK Chapter 5: Aerodynamics of Flight", "url": "https://www.faa.gov/sites/faa.gov/files/07_phak_ch5.pdf", "type": "pdf", "labels": { "chapter": 5 } },
-    { "id": "phak-6", "short": "PHAK", "title": "PHAK Chapter 6: Flight Controls", "url": "https://www.faa.gov/sites/faa.gov/files/08_phak_ch6.pdf", "type": "pdf", "labels": { "chapter": 6 } }
+    {
+      "id": "phak-5",
+      "short": "PHAK",
+      "title": "PHAK Chapter 5: Aerodynamics of Flight",
+      "url": "https://www.faa.gov/sites/faa.gov/files/07_phak_ch5.pdf",
+      "type": "pdf",
+      "labels": {
+        "chapter": 5
+      }
+    },
+    {
+      "id": "phak-6",
+      "short": "PHAK",
+      "title": "PHAK Chapter 6: Flight Controls",
+      "url": "https://www.faa.gov/sites/faa.gov/files/08_phak_ch6.pdf",
+      "type": "pdf",
+      "labels": {
+        "chapter": 6
+      }
+    },
+    {
+      "id": "aim-8-1",
+      "short": "AIM",
+      "title": "AIM Chapter 8, Section 1: Fitness for Flight",
+      "url": "https://www.faa.gov/air_traffic/publications/atpubs/aim_html/chap8_section_1.html",
+      "type": "aim"
+    },
+    {
+      "id": "cfr-91",
+      "short": "14 CFR",
+      "title": "14 CFR Part 91: General Operating and Flight Rules",
+      "url": "https://www.ecfr.gov/current/title-14/part-91",
+      "type": "ecfr",
+      "title_no": 14,
+      "part": 91
+    }
   ]
 }

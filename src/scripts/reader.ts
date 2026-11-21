@@ -5,8 +5,8 @@
 import { compile } from '../lib/is/search.js';
 import { renderPdfPage } from '../lib/is/pdf.js';
 
-type Ref = { doc: string; page: number; label: string; href: string; q: string };
-type DocData = { id: string; title: string; short: string; url: string; labels: string[]; pages: string[] };
+type Ref = { doc: string; page: number; at?: string; label: string; href: string; q: string };
+type DocData = { id: string; title: string; short: string; url: string; kind?: 'text'; labels: string[]; pages: string[] };
 
 const base = new URL(document.body.dataset.base || '/', document.baseURI).href;
 const dlg = document.getElementById('sheet-reader') as HTMLDialogElement | null;
@@ -67,8 +67,8 @@ function sectionRefs(a: HTMLAnchorElement): { list: Ref[]; at: number } {
   const list: Ref[] = [];
   let at = 0;
   for (const x of mine) {
-    const r = { doc: x.dataset.doc!, page: Number(x.dataset.page), label: x.textContent || '', href: x.href, q: queryFor(x) };
-    const dup = list.findIndex((y) => y.doc === r.doc && y.page === r.page);
+    const r = { doc: x.dataset.doc!, page: x.dataset.page ? Number(x.dataset.page) : -1, at: x.dataset.at, label: x.textContent || '', href: x.href, q: queryFor(x) };
+    const dup = list.findIndex((y) => y.doc === r.doc && y.page === r.page && y.at === r.at);
     if (dup >= 0) { if (x === a) at = dup; if (!list[dup].q.includes(r.q)) list[dup].q = `${list[dup].q} ${r.q}`.trim(); continue; }
     if (x === a) at = list.length;
     list.push(r);
@@ -90,26 +90,41 @@ async function show(i: number, pageOverride?: number) {
   dlg.querySelectorAll('[data-rd-step]').forEach((b) => ((b as HTMLElement).hidden = refs.length < 2));
   stage.setAttribute('aria-busy', 'true');
   try {
-    const [doc, pdf] = await Promise.all([getDoc(ref.doc), getPdf(ref.doc)]);
+    const doc = await getDoc(ref.doc);
     if (my !== renderSeq) return;
+    if (pageOverride === undefined && ref.at) page = Math.max(0, doc.labels.indexOf(ref.at));
     page = Math.max(0, Math.min(page, doc.pages.length - 1));
-    $('[data-rd-doc]').textContent = `${doc.title} · page ${doc.labels[page]}`;
+    $('[data-rd-doc]').textContent = `${doc.title} · ${doc.kind === 'text' ? '' : 'page '}${doc.labels[page]}`;
     const m = ref.q ? compile(ref.q, { mode: 'any', wholeWord: false }) : null;
     const ranges = m && !('error' in m) ? m.soft(doc.pages[page]).map(([s, e, c]: number[]) => [s, e, c, null]) : [];
     const host = $('[data-rd-page]');
-    const res = await renderPdfPage(pdf, page, host, ranges, host.clientWidth || stage.clientWidth);
-    if (my !== renderSeq) return res.cleanup();
-    cleanupPrev?.();
-    res.show();
-    cleanupPrev = res.cleanup;
+    if (doc.kind === 'text') {
+      // AIM paragraphs and FAR sections: clean text with the same highlights.
+      const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]!));
+      const text = doc.pages[page];
+      let html = '', last = 0;
+      for (const [s0, e0, c] of ranges) { html += esc(text.slice(last, s0)) + `<mark class="c${c}">${esc(text.slice(s0, e0))}</mark>`; last = e0; }
+      html += esc(text.slice(last));
+      cleanupPrev?.(); cleanupPrev = null;
+      host.innerHTML = `<div class="rd-text">${html.split(/\n{2,}/).map((p) => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('')}</div>`;
+    } else {
+      const pdf = await getPdf(ref.doc);
+      if (my !== renderSeq) return;
+      const res = await renderPdfPage(pdf, page, host, ranges, host.clientWidth || stage.clientWidth);
+      if (my !== renderSeq) return res.cleanup();
+      cleanupPrev?.();
+      res.show();
+      cleanupPrev = res.cleanup;
+    }
     const prev = $<HTMLButtonElement>('[data-rd-prevpage]'), next = $<HTMLButtonElement>('[data-rd-nextpage]');
     prev.hidden = page === 0; next.hidden = page >= doc.pages.length - 1;
-    prev.textContent = page > 0 ? `↑ Page ${doc.labels[page - 1]}` : '';
-    next.textContent = page < doc.pages.length - 1 ? `Page ${doc.labels[page + 1]} ↓` : '';
+    const unit = doc.kind === 'text' ? (doc.short === 'AIM' ? 'AIM ' : '§ ') : 'Page ';
+    prev.textContent = page > 0 ? `↑ ${unit}${doc.labels[page - 1]}` : '';
+    next.textContent = page < doc.pages.length - 1 ? `${unit}${doc.labels[page + 1]} ↓` : '';
     // Bring the first highlight into view.
     stage.scrollTop = 0;
     requestAnimationFrame(() => {
-      const hit = host.querySelector<HTMLElement>('.box');
+      const hit = host.querySelector<HTMLElement>('.box, mark');
       if (hit) stage.scrollTop = Math.max(0, hit.getBoundingClientRect().top - stage.getBoundingClientRect().top - stage.clientHeight * 0.3);
     });
   } catch {
@@ -161,7 +176,7 @@ async function runSearch(q: string) {
     : `<p class="muted">No pages match.</p>`;
   out.querySelectorAll<HTMLButtonElement>('.rd-hit').forEach((b) => b.addEventListener('click', () => {
     const h = hits[Number(b.dataset.i)];
-    refs = [{ doc: h.doc.id, page: h.p, label: `${h.doc.short} ${h.doc.labels[h.p]}`, href: `${h.doc.url}#page=${h.p + 1}`, q }];
+    refs = [{ doc: h.doc.id, page: h.p, label: `${h.doc.short} ${h.doc.labels[h.p]}`, href: h.doc.kind === 'text' ? h.doc.url : `${h.doc.url}#page=${h.p + 1}`, q }];
     dlg!.classList.remove('searching');
     show(0);
   }));
