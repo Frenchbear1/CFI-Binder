@@ -1,0 +1,10 @@
+---
+// Embedded web page (Google Maps, Drive, any site that allows framing). Loads only when tapped.
+interface Props { src: string; title?: string; height?: number }
+const { src, title = 'Embedded page', height = 420 } = Astro.props;
+let host = ''; try { host = new URL(src).hostname.replace(/^www\./, ''); } catch {}
+---
+<figure class="embed" data-embed={src} style={`--h:${height}px`}>
+  <button type="button" class="embed-load" data-embed-load><span class="embed-t">{title}</span><span class="muted small">{host} · tap to load</span></button>
+  <figcaption><a href={src} target="_blank" rel="noopener">Open {host}</a></figcaption>
+</figure>

@@ -59,9 +59,19 @@ function openSheet(name: string) {
     const input = s.querySelector<HTMLInputElement>('[data-search-input]');
     input?.focus(); input?.select();
     if (!portable) loadPagefind();
+    const res = s.querySelector<HTMLElement>('[data-search-results]');
+    if (res && !input?.value) res.innerHTML = emptySearch();
+    fitSearch();
   }
   if (name === 'nav') s.querySelector('.toc a.active')?.scrollIntoView({ block: 'center' });
 }
+// Phones: search fills the screen, with the box just above the keyboard.
+function fitSearch() {
+  const s = sheets.search, vv = window.visualViewport;
+  if (!s || !vv) return;
+  s.style.height = matchMedia('(max-width: 699px)').matches ? `${vv.height}px` : '';
+}
+window.visualViewport?.addEventListener('resize', () => { if (sheets.search?.open) fitSearch(); });
 document.querySelectorAll<HTMLElement>('[data-open]').forEach((b) => b.addEventListener('click', () => openSheet(b.dataset.open!)));
 Object.values(sheets).forEach((s) => {
   if (!s) return;
@@ -114,6 +124,15 @@ function buildToc() {
   heads.forEach((h) => spy!.observe(h));
 }
 
+/* Before you type: recently opened pages, like Notion's search. */
+function emptySearch() {
+  let rec: { slug: string; title?: string; area?: string }[] = [];
+  try { rec = JSON.parse(localStorage.getItem('cfi.recent') || '[]'); } catch {}
+  const b = document.body.dataset.base || '/';
+  const e = (t = '') => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  return (rec.length ? `<p class="sheet-h">Recent</p><div class="sr-recent">${rec.slice(0, 8).map((r) => `<a href="${b}${r.slug}/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/></svg><span><b>${e(r.title || r.slug)}</b><small>${e(r.area)}</small></span></a>`).join('')}</div>` : '')
+    + '<p class="muted small">Try “dihedral”, “stabilator”, “aft CG” or “spiral”.</p>';
+}
 /* ---------- Search (Pagefind: static index, runs entirely in the browser) ---------- */
 type PF = { search: (q: string) => Promise<{ results: { data: () => Promise<any> }[] }>; options?: (o: object) => Promise<void> };
 let pf: PF | null = null;
@@ -135,7 +154,7 @@ input?.addEventListener('input', async () => {
   const q = input.value.trim();
   const my = ++seq;
   if (!out) return;
-  if (!q) { out.innerHTML = '<p class="muted">Try “dihedral”, “stabilator”, “aft CG” or “spiral”.</p>'; return; }
+  if (!q) { out.innerHTML = emptySearch(); return; }
   if (portable) { renderSimple(q, my); return; }
   const lib = pf || (await loadPagefind());
   if (!lib) { out.innerHTML = '<p class="muted">Search index is built with <code>npm run build</code>. It isn’t available in dev mode.</p>'; return; }
@@ -201,4 +220,27 @@ window.addEventListener('load', buildToc);
 // Offline support: cache pages as they're visited so the binder works with no signal.
 if (!portable && 'serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.register(base + 'sw.js').catch(() => {});
+}
+
+/* ---------- Embeds load on tap ---------- */
+document.addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLElement>('[data-embed-load]');
+  if (!b || document.documentElement.classList.contains('editing')) return;
+  const fig = b.closest<HTMLElement>('[data-embed]')!;
+  const f = document.createElement('iframe');
+  f.src = fig.dataset.embed!; f.loading = 'lazy'; f.allowFullscreen = true;
+  f.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
+  b.replaceWith(f);
+});
+
+/* ---------- Recently opened pages (shown on the home page) ---------- */
+{
+  const art = document.querySelector<HTMLElement>('[data-article]');
+  if (art?.dataset.slug) {
+    try {
+      const rec = JSON.parse(localStorage.getItem('cfi.recent') || '[]').filter((r: any) => r.slug !== art.dataset.slug);
+      rec.unshift({ slug: art.dataset.slug, title: document.querySelector('h1')?.textContent?.trim(), area: art.dataset.area });
+      localStorage.setItem('cfi.recent', JSON.stringify(rec.slice(0, 8)));
+    } catch {}
+  }
 }

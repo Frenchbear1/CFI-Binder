@@ -1,0 +1,6 @@
+---
+// A file to download or open (PDF, doc…).
+const { href, name } = Astro.props as { href: string; name?: string };
+const n = name || decodeURIComponent(href.split('/').pop() || 'File');
+---
+<a class="filelink" href={href} target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 12-8.5 8.5a5 5 0 0 1-7-7L14 5a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 8"/></svg><span>{n}</span></a>

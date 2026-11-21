@@ -2,8 +2,8 @@
 import '../styles/global.css';
 import { outline } from '../data/outline';
 
-interface Props { title: string; description?: string; isLesson?: boolean }
-const { title, description = 'A CFI teaching binder for Private, Instrument and Commercial students in the Cessna 172 and Piper PA-28-181.', isLesson = false } = Astro.props;
+interface Props { title: string; description?: string; isLesson?: boolean; isHome?: boolean }
+const { title, description = 'A CFI teaching binder for Private, Instrument and Commercial students in the Cessna 172 and Piper PA-28-181.', isLesson = false, isHome = false } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
 const here = Astro.url.pathname.replace(/\/$/, '');
 const href = (slug: string) => base + slug + '/';
@@ -40,7 +40,7 @@ const href = (slug: string) => base + slug + '/';
     } catch (e) {}
   </script>
 </head>
-<body data-base={base} data-repo={import.meta.env.GITHUB_REPOSITORY || process.env.GITHUB_REPOSITORY || 'Frenchbear1/CFI-Binder'}>
+<body class:list={[{ home: isHome }]} data-base={base} data-repo={import.meta.env.GITHUB_REPOSITORY || process.env.GITHUB_REPOSITORY || 'Frenchbear1/CFI-Binder'}>
   <a class="skip" href="#main">Skip to content</a>
 
   <header class="topbar">
@@ -52,6 +52,7 @@ const href = (slug: string) => base + slug + '/';
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <span>Search</span><kbd>/</kbd>
     </button>
+    {isLesson && <button class="top-edit" type="button" data-edit-toggle aria-label="Edit this lesson" title="Edit this lesson"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg></button>}
     <div class="prefs-inline" aria-label="View settings">
       {isLesson && <button class="theme-btn" type="button" data-edit-toggle aria-label="Edit this lesson" title="Edit this lesson"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg></button>}
       <button class="theme-btn" type="button" data-open="theme" aria-label="Reading theme" title="Reading theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.8 1.3-1.7-.3-.9.2-1.8 1.2-1.8H17a4 4 0 0 0 4-4c0-5-4-10.5-9-10.5z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7" r="1.2"/><circle cx="15" cy="7.5" r="1.2"/></svg></button>
@@ -99,7 +100,7 @@ const href = (slug: string) => base + slug + '/';
   </div>
 
   <!-- Phone / tablet dock: one row, three targets. -->
-  <div class="dock" role="toolbar" aria-label="Binder controls">
+  {!isHome && <div class="dock" role="toolbar" aria-label="Binder controls">
     <button class="dock-where" type="button" data-open="nav">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
       <span data-current>{isLesson ? title : 'Contents'}</span>
@@ -110,7 +111,7 @@ const href = (slug: string) => base + slug + '/';
     <button class="dock-chip" type="button" data-open="prefs" aria-label="Level and aircraft">
       <span data-chip-level>PVT</span><span class="dot">·</span><span data-chip-ac>Both</span>
     </button>
-  </div>
+  </div>}
 
   <!-- Sheets: bottom sheets on phones, centered panels on big screens. -->
   <dialog class="sheet" id="sheet-nav" aria-label="Contents">
@@ -192,61 +193,53 @@ const href = (slug: string) => base + slug + '/';
   </dialog>
 
   {isLesson && (<>
-  <!-- Editor: tap the pencil and every paragraph, heading, list and table becomes editable. -->
-  <div class="editbar" role="toolbar" aria-label="Editor" hidden>
-    <button type="button" data-cmd="bold" aria-label="Bold" title="Bold"><b>B</b></button>
-    <button type="button" data-cmd="italic" aria-label="Italic" title="Italic"><i>I</i></button>
-    <button type="button" data-cmd="link" aria-label="Make a link" title="Make a link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7L11.5 6.8"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.5-1.5"/></svg></button>
-    <button type="button" data-cmd="ref" aria-label="Add a reference" title="Add a reference (PHAK 5-15, AIM 1-2-3, 14 CFR 91.3…)">§</button>
-    <button type="button" data-cmd="add" aria-label="Add a block" title="Add a block (or type / on an empty line)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
-    <button type="button" data-cmd="source" aria-label="Edit the whole lesson's source" title="Edit source (videos, figures, callouts…)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg></button>
+  <!-- Editor (Notion-style). Top: Done / status / more / Save. Bottom: the bar that sits on the keyboard. -->
+  <header class="edit-head" hidden>
+    <button type="button" class="eh-done" data-cmd="done">Done</button>
     <span class="eb-status" data-eb-status aria-live="polite"></span>
+    <button type="button" class="eh-more" data-cmd="more" aria-label="More"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
     <button type="button" class="eb-save" data-cmd="save" disabled>Save</button>
-    <button type="button" class="eb-done" data-cmd="done">Done</button>
+    <div class="eh-menu" data-more-menu hidden>
+      <button type="button" data-cmd="source"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg>Edit page source</button>
+      <button type="button" data-cmd="delpage" class="danger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span>Delete this page</span></button>
+    </div>
+  </header>
+  <div class="editbar" role="toolbar" aria-label="Editor" hidden>
+    <div class="eb-view" data-view="main">
+      <button type="button" data-cmd="find" aria-label="Search this page" title="Search this page"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+      <button type="button" data-cmd="add" aria-label="Add a block" title="Add a block"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button type="button" data-cmd="text" aria-label="Text formatting" title="Text formatting" class="eb-aa">Aa</button>
+      <button type="button" data-cmd="image" aria-label="Add a picture" title="Add a picture"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/></svg></button>
+      <button type="button" data-cmd="turn" aria-label="Turn into" title="Turn into"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h13l-3-3M20 15H7l3 3"/></svg></button>
+      <button type="button" data-cmd="undo" aria-label="Undo" title="Undo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+      <button type="button" data-cmd="redo" aria-label="Redo" title="Redo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
+    </div>
+    <div class="eb-view" data-view="text" hidden>
+      <button type="button" data-cmd="back" aria-label="Back" title="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
+      <button type="button" data-cmd="bold" aria-label="Bold" title="Bold"><b>B</b></button>
+      <button type="button" data-cmd="italic" aria-label="Italic" title="Italic"><i style="font-family:Georgia,serif">I</i></button>
+      <button type="button" data-cmd="underline" aria-label="Underline" title="Underline"><u>U</u></button>
+      <button type="button" data-cmd="strikeThrough" aria-label="Strikethrough" title="Strikethrough"><s>S</s></button>
+      <button type="button" data-cmd="link" aria-label="Link" title="Link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7L11.5 6.8"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.5-1.5"/></svg></button>
+      <button type="button" data-cmd="code" aria-label="Inline code" title="Inline code"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg></button>
+      <button type="button" data-cmd="ref" aria-label="Add a reference" title="Reference (PHAK 5-15, AIM 1-2-3, 14 CFR 91.3)" class="eb-ref">§</button>
+    </div>
+    <div class="eb-view eb-find" data-view="find" hidden>
+      <button type="button" data-cmd="back" aria-label="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
+      <input type="search" placeholder="Search this page" data-find-input enterkeyhint="search" aria-label="Search this page" />
+      <span class="find-n" data-find-n></span>
+      <button type="button" data-cmd="findprev" aria-label="Previous match"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button>
+      <button type="button" data-cmd="findnext" aria-label="Next match"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    </div>
+    <button type="button" class="eb-kb" data-cmd="kb" aria-label="Hide keyboard" title="Hide keyboard"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="12" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M7 12h10M9 20l3 2 3-2"/></svg></button>
   </div>
+  <div class="blk-panel" data-panel hidden><p class="panel-h" data-panel-h></p><div data-panel-body></div></div>
   <div class="blk-tools" data-blk-tools hidden>
     <button type="button" data-act="add" aria-label="Add a block below" title="Add a block below">+</button>
     <button type="button" data-act="up" aria-label="Move up" title="Move up">↑</button>
     <button type="button" data-act="down" aria-label="Move down" title="Move down">↓</button>
     <button type="button" data-act="del" aria-label="Delete this block" title="Delete"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
   </div>
-
-  <dialog class="sheet insert-sheet" id="sheet-insert" aria-label="Add a block">
-    <div class="grab" aria-hidden="true"></div>
-    <p class="sheet-h">Basic</p>
-    <div class="ins-grid">
-      <button type="button" data-kind="p"><b>¶</b>Text</button>
-      <button type="button" data-kind="h2"><b>H2</b>Section</button>
-      <button type="button" data-kind="h3"><b>H3</b>Sub-heading</button>
-      <button type="button" data-kind="ul"><b>•</b>Bullets</button>
-      <button type="button" data-kind="ol"><b>1.</b>Numbered</button>
-      <button type="button" data-kind="table"><b>▦</b>Table</button>
-      <button type="button" data-kind="toggle"><b>▸</b>Toggle</button>
-      <button type="button" data-kind="hr"><b>—</b>Divider</button>
-    </div>
-    <p class="sheet-h">Callouts</p>
-    <div class="ins-grid">
-      <button type="button" data-kind="callout" data-k="teach"><b>🎓</b>Teaching tip</button>
-      <button type="button" data-kind="callout" data-k="fleet"><b>✈️</b>Our airplanes</button>
-      <button type="button" data-kind="callout" data-k="warn"><b>⚠️</b>Warning</button>
-      <button type="button" data-kind="callout" data-k="acs"><b>✅</b>ACS standard</button>
-      <button type="button" data-kind="callout" data-k="note"><b>💡</b>Note</button>
-    </div>
-    <p class="sheet-h">Binder</p>
-    <div class="ins-grid">
-      <button type="button" data-kind="compare"><b>⇆</b>C172 vs PA-28</button>
-      <button type="button" data-kind="level" data-lv="ir ca"><b>IR·CA</b>Instrument + Commercial only</button>
-      <button type="button" data-kind="level" data-lv="ir"><b>IR</b>Instrument only</button>
-      <button type="button" data-kind="level" data-lv="ca"><b>CA</b>Commercial only</button>
-      <button type="button" data-kind="level" data-lv="pa"><b>PVT</b>Private only</button>
-    </div>
-    <p class="sheet-h">Media</p>
-    <div class="ins-grid">
-      <button type="button" data-kind="video"><b>▶</b>YouTube video</button>
-      <button type="button" data-kind="image"><b>🖼</b>Picture</button>
-    </div>
-  </dialog>
-
   <form class="eb-pop" data-eb-pop hidden>
     <label data-eb-label>Link to</label>
     <input data-eb-input autocomplete="off" />
@@ -258,6 +251,7 @@ const href = (slug: string) => base + slug + '/';
       <button type="button" class="eb-save" data-src-save>Save</button><button type="button" class="link-btn" data-close>Close</button></header>
     <textarea data-src-text spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
   </dialog>
+  </>)}
 
   <dialog class="sheet" id="sheet-token" aria-label="Connect GitHub">
     <div class="grab" aria-hidden="true"></div>
@@ -272,8 +266,8 @@ const href = (slug: string) => base + slug + '/';
     <form data-token-form class="token-form"><input type="password" placeholder="github_pat_…" data-token-input autocomplete="off" /><button type="submit" class="eb-save">Save key</button></form>
     <p class="muted small">The key stays on this device only.</p>
   </dialog>
-  </>)}
 
+  <script type="application/json" id="outline-data" set:html={JSON.stringify(outline)} />
   <script>
     import '../scripts/app.ts';
     import '../scripts/reader.ts';

@@ -1,0 +1,6 @@
+---
+// Side-by-side columns (2–4). Each <Col> is one column; they stack on phones.
+interface Props { n?: number }
+const { n = 2 } = Astro.props;
+---
+<div class="columns" style={`--cols:${n}`}><slot /></div>

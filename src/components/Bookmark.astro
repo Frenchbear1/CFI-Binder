@@ -1,0 +1,7 @@
+---
+// Web bookmark card. Opens in the source reader when the page has been saved there.
+interface Props { href: string; title?: string; note?: string }
+const { href, title, note } = Astro.props;
+let host = ''; try { host = new URL(href).hostname.replace(/^www\./, ''); } catch {}
+---
+<a class="bookmark" href={href}><span class="bm-t">{title || host}</span>{note && <span class="bm-n">{note}</span>}<span class="bm-h">{host}</span></a>
