@@ -7,7 +7,7 @@ export function getStaticPaths() { return data.items.map((s) => ({ params: { id:
 const { s } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
 ---
-<Base title={s.name} description={s.about}>
+<Base title={s.name} description={s.about} guest>
   <div class="sim-page">
     <p class="crumbs"><a href={base}>Binder</a> / Interactives</p>
     <h1 class="sim-h">{s.name}</h1>

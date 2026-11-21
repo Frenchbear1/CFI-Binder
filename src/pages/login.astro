@@ -1,0 +1,23 @@
+---
+// Sign in to see the whole binder. The check happens on the server (api/login.js); without it you only get Interactives.
+import Base from '../layouts/Base.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
+---
+<Base title="Sign in" guest>
+  <div class="signin">
+    <h1>Sign in</h1>
+    <p class="muted small">The binder's lessons are for the instructor. Students can use the <a href={`${base}interactives/`}>Interactives</a> without signing in.</p>
+    <form method="post" action={`${base}api/login`}>
+      <input name="user" autocomplete="username" placeholder="Username" required />
+      <input name="pass" type="password" autocomplete="current-password" placeholder="Password" required />
+      <input type="hidden" name="next" data-next />
+      <button type="submit">Sign in</button>
+      <p class="err small" data-err hidden>That username and password don't match.</p>
+    </form>
+  </div>
+  <script is:inline>
+    var q = new URLSearchParams(location.search);
+    document.querySelector('[data-next]').value = q.get('next') || '/';
+    if (q.get('e')) document.querySelector('[data-err]').hidden = false;
+  </script>
+</Base>

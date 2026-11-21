@@ -784,3 +784,18 @@ html.tree-drag, html.tree-drag * { cursor: grabbing !important; -webkit-user-sel
 .drag-ghost svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .new-kind { margin: 4px 0 10px; }
 .tree details:has(> summary.dragging) > ul { opacity: .35; }
+
+/* Guest pages (signed out): no search, no contents, just the interactives */
+body.guest [data-open="search"], body.guest .dock-where, body.guest .sidenav { display: none !important; }
+body.guest .shell { grid-template-columns: minmax(0, 1fr) !important; }
+.signin { max-width: 380px; margin: 8vh auto 40px; padding: 0 4px; }
+.signin h1 { margin: 0 0 6px; }
+.signin form { display: grid; gap: 10px; margin-top: 18px; }
+.signin input { font: inherit; font-size: 16px; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.signin button { font: inherit; font-weight: 600; padding: 11px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; }
+.signin .err { color: #c32718; }
+.sim-list { list-style: none; padding: 0; margin: 18px 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.sim-list a { display: block; padding: 14px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); text-decoration: none; color: var(--ink); }
+.sim-list b { display: block; }
+.sim-list small { color: var(--ink-3); }
+.guest-foot { margin: 28px 0 40px; font-size: .9rem; color: var(--ink-3); }

@@ -4,8 +4,11 @@ import { outline } from '../data/outline';
 import { pagesIn } from '../data/tree';
 import NavList from '../components/NavList.astro';
 
-interface Props { title: string; description?: string; isLesson?: boolean; isHome?: boolean }
-const { title, description = 'A CFI teaching binder for Private, Instrument and Commercial students in the Cessna 172 and Piper PA-28-181.', isLesson = false, isHome = false } = Astro.props;
+// guest: a page anyone can open without signing in (Interactives, sign-in). It carries none of the lessons:
+// no contents list, no search, no editor.
+interface Props { title: string; description?: string; isLesson?: boolean; isHome?: boolean; guest?: boolean }
+const { title, description = 'A CFI teaching binder for Private, Instrument and Commercial students in the Cessna 172 and Piper PA-28-181.', isLesson = false, isHome = false, guest = false } = Astro.props;
+const nav = guest ? [] : outline;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
 const here = Astro.url.pathname.replace(/\/$/, '');
 const href = (slug: string) => base + slug + '/';
@@ -48,7 +51,7 @@ const href = (slug: string) => base + slug + '/';
     } catch (e) {}
   </script>
 </head>
-<body class:list={[{ home: isHome }]} data-base={base} data-repo={import.meta.env.GITHUB_REPOSITORY || process.env.GITHUB_REPOSITORY || 'Frenchbear1/CFI-Binder'}>
+<body class:list={[{ home: isHome, guest }]} data-base={base} data-repo={import.meta.env.GITHUB_REPOSITORY || process.env.GITHUB_REPOSITORY || 'Frenchbear1/CFI-Binder'}>
   <a class="skip" href="#main">Skip to content</a>
 
   <header class="topbar">
@@ -84,7 +87,7 @@ const href = (slug: string) => base + slug + '/';
 
   <div class="shell">
     <nav class="sidenav" aria-label="Binder contents">
-      {outline.map((area) => (
+      {nav.map((area) => (
         <div class="nav-area">
           <p class="nav-area-title">{area.title}</p>
           <NavList nodes={area.topics} here={here} />
@@ -127,7 +130,7 @@ const href = (slug: string) => base + slug + '/';
     </>)}
     <p class="sheet-h">All lessons</p>
     <div class="sheet-nav">
-      {outline.map((area) => (
+      {nav.map((area) => (
         <details open={pagesIn(area.topics).some((t) => t.slug && here === base + t.slug)}>
           <summary>{area.title}</summary>
           <NavList nodes={area.topics} here={here} />
@@ -271,7 +274,7 @@ const href = (slug: string) => base + slug + '/';
     <p class="muted small">The key stays on this device only.</p>
   </dialog>
 
-  <script type="application/json" id="outline-data" set:html={JSON.stringify(outline)} />
+  <script type="application/json" id="outline-data" set:html={JSON.stringify(nav)} />
   <script>
     import '../scripts/app.ts';
     import '../scripts/reader.ts';

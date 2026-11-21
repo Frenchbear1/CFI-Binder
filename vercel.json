@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "astro",
+  "buildCommand": "node scripts/fetch-sources.mjs && node scripts/video-stats.mjs && npm run build",
+  "outputDirectory": "dist"
+}
