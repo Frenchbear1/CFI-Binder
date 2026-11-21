@@ -34,6 +34,10 @@ jobs:
           restore-keys: library-
       - name: Download the latest handbooks and index their text
         run: node scripts/fetch-sources.mjs
+      - name: Check video stats (views, likes, comments, channel)
+        run: node scripts/video-stats.mjs
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
       - name: Build
         run: npm run build
         env:

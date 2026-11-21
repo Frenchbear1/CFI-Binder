@@ -454,3 +454,4 @@ body.tbar-open .dock { display: none; }
 .sheet-row { display: flex; width: 100%; align-items: center; justify-content: space-between; border: 0; background: var(--surface-2); border-radius: 10px; padding: 12px 14px; margin-top: 8px; font-weight: 550; color: var(--ink); }
 .sheet-row span:last-child { color: var(--ink-3); }
 html.doc-tint.doc-dark .box { mix-blend-mode: screen; }
+.video-stats { font-size: .8rem; color: var(--ink-3, #888); }
