@@ -174,7 +174,7 @@ const steps=[
 {title:'Signal 1: the reference phase',dur:13,
  body:'The first signal is a 30 Hz tone, frequency-modulated onto a 9960 Hz subcarrier. It goes out the same in every direction, so every aircraft sees its peaks at the same instant. Think of it as the station\'s <b class="r">clock</b>.',
  show:{ref:1,sRef:1,radial:1},planes:[{brg:60,dist:.68},{brg:200,dist:.5},{brg:310,dist:.8}],
- tags:[{at:1,anchor:'station',text:'Reference: brightens and dims\neverywhere at once',pos:[.2,.5],color:C.ref},
+ tags:[{at:1,anchor:'station',text:'Reference: one pulse sent out\nin every direction at once',pos:[.2,.5],color:C.ref},
        {at:5,anchor:'plane1',text:'All three aircraft see\nthe peak together',color:C.ref}]},
 {title:'Signal 2: the variable phase',dur:14,
  body:'The second signal comes from a pattern that rotates clockwise 30 times a second (1,800 rpm, done electronically on modern stations). As its strong side sweeps past you, the carrier gets louder, then softer: a 30 Hz <b class="v">amplitude modulation</b>. When that peak reaches you depends on where you are.',
@@ -344,11 +344,16 @@ function drawMap(){
   const{ctx,w,h}=MAP;if(w<10)return;const g=mapGeom(),{cx,cy,R}=g;
   ctx.clearRect(0,0,w,h);ctx.fillStyle=C.screen;ctx.fillRect(0,0,w,h);
   const ph=TAU*S.cyc,beam=360*frac(S.cyc);
-  // reference: uniform glow, identical everywhere
-  if(L.ref>.01){const k=(1+Math.cos(ph))/2;const gr=ctx.createRadialGradient(cx,cy,0,cx,cy,R*1.05);
-    gr.addColorStop(0,`rgba(92,207,227,${(.06+.26*k)*L.ref})`);gr.addColorStop(1,`rgba(92,207,227,${(.03+.16*k)*L.ref})`);
-    ctx.fillStyle=gr;ctx.beginPath();ctx.arc(cx,cy,R*1.05,0,TAU);ctx.fill();
-    ctx.strokeStyle=`rgba(92,207,227,${(.2+.6*k)*L.ref})`;ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,R*1.05,0,TAU);ctx.stroke();}
+  // reference: one omnidirectional pulse per cycle. A ring leaves the station at the reference peak and sweeps
+  // out to every bearing at once, with a soft trail behind it (like the variable's sweep); it reaches the edge
+  // quickly, because the signal really arrives everywhere at essentially the same moment.
+  if(L.ref>.01){const R1=R*1.05,T1=.2,f0=frac(S.cyc),q=Math.min(1,f0/T1),r=R1*(1-Math.pow(1-q,2));
+    const glow=f0<T1?1:Math.max(0,1-(f0-T1)/(1-T1)*1.15);
+    if(r>2&&glow>0){const gr=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+      gr.addColorStop(0,`rgba(92,207,227,0)`);gr.addColorStop(.55,`rgba(92,207,227,${.05*glow*L.ref})`);gr.addColorStop(1,`rgba(92,207,227,${.3*glow*L.ref})`);
+      ctx.fillStyle=gr;ctx.beginPath();ctx.arc(cx,cy,r,0,TAU);ctx.fill();}
+    if(f0<T1){ctx.strokeStyle=`rgba(92,207,227,${.95*L.ref})`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(cx,cy,r,0,TAU);ctx.stroke();}
+    ctx.strokeStyle=`rgba(92,207,227,${(.25+.55*glow)*L.ref})`;ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,R1,0,TAU);ctx.stroke();}
   // TO / FROM halves
   if(L.tofrom>.01){const o=S.obs;ctx.save();ctx.globalAlpha=L.tofrom;
     ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,R,rad(o-90)-Math.PI/2,rad(o+90)-Math.PI/2);ctx.closePath();ctx.fillStyle='rgba(143,227,181,.07)';ctx.fill();
