@@ -359,6 +359,8 @@ p > .r:only-child, li > .r:only-child { margin-left: 0; }
 .rd-text p { margin: 0 0 .8em; }
 .rd-text mark { background: rgba(255, 210, 0, 0.5); color: inherit; border-radius: 2px; }
 .rd-text mark.c1 { background: rgba(60, 160, 255, 0.35); } .rd-text mark.c2 { background: rgba(50, 200, 90, 0.4); } .rd-text mark.c3 { background: rgba(255, 80, 140, 0.35); }
+.rd-fig { margin: 1em 0; } .rd-fig img { max-width: 100%; height: auto; border-radius: 6px; display: block; } .rd-fig figcaption { font-size: .8rem; opacity: .7; margin-top: 4px; }
+.rd-src { font-size: .78rem; opacity: .65; margin-bottom: 1.1em !important; }
 
 /* ===== Reading themes, paper and theme bar (from Instant Search) ===== */
 :root { --doc-page: #ffffff; --doc-ink: #1b1b1d; --tint: 0.85; --panel: var(--surface); --muted: var(--ink-3); --line-2: var(--line); --seg-on: var(--surface); }

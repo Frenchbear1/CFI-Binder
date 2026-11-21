@@ -45,6 +45,18 @@ const getPdf = (id: string) => {
   if (!pdfs.has(id)) pdfs.set(id, loadPdfLib().then((lib) => lib.getDocument({ url: new URL(`library/${id}.pdf`, base).href, isEvalSupported: false }).promise));
   return pdfs.get(id)!;
 };
+// url -> doc id for every page the build snapshotted, so plain links (Boldmethod, CFI Notebook…) open here too.
+let links: Record<string, string> = {};
+const loadLinks = () => fetch(new URL('library/links.json', base)).then((r) => (r.ok ? r.json() : {})).then((j) => (links = j)).catch(() => {});
+const norm = (u: string) => { try { const x = new URL(u, location.href); x.hash = ''; return x.href; } catch { return ''; } };
+const isPdfUrl = (u: string) => /\.pdf($|[?#])/i.test(u);
+// The doc a link opens in the reader, if any.
+function docFor(a: HTMLAnchorElement): string | undefined {
+  if (a.dataset.doc) return a.dataset.doc;
+  if (!/^https?:/.test(a.href) || a.closest('.video, [data-noreader]')) return;
+  return links[norm(a.href)];
+}
+const READABLE = '[data-article] a[href]';
 const getLibrary = async () => (library ??= await fetch(new URL('library/index.json', base)).then((r) => r.json()).catch(() => []));
 
 /* ---------- which words to highlight ---------- */
@@ -59,7 +71,7 @@ function queryFor(a: HTMLAnchorElement) {
 // All library refs in the same section (between the h2s around the tapped one), in reading order.
 function sectionRefs(a: HTMLAnchorElement): { list: Ref[]; at: number } {
   const article = a.closest('[data-article]');
-  const all = [...(article?.querySelectorAll<HTMLAnchorElement>('.r a[data-doc]') || [])].filter((x) => x.offsetParent !== null || x === a);
+  const all = [...(article?.querySelectorAll<HTMLAnchorElement>(READABLE) || [])].filter((x) => docFor(x) && (x.offsetParent !== null || x === a));
   const h2s = [...(article?.querySelectorAll('h2') || [])];
   const sectionOf = (el: Element) => h2s.filter((h) => h.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).length;
   const sec = sectionOf(a);
@@ -67,7 +79,8 @@ function sectionRefs(a: HTMLAnchorElement): { list: Ref[]; at: number } {
   const list: Ref[] = [];
   let at = 0;
   for (const x of mine) {
-    const r = { doc: x.dataset.doc!, page: x.dataset.page ? Number(x.dataset.page) : -1, at: x.dataset.at, label: x.textContent || '', href: x.href, q: queryFor(x) };
+    const pdfPage = !x.dataset.doc && isPdfUrl(x.href) ? Number((x.href.match(/#page=(\d+)/) || [])[1] || 1) - 1 : -1;
+    const r = { doc: docFor(x)!, page: x.dataset.page ? Number(x.dataset.page) : pdfPage, at: x.dataset.at, label: x.textContent || '', href: x.href, q: queryFor(x) };
     const dup = list.findIndex((y) => y.doc === r.doc && y.page === r.page && y.at === r.at);
     if (dup >= 0) { if (x === a) at = dup; if (!list[dup].q.includes(r.q)) list[dup].q = `${list[dup].q} ${r.q}`.trim(); continue; }
     if (x === a) at = list.length;
@@ -94,7 +107,8 @@ async function show(i: number, pageOverride?: number) {
     if (my !== renderSeq) return;
     if (pageOverride === undefined && ref.at) page = Math.max(0, doc.labels.indexOf(ref.at));
     page = Math.max(0, Math.min(page, doc.pages.length - 1));
-    $('[data-rd-doc]').textContent = `${doc.title} · ${doc.kind === 'text' ? '' : 'page '}${doc.labels[page]}`;
+    const web = doc.id.startsWith('web-');
+    $('[data-rd-doc]').textContent = web ? `${doc.short} · ${doc.title}` : `${doc.title} · ${doc.kind === 'text' ? '' : 'page '}${doc.labels[page]}`;
     const m = ref.q ? compile(ref.q, { mode: 'any', wholeWord: false }) : null;
     const ranges = m && !('error' in m) ? m.soft(doc.pages[page]).map(([s, e, c]: number[]) => [s, e, c, null]) : [];
     const host = $('[data-rd-page]');
@@ -106,7 +120,12 @@ async function show(i: number, pageOverride?: number) {
       for (const [s0, e0, c] of ranges) { html += esc(text.slice(last, s0)) + `<mark class="c${c}">${esc(text.slice(s0, e0))}</mark>`; last = e0; }
       html += esc(text.slice(last));
       cleanupPrev?.(); cleanupPrev = null;
-      host.innerHTML = `<div class="rd-text">${html.split(/\n{2,}/).map((p) => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('')}</div>`;
+      const para = (p: string) => {
+        const img = p.replace(/<\/?mark[^>]*>/g, '').match(/^\[\[img (\S+)\|(.*)\]\]$/);
+        if (img) return `<figure class="rd-fig"><img src="${img[1]}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()">${img[2] ? `<figcaption>${img[2]}</figcaption>` : ''}</figure>`;
+        return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+      };
+      host.innerHTML = `<div class="rd-text${web ? ' rd-web' : ''}">${web ? `<p class="rd-src">From ${esc(doc.short)}. Saved copy, refreshed weekly.</p>` : ''}${html.split(/\n{2,}/).map(para).join('')}</div>`;
     } else {
       const pdf = await getPdf(ref.doc);
       if (my !== renderSeq) return;
@@ -118,7 +137,7 @@ async function show(i: number, pageOverride?: number) {
     }
     const prev = $<HTMLButtonElement>('[data-rd-prevpage]'), next = $<HTMLButtonElement>('[data-rd-nextpage]');
     prev.hidden = page === 0; next.hidden = page >= doc.pages.length - 1;
-    const unit = doc.kind === 'text' ? (doc.short === 'AIM' ? 'AIM ' : '§ ') : 'Page ';
+    const unit = web ? '' : doc.kind === 'text' ? (doc.short === 'AIM' ? 'AIM ' : '§ ') : 'Page ';
     prev.textContent = page > 0 ? `↑ ${unit}${doc.labels[page - 1]}` : '';
     next.textContent = page < doc.pages.length - 1 ? `${unit}${doc.labels[page + 1]} ↓` : '';
     // Bring the first highlight into view.
@@ -184,9 +203,11 @@ async function runSearch(q: string) {
 
 /* ---------- wiring ---------- */
 if (dlg) {
+  loadLinks();
   document.addEventListener('click', (e) => {
-    const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('.r a[data-doc]');
-    if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return; // modifier-click still opens the original
+    const a = (e.target as HTMLElement).closest<HTMLAnchorElement>(READABLE);
+    if (!a || !docFor(a) || e.metaKey || e.ctrlKey || e.shiftKey) return; // modifier-click still opens the original
+    if (document.documentElement.classList.contains('editing')) return; // the editor handles links itself
     e.preventDefault();
     const { list, at } = sectionRefs(a);
     openReader(list, at);

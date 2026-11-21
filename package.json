@@ -18,6 +18,8 @@
   "private": true,
   "type": "module",
   "devDependencies": {
+    "@mozilla/readability": "^0.6.0",
+    "linkedom": "^0.18.15",
     "pdfjs-dist": "^3.11.174"
   }
 }
