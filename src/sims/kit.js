@@ -86,7 +86,7 @@ const REFS={
   p23_345:{lab:'old §23.345',t:'14 CFR 23.345 (pre-2017): High-lift devices (flaps-down limit load)',u:CFR23('345'),faa:1},
   p23_1505:{lab:'old §23.1505',t:'14 CFR 23.1505 (pre-2017): Airspeed limitations VNE, VNO',u:CFR23('1505'),faa:1},
   p23_1507:{lab:'old §23.1507',t:'14 CFR 23.1507 (pre-2017): Operating maneuvering speed VO / VA',u:CFR23('1507'),faa:1},
-  saib:{lab:'SAIB CE-11-17',t:'FAA Special Airworthiness Information Bulletin CE-11-17: Airplane maneuvering speed (copy hosted by SAFE)',u:'https://www.safepilots.org/library/contributed/Aerodynamics_SAIBManeuveringSpeed_2-02-11.pdf'},
+  saib:{lab:'old §23.1583',t:'14 CFR 23.1583(a)(3) (pre-2017 Part 23): VA limitation statement. Full or abrupt inputs in more than one axis, or alternating inputs, can cause structural failure even below VA (the 2010 rule SAIB CE-11-17 explains)',u:CFR23('1583'),faa:1},
   phak6:{lab:'PHAK 6',t:'PHAK Ch 6: Flight Controls (stabilator, anti-servo tab, trim systems)',u:'https://www.faa.gov/sites/faa.gov/files/08_phak_ch6.pdf',faa:1},
   phak10:{lab:'PHAK 10',t:'PHAK Ch 10: Weight and Balance (effects of CG position, adverse balance)',u:'https://www.faa.gov/sites/faa.gov/files/12_phak_ch10.pdf',faa:1},
   wbh:{lab:'W&B HB 1',t:'Aircraft Weight and Balance Handbook (FAA-H-8083-1B) Ch 1: Weight and Balance Control (stability and balance)',u:'https://www.faa.gov/regulations_policies/handbooks_manuals/aviation',faa:1},
