@@ -53,7 +53,9 @@ import data from '../../data/interactives.json';
 
   async function fresh() {
     const r = await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'new' }) });
-    me = await r.json();
+    const j = await r.json();
+    if (j.error === 'setup') { $('[data-pair] h1').textContent = 'Almost ready'; $('[data-pair] .muted').textContent = 'The student screen needs its free database added in Vercel (Storage › Upstash for Redis).'; $('[data-code]').textContent = ''; $('[data-qr]').hidden = true; throw new Error('setup'); }
+    me = j; $('[data-qr]').hidden = false;
     if (!me?.c) throw new Error('new');
     try { sessionStorage.setItem('cfi.scr', JSON.stringify(me)); } catch {}
     state = null; showPair();
@@ -74,8 +76,8 @@ import data from '../../data/interactives.json';
       if (j.gone || j.error === 'key') { me = null; await fresh(); }
       else if (!j.same && !j.error) { const moved = !state || j.at !== state.at || j.v !== state.v; state = j; if (moved) view = j.at; render(); }
       fails = 0; offline.hidden = true;
-    } catch { if (++fails > 3) offline.hidden = false; }
-    later(state?.paired ? 1000 : 2500);
+    } catch (e: any) { if (++fails > 3 && e?.message !== 'setup') offline.hidden = false; }
+    later(fails > 3 ? 10000 : state?.paired ? 1000 : 2500);
   }
   let t = 0; const later = (ms: number) => { clearTimeout(t); t = window.setTimeout(poll, ms); };
   document.addEventListener('visibilitychange', () => { if (!document.hidden) later(50); });

@@ -19,6 +19,7 @@ const R_TOK = () => process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_R
 const mem = (globalThis.__cfiScreens ||= new Map());
 async function redis(cmd) {
   if (!R_URL()) {
+    if (process.env.VERCEL) throw Object.assign(new Error('setup'), { setup: true });
     const [op, key, val] = cmd;
     if (op === 'GET') return mem.get(key) ?? null;
     if (op === 'SET') { if (cmd.includes('NX') && mem.has(key)) return null; mem.set(key, val); return 'OK'; }
@@ -71,7 +72,7 @@ export async function GET(req) {
       const s = await load(c);
       return s ? json(pub(s)) : json({ gone: true });
     }
-  } catch (e) { return json({ error: 'store', detail: String(e.message || e) }, 503); }
+  } catch (e) { return json({ error: e.setup ? 'setup' : 'store' }, 503); }
   return json({ error: 'op' }, 400);
 }
 
@@ -111,5 +112,5 @@ export async function POST(req) {
       default: return json({ error: 'op' }, 400);
     }
     return json(pub(await save(c, s)));
-  } catch (e) { return json({ error: 'store', detail: String(e.message || e) }, 503); }
+  } catch (e) { return json({ error: e.setup ? 'setup' : 'store' }, 503); }
 }
