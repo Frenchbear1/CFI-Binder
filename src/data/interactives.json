@@ -1,0 +1,12 @@
+{
+  "site": "https://aviation-visuals.vercel.app/",
+  "items": [
+    { "id": "vor", "name": "VOR", "tag": "Navigation · radio", "path": "sims/vor.html", "about": "Reference and variable phase, radials, OBS/CDI and TO/FROM." },
+    { "id": "airfoil", "name": "Airfoil", "tag": "Aerodynamics · flow", "path": "sims/airfoil.html", "about": "NACA 2412 flow, pressure, boundary layer and the stall." },
+    { "id": "airspace", "name": "Airspace", "tag": "Regulations · NAS", "path": "sims/airspace.html", "about": "Classes A–G, MSL/AGL, special use, VFR minimums, entry and equipment rules." },
+    { "id": "vg", "name": "V-g & Bank", "tag": "Aerodynamics · loads", "path": "sims/vg.html", "about": "Load factor in turns, accelerated stalls, the V-g envelope, VA and gusts." },
+    { "id": "stability", "name": "Balance & Stability", "tag": "Aerodynamics · CG & pitch", "path": "sims/stability.html", "about": "CG vs CP, tail download, trim, static and dynamic stability, neutral point and CG limits." },
+    { "id": "weather", "name": "Weather Brief", "tag": "Weather · go / no-go", "path": "sims/weather.html", "about": "METAR, TAF, PIREP, winds aloft, AIRMET and SIGMET on a go/no-go route." },
+    { "id": "wb", "name": "Weight & Performance", "tag": "Performance · W&B · takeoff", "path": "sims/wb.html", "about": "Arm and moment, the CG envelope, density altitude and takeoff/landing tables." }
+  ]
+}

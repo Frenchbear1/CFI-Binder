@@ -219,6 +219,7 @@ if (portable) document.querySelectorAll<HTMLButtonElement>('[data-video]').forEa
 
 applyPrefs();
 window.addEventListener('load', buildToc);
+document.addEventListener('cfi:article', buildToc);
 
 // Offline support: cache pages as they're visited so the binder works with no signal.
 if (!portable && 'serviceWorker' in navigator && location.protocol === 'https:') {

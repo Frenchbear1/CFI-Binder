@@ -2,9 +2,10 @@
 // Tap the pencil: every block becomes editable. The bar on the keyboard has search-this-page, + (add a
 // block), Aa (bold / italic / underline / strike / link / code / reference), picture, turn into, undo and
 // redo. + and Turn into open a scrolling sheet of blocks; typing "/" filters the same list in place.
-// Save turns each changed block back into MDX at its exact spot in the lesson file and commits it to the
-// binder's GitHub repo (the site rebuilds in about 2 minutes).
-import { commitFiles, readFile, token, withKey, kebab } from './gh';
+// Save turns each changed block back into MDX at its exact spot in the lesson file and keeps it on this
+// device (with a copy of the page as you see it); Upload on the home page sends everything to GitHub.
+import { kebab } from './gh';
+import { stage, readLocal, savePage, loadPage, hasPage, expire, dropPage, index as outboxIndex } from './outbox';
 
 const article = document.querySelector<HTMLElement>('[data-article]')!; // may be null off lesson pages; checked below
 const bar = document.querySelector<HTMLElement>('.editbar')!;
@@ -41,6 +42,21 @@ if (article && bar) {
     saveBtn.textContent = n ? `Save ${n}` : 'Save';
     armedDiscard = false; doneBtn.textContent = 'Done';
   };
+  // The page as you see it, for showing again after a reload until it's uploaded and live.
+  const snapshot = () => {
+    const c = article.cloneNode(true) as HTMLElement;
+    c.querySelectorAll('[contenteditable]').forEach((x) => { x.removeAttribute('contenteditable'); x.removeAttribute('spellcheck'); });
+    return c.innerHTML;
+  };
+  (async () => {
+    try {
+      if (hasPage(slug) && !(await expire(slug))) {
+        const h = await loadPage(slug);
+        if (h) { article.innerHTML = h; article.dataset.local = ''; document.dispatchEvent(new CustomEvent('cfi:article')); }
+      }
+    } catch {}
+    html.classList.remove('local-wait');
+  })();
   const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]!));
   const attr = (t: string) => esc(t).replace(/"/g, '&quot;');
   const sel = () => getSelection();
@@ -775,7 +791,7 @@ if (article && bar) {
 
   /* ---------- saving ---------- */
   let buildSrc: Promise<string> | null = null;
-  const builtFrom = () => (buildSrc ??= fetch(new URL(`source/${slug}.txt`, base)).then((r) => r.text()));
+  const builtFrom = () => (buildSrc ??= fetch(new URL(`source/${slug}.txt`, base)).then((r) => (r.ok ? r.text() : readLocal(file).then((t) => t || ''))));
   const yamlStr = (t: string) => JSON.stringify(t.replace(/\s+/g, ' ').trim());
   // The new blocks sitting right after an existing block, in order.
   const runAfter = (el: HTMLElement) => {
@@ -789,9 +805,10 @@ if (article && bar) {
     if (!pending()) return;
     say('Saving…'); saveBtn.disabled = true;
     try {
-      const done = await withKey(async () => {
-        const [built, cur] = await Promise.all([builtFrom(), readFile(file)]);
-        if (!cur) throw new Error('This page isn’t on GitHub yet. Wait a minute and try again.');
+      const done = await (async () => {
+        const [built, curText] = await Promise.all([builtFrom(), readLocal(file)]);
+        if (curText == null) throw new Error('Couldn’t find this page’s file. Check your connection and try again.');
+        const cur = { text: curText };
         const extra: { path: string; content: string | { base64: string } | null }[] = [];
         // Pictures and files from the device go into public/uploads/ in the same commit.
         for (const el of article.querySelectorAll<HTMLElement>('[data-new][data-upload]')) {
@@ -855,19 +872,18 @@ if (article && bar) {
         if (text !== cur.text) extra.push({ path: file, content: text });
         // A renamed page gets its new name in the folders list too.
         if (newTitle) {
-          const o = await readFile('src/data/outline.json');
+          const o = await readLocal('src/data/outline.json');
           if (o) {
-            const data = JSON.parse(o.text);
+            const data = JSON.parse(o);
             for (const a of data.areas) for (const t of a.topics) if (t.slug === slug) t.title = newTitle;
             extra.push({ path: 'src/data/outline.json', content: JSON.stringify(data, null, 2) + '\n' });
           }
         }
         if (!extra.length) return { ops, lead, none: true };
         const title = document.querySelector('h1')?.textContent?.trim() || slug;
-        await commitFiles(extra, `Edit “${title}” in the binder`);
+        await stage(extra, `Edit “${title}”`);
         return { ops, lead, none: false };
-      }, save);
-      if (!done) { refresh(); say(''); return; }
+      })();
       // The page now matches GitHub: remember each block's new text so later saves can find it.
       done.lead.forEach((n) => { n.dataset.mdNow = toMdx(n); n.dataset.src = 'x'; delete n.dataset.new; delete n.dataset.upload; });
       for (const op of done.ops) {
@@ -876,7 +892,8 @@ if (article && bar) {
       }
       article.querySelectorAll('[data-deleted]').forEach((x) => x.remove());
       dirty.clear(); undoStack.length = redoStack.length = 0; refresh();
-      say(done.none ? 'No changes' : 'Saved. Live in about 2 min', 'ok');
+      if (!done.none) await savePage(slug, snapshot());
+      say(done.none ? 'No changes' : 'Saved on this device', 'ok');
     } catch (err: any) {
       say(err.message || 'Couldn’t save', 'err');
       refresh();
@@ -890,19 +907,17 @@ if (article && bar) {
     if (!armedDelete) { armedDelete = true; btn.textContent = 'Tap again to delete for good'; moreMenu.hidden = false; setTimeout(() => { armedDelete = false; btn.textContent = 'Delete this page'; }, 4000); return; }
     moreMenu.hidden = true; say('Deleting…');
     try {
-      const ok = await withKey(async () => {
-        const o = await readFile('src/data/outline.json');
-        const files: { path: string; content: string | null }[] = [{ path: file, content: null }];
-        if (o) {
-          const data = JSON.parse(o.text);
-          for (const a of data.areas) a.topics = a.topics.filter((t: any) => t.slug !== slug);
-          files.push({ path: 'src/data/outline.json', content: JSON.stringify(data, null, 2) + '\n' });
-        }
-        await commitFiles(files, `Delete “${document.querySelector('h1')?.textContent?.trim()}” from the binder`);
-        return true;
-      }, deletePage);
-      if (!ok) return;
-      try { localStorage.setItem('cfi.recent', JSON.stringify(JSON.parse(localStorage.getItem('cfi.recent') || '[]').filter((r: any) => r.slug !== slug))); localStorage.setItem('cfi.notice', 'Page deleted. The binder updates in about 2 minutes.'); } catch {}
+      const o = await readLocal('src/data/outline.json');
+      const local = outboxIndex().news.some((n) => n.slug === slug); // made on this device, never uploaded
+      const files: { path: string; content: string | null }[] = local ? [] : [{ path: file, content: null }];
+      if (o) {
+        const data = JSON.parse(o);
+        for (const a of data.areas) a.topics = a.topics.filter((t: any) => t.slug !== slug);
+        files.push({ path: 'src/data/outline.json', content: JSON.stringify(data, null, 2) + '\n' });
+      }
+      if (local) await dropPage(slug, file);
+      await stage(files, local ? '' : `Delete “${document.querySelector('h1')?.textContent?.trim()}”`);
+      try { localStorage.setItem('cfi.recent', JSON.stringify(JSON.parse(localStorage.getItem('cfi.recent') || '[]').filter((r: any) => r.slug !== slug))); localStorage.setItem('cfi.notice', 'Page deleted on this device. Tap Upload to remove it from the site.'); } catch {}
       dirty.clear(); location.href = base;
     } catch (err: any) { say(err.message, 'err'); }
   }
@@ -916,12 +931,11 @@ if (article && bar) {
     srcDlg.showModal();
     srcNote.textContent = 'Loading…';
     try {
-      const cur = token() ? await readFile(file) : null;
-      srcText.value = cur ? cur.text : await builtFrom();
-      srcNote.textContent = cur ? 'Latest version on GitHub' : 'Version this page was built from';
-    } catch (err: any) {
+      srcText.value = (await readLocal(file)) ?? (await builtFrom());
+      srcNote.textContent = 'Includes changes saved on this device';
+    } catch {
       srcText.value = await builtFrom();
-      srcNote.textContent = err.key ? 'Your GitHub key needs replacing' : 'Version this page was built from';
+      srcNote.textContent = 'Version this page was built from';
     }
     const i = want ? srcText.value.indexOf(want) : -1;
     if (i >= 0) {
@@ -936,8 +950,8 @@ if (article && bar) {
     const go = async () => {
       srcNote.textContent = 'Saving…';
       try {
-        const ok = await withKey(async () => { await commitFiles([{ path: file, content: srcText.value }], `Edit “${document.querySelector('h1')?.textContent?.trim() || slug}” source in the binder`); return true; }, () => { srcDlg.showModal(); go(); });
-        if (ok) srcNote.textContent = 'Saved. Live in about 2 min';
+        await stage([{ path: file, content: srcText.value }], `Edit “${document.querySelector('h1')?.textContent?.trim() || slug}” source`);
+        srcNote.textContent = 'Saved on this device. Tap Upload on the home page to put it on the site; the page shows it after that.';
       } catch (err: any) { srcNote.textContent = err.message; }
     };
     go();

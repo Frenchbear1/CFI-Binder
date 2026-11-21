@@ -1,11 +1,11 @@
 ---
 import Base from './Base.astro';
-interface Props { title: string; summary: string; area: string; acs: string[]; updated?: string; file?: string; slug?: string }
-const { title, summary, area, acs, updated, file, slug } = Astro.props;
+interface Props { title: string; summary: string; area: string; acs: string[]; updated?: string; file?: string; slug?: string; draft?: boolean }
+const { title, summary, area, acs, updated, file, slug, draft = false } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
 ---
 <Base title={title} description={summary} isLesson>
-  <article class="article" data-article data-pagefind-body data-src-file={file} data-slug={slug} data-area={area}>
+  <article class="article" data-article data-pagefind-body={draft ? undefined : true} data-pagefind-ignore={draft ? 'all' : undefined} data-src-file={file} data-slug={slug} data-area={area}>
     <p class="crumbs" data-pagefind-ignore><a href={base}>Binder</a> / {area}</p>
     <h1 data-pagefind-meta="title" data-fm="title">{title}</h1>
     <p class="lede" data-fm="summary" data-ph="Add a one-line summary">{summary}</p>
@@ -14,4 +14,5 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
     </p>
     <slot />
   </article>
+  <slot name="after" />
 </Base>

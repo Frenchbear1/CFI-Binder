@@ -19,7 +19,8 @@ import Embed from '../components/Embed.astro';
 import Bookmark from '../components/Bookmark.astro';
 import PageLink from '../components/PageLink.astro';
 import FileLink from '../components/FileLink.astro';
-const components = { Level, Panel, Compare, Specs, Callout, Figure, Video, Toggle, Refs, AC, R, Columns, Col, Embed, Bookmark, PageLink, FileLink };
+import Interactive from '../components/Interactive.astro';
+const components = { Level, Panel, Compare, Specs, Callout, Figure, Video, Toggle, Refs, AC, R, Columns, Col, Embed, Bookmark, PageLink, FileLink, Interactive };
 export async function getStaticPaths() {
   const lessons = await getCollection('lessons');
   return lessons.map((l) => ({ params: { slug: l.id }, props: { l } }));

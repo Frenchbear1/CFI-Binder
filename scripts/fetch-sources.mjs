@@ -119,6 +119,16 @@ const embedUrl = (u) => {
 function prepMedia(document, finalUrl) {
   const abs = (u) => { try { return new URL(u, finalUrl).href; } catch { return ''; } };
   const keep = [];
+  // Pictures written by a small inline script (Boldmethod: showResponsiveImage_Switch('<img small>', '<img large>', 550)).
+  // Take the last (largest) piece of markup in its strings and put it in the page where the script was.
+  for (const sc of [...document.querySelectorAll('script')]) {
+    const code = sc.textContent || '';
+    if (code.length > 4000 || !/<(img|iframe|video|picture)\b/i.test(code)) continue;
+    const bits = [...code.matchAll(/'((?:[^'\\]|\\.)*<(?:img|iframe|video|picture)\b(?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*<(?:img|iframe|video|picture)\b(?:[^"\\]|\\.)*)"/gi)].map((m) => (m[1] ?? m[2]).replace(/\\(['"\/])/g, '$1'));
+    if (!bits.length) continue;
+    const t = document.createElement('div'); t.innerHTML = bits[bits.length - 1];
+    sc.replaceWith(...t.childNodes);
+  }
   // A stand-in is a plain paragraph of text, because Readability judges blocks by their text: a wrapper holding just a
   // picture and a credit link looks like clutter to it and gets thrown away (that is how pictures were lost before).
   const MEDIA = 'img, picture, video, audio, iframe, svg, lite-youtube, lite-vimeo, [data-keep]';
@@ -129,7 +139,8 @@ function prepMedia(document, finalUrl) {
     let target = el;
     for (let p = el.parentElement; p && !/^(BODY|MAIN|ARTICLE|HTML)$/.test(p.tagName) && count(p) === count(target) && ownText(p).length < 140; p = p.parentElement) target = p;
     const fc = target.querySelector?.('figcaption') || (target.matches?.('figure') ? null : target.parentElement?.closest('figure')?.querySelector('figcaption'));
-    const caption = (fc?.textContent || cap || '').replace(/\s+/g, ' ').trim();
+    let caption = (fc?.textContent || cap || '').replace(/\s+/g, ' ').trim();
+    if (/^[\w-]*\d[\w-]*$|^(small|large|primary|image|img|photo|picture|thumbnail|blank)$/i.test(caption)) caption = ''; // file names, not captions
     const p = document.createElement('p');
     p.setAttribute('data-keep', String(keep.length));
     p.textContent = `⟦media ${keep.length}⟧${FILL}`;
@@ -204,16 +215,6 @@ function prepMedia(document, finalUrl) {
 function webDoc(doc, html, finalUrl) {
   const { document } = parseHTML(html);
   const site = document.querySelector('meta[property="og:site_name"]')?.getAttribute('content') || new URL(finalUrl).hostname.replace(/^www\./, '');
-  if (process.env.WEB_DEBUG) {
-    // where the article's own pictures are referenced in the raw page (any attribute, script or style)
-    const og = document.querySelector('meta[property="og:image"]')?.getAttribute('content') || '';
-    const dir = og.replace(/^https?:/, '').replace(/[^/]*$/, '');
-    console.log(`debug ${doc.id}: og=${og}`);
-    let at = 0, n = 0;
-    while (dir && (at = html.indexOf(dir, at + 1)) >= 0 && n++ < 12) console.log('  …' + html.slice(Math.max(0, at - 220), at + 120).replace(/\s+/g, ' ') + '…');
-    const cred = [...document.querySelectorAll('a')].filter((x) => x.textContent.trim() === 'Boldmethod').slice(0, 2);
-    for (const c of cred) console.log('  credit: ' + (c.parentElement?.parentElement?.outerHTML || '').replace(/\s+/g, ' ').slice(0, 700));
-  }
   const keep = prepMedia(document, finalUrl);
   const art = new Readability(document, { charThreshold: 300, keepClasses: false }).parse();
   if (!art?.content) throw new Error('no article text found');

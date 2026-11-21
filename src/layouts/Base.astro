@@ -38,6 +38,11 @@ const href = (slug: string) => base + slug + '/';
         if (c.tint) { d.classList.add('doc-tint'); if (c.dark) d.classList.add('doc-dark'); }
         if (c.paper) d.classList.add('paper');
       } else d.classList.add('doc-tint');
+      // a page edited on this device: hide the live copy until the saved one is swapped in
+      var ob = JSON.parse(localStorage.getItem('cfi.outbox') || '{}'), here = decodeURIComponent(location.pathname), q = new URLSearchParams(location.search).get('p');
+      if ((ob.pages || []).some(function (s) { return here.slice(-s.length - 2) === '/' + s + '/' || q === s; })) {
+        d.classList.add('local-wait'); setTimeout(function () { d.classList.remove('local-wait'); }, 2500);
+      }
     } catch (e) {}
   </script>
 </head>
@@ -177,7 +182,6 @@ const href = (slug: string) => base + slug + '/';
     </div>
     {isLesson && <button type="button" class="sheet-row" data-edit-toggle><span>Edit this lesson</span><span>Change anything ›</span></button>}
     <button type="button" class="sheet-row" data-open="theme"><span>Reading theme</span><span>Colours, paper ›</span></button>
-    <p class="muted small">Private shows the core lesson. Instrument and Commercial add the how and why, plus their tighter standards.</p>
   </dialog>
 
   <dialog class="sheet reader" id="sheet-reader" aria-label="Source reader">

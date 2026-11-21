@@ -689,7 +689,21 @@ body.home main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .pg.building { color: var(--ink-2); }
 .pg.building small, .pg .is-new { color: var(--accent); font-weight: 600; }
 .pg-empty { padding: 6px 6px 6px 36px; color: var(--ink-3); font-size: .88rem; }
-.nh-foot { margin: 18px 4px; }
+.nh-upload { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 22px 0 8px; }
+.nh-up { font: inherit; font-size: .9rem; font-weight: 600; padding: 9px 18px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-3, var(--muted)); }
+.nh-up.has { background: var(--accent); border-color: var(--accent); color: #fff; }
+.nh-up:disabled:not(.has) { opacity: .75; }
+.nh-upload [data-upload-note]:empty { display: none; }
+.nh-upload [data-kind="err"] { color: #c0392b; } .nh-upload [data-kind="ok"] { color: #2e7d4f; }
+.pg small.is-local { color: var(--accent); opacity: .9; }
+/* sims */
+.sim .sim-load { gap: 8px; padding: 18px; text-align: center; }
+.sim .sim-load .muted { font-weight: 400; max-width: 34ch; margin: 0 auto; }
+.sim-ico { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 4px; background: var(--accent); color: #fff; }
+.sim-ico svg { width: 22px; height: 22px; margin-left: 3px; }
+.sim-page { display: flex; flex-direction: column; gap: 8px; min-height: calc(100dvh - 120px); }
+.sim-frame { flex: 1; width: 100%; min-height: 70dvh; border: 1px solid var(--line); border-radius: 12px; background: #071014; }
+.sim-alt { text-align: center; }
 .nh-bar { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 55%, transparent); max-width: 46rem; margin: 0 auto; pointer-events: none; }
 .nh-bar > * { pointer-events: auto; }
 .nh-search { flex: 1; display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-3); font: inherit; font-size: .98rem; box-shadow: var(--shadow); }
@@ -744,3 +758,5 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
 /* Editing looks like reading, like Notion: no box around the line you're typing in. */
 html.editing [data-src]:focus, html.editing [data-fm]:focus, html.editing [data-ed]:focus, html.editing [contenteditable="true"]:focus { outline: none; }
 .toc-rail:has(.toc:empty) { visibility: hidden; }
+
+html.local-wait [data-article] { visibility: hidden; }

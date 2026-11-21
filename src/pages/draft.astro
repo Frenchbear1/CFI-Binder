@@ -1,0 +1,28 @@
+---
+// A page made on this device that isn't on the site yet (draft/?p=folder/page). It opens empty and the
+// editor fills it from what's saved on the device; after Upload, the real page replaces it.
+import Lesson from '../layouts/Lesson.astro';
+---
+<Lesson title="" summary="" area="" acs={[]} file="" slug="" draft>
+  <script is:inline slot="after">
+    (function () {
+      var a = document.querySelector('[data-article]'), slug = new URLSearchParams(location.search).get('p') || '';
+      var ob = {}; try { ob = JSON.parse(localStorage.getItem('cfi.outbox') || '{}'); } catch (e) {}
+      var n = (ob.news || []).filter(function (x) { return x.slug === slug; })[0];
+      if (!n) { var up = {}; try { up = JSON.parse(localStorage.getItem('cfi.uploaded') || '{}'); } catch (e) {}
+        if ((up.news || []).some(function (x) { return x.slug === slug; })) { location.replace(document.body.dataset.base + slug + '/'); return; } }
+      a.dataset.slug = slug; a.dataset.srcFile = 'src/content/lessons/' + slug + '.mdx';
+      a.dataset.area = n ? n.area : '';
+      a.querySelector('h1').textContent = n ? n.title : 'Page not found on this device';
+      a.querySelector('.crumbs').lastChild.textContent = ' / ' + (n ? n.area : '');
+      a.querySelector('.meta-line').textContent = 'Not uploaded yet';
+      document.title = (n ? n.title : 'Draft') + ' · CFI Binder';
+      var cur = document.querySelector('[data-current]'); if (cur && n) cur.textContent = n.title;
+      // a page you just made opens ready to type in, like Notion
+      if (n && /[?&]new=1/.test(location.search)) addEventListener('load', function () {
+        history.replaceState(null, '', location.pathname + '?p=' + encodeURIComponent(slug));
+        var t = [].filter.call(document.querySelectorAll('[data-edit-toggle]'), function (b) { return b.offsetParent; })[0]; if (t) t.click();
+      });
+    })();
+  </script>
+</Lesson>
