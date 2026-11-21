@@ -205,8 +205,9 @@ function drawMap(){
   const ph=TAU*S.cyc,beam=360*frac(S.cyc);
   // reference: one omnidirectional pulse per cycle. A ring leaves the station at the reference peak and sweeps
   // out to every bearing at once, with a soft trail behind it (like the variable's sweep); it reaches the edge
-  // quickly, because the signal really arrives everywhere at essentially the same moment.
-  if(L.ref>.01){const R1=R*1.05,T1=.2,f0=frac(S.cyc),q=Math.min(1,f0/T1),r=R1*(1-Math.pow(1-q,2));
+  // within ~12° of sweep: the real signal travels at the speed of light, so it reaches every aircraft at the moment
+  // the sweep passes north (0° of phase). A slower ring would make the reference look late and the phase look wrong.
+  if(L.ref>.01){const R1=R*1.05,T1=.035,f0=frac(S.cyc),q=Math.min(1,f0/T1),r=R1*(1-Math.pow(1-q,2));
     const glow=f0<T1?1:Math.max(0,1-(f0-T1)/(1-T1)*1.15);
     if(r>2&&glow>0){const gr=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
       gr.addColorStop(0,`rgba(92,207,227,0)`);gr.addColorStop(.55,`rgba(92,207,227,${.05*glow*L.ref})`);gr.addColorStop(1,`rgba(92,207,227,${.3*glow*L.ref})`);
