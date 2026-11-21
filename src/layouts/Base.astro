@@ -1,6 +1,8 @@
 ---
 import '../styles/global.css';
 import { outline } from '../data/outline';
+import { pagesIn } from '../data/tree';
+import NavList from '../components/NavList.astro';
 
 interface Props { title: string; description?: string; isLesson?: boolean; isHome?: boolean }
 const { title, description = 'A CFI teaching binder for Private, Instrument and Commercial students in the Cessna 172 and Piper PA-28-181.', isLesson = false, isHome = false } = Astro.props;
@@ -85,15 +87,7 @@ const href = (slug: string) => base + slug + '/';
       {outline.map((area) => (
         <div class="nav-area">
           <p class="nav-area-title">{area.title}</p>
-          <ul>
-            {area.topics.map((t) => (
-              <li data-for={t.levels.join(' ')}>
-                {t.slug
-                  ? <a href={href(t.slug)} aria-current={here === (base + t.slug) ? 'page' : undefined}>{t.title}</a>
-                  : <span class="planned" title="Coming soon">{t.title}</span>}
-              </li>
-            ))}
-          </ul>
+          <NavList nodes={area.topics} here={here} />
         </div>
       ))}
     </nav>
@@ -134,15 +128,9 @@ const href = (slug: string) => base + slug + '/';
     <p class="sheet-h">All lessons</p>
     <div class="sheet-nav">
       {outline.map((area) => (
-        <details open={area.topics.some((t) => t.slug && here === base + t.slug)}>
+        <details open={pagesIn(area.topics).some((t) => t.slug && here === base + t.slug)}>
           <summary>{area.title}</summary>
-          <ul>
-            {area.topics.map((t) => (
-              <li data-for={t.levels.join(' ')}>
-                {t.slug ? <a href={href(t.slug)}>{t.title}</a> : <span class="planned">{t.title}</span>}
-              </li>
-            ))}
-          </ul>
+          <NavList nodes={area.topics} here={here} />
         </details>
       ))}
     </div>

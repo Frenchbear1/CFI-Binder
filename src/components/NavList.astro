@@ -1,0 +1,22 @@
+---
+// A folder's pages for the side menu and the Contents sheet; folders inside it show as small headings.
+import { isFolder, pagesIn, type Node } from '../data/tree';
+interface Props { nodes: Node[]; here: string }
+const { nodes, here } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
+const lv = (n: Node) => (isFolder(n) ? [...new Set(pagesIn(n.topics).flatMap((p) => p.levels))] : n.levels).join(' ') || 'pa ir ca';
+---
+<ul>
+  {nodes.map((n) => isFolder(n) ? (
+    <li class="nav-sub" data-for={lv(n)}>
+      <p class="nav-sub-t">{n.title}</p>
+      <Astro.self nodes={n.topics} here={here} />
+    </li>
+  ) : (
+    <li data-for={lv(n)}>
+      {n.slug
+        ? <a href={base + n.slug + '/'} aria-current={here === base + n.slug ? 'page' : undefined}>{n.title}</a>
+        : <span class="planned" title="Coming soon">{n.title}</span>}
+    </li>
+  ))}
+</ul>

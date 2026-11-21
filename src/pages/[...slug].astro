@@ -20,6 +20,8 @@ import Bookmark from '../components/Bookmark.astro';
 import PageLink from '../components/PageLink.astro';
 import FileLink from '../components/FileLink.astro';
 import Interactive from '../components/Interactive.astro';
+import { outline } from '../data/outline';
+import { foldersOf } from '../data/tree';
 const components = { Level, Panel, Compare, Specs, Callout, Figure, Video, Toggle, Refs, AC, R, Columns, Col, Embed, Bookmark, PageLink, FileLink, Interactive };
 export async function getStaticPaths() {
   const lessons = await getCollection('lessons');
@@ -27,7 +29,9 @@ export async function getStaticPaths() {
 }
 const { l } = Astro.props;
 const { Content } = await render(l);
+// Its folders as they are in the folder list now (pages can be moved), else what the page says.
+const where = foldersOf(outline, l.id).join(' / ') || l.data.area;
 ---
-<Lesson title={l.data.title} summary={l.data.summary} area={l.data.area} acs={l.data.acs} updated={l.data.updated} file={l.filePath} slug={l.id}>
+<Lesson title={l.data.title} summary={l.data.summary} area={where} acs={l.data.acs} updated={l.data.updated} file={l.filePath} slug={l.id}>
   <Content components={components} />
 </Lesson>

@@ -1,17 +1,17 @@
-// Home page, laid out like Notion's: folders (areas) you can open and close, recent pages, a search bar
-// at the bottom and a compose button that makes a new page or folder. New pages, folders and edits are
-// kept on this device; the Upload button under the folders sends them all to GitHub in one commit
-// (the site rebuilds in about 2 minutes).
+// Home page, laid out like Notion's: folders you can open and close (folders can hold pages and more
+// folders, as deep as you like), recent pages, a search bar at the bottom and a compose button that makes
+// a new page or folder. Drag a folder or page to move it: onto a folder to put it inside, or between rows
+// to reorder. Everything is kept on this device; the Upload button under the folders sends it all to
+// GitHub in one commit (the site rebuilds in about 2 minutes).
 import { withKey, kebab } from './gh';
 import { stage, readLocal, index as outboxIndex, isStaged, upload, type LocalPage } from './outbox';
 import interactives from '../data/interactives.json';
+import { treeHtml, allFolders, nodeAt, listOf, isFolder, pagesIn, foldersOf, type Folder, type Node } from '../data/tree';
 
-type Topic = { title: string; slug?: string; levels: string[] };
-type Area = { title: string; topics: Topic[] };
-type Pending = { kind: 'page' | 'folder'; title: string; area: string; slug?: string; at: number };
-
+type Outline = { _about?: string; areas: Folder[] };
+const OUTLINE = 'src/data/outline.json';
 const base = document.body.dataset.base || '/';
-const outline: Area[] = JSON.parse(document.getElementById('outline-data')?.textContent || '[]');
+const built: Folder[] = JSON.parse(document.getElementById('outline-data')?.textContent || '[]');
 const tree = document.querySelector<HTMLElement>('[data-tree]')!;
 const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const store = {
@@ -21,52 +21,69 @@ const store = {
 const PAGE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/></svg>';
 const FOLDER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
 
+/* ---------- what the folder list looks like on this device ---------- */
+// Just uploaded: show the uploaded list until the site has rebuilt with it (pages not live yet say "Publishing…").
+let up = store.get<{ at: number; data: Outline } | null>('cfi.upOutline', null);
+if (up && (Date.now() - up.at > 15 * 60e3 || JSON.stringify(up.data.areas) === JSON.stringify(built))) { up = null; try { localStorage.removeItem('cfi.upOutline'); } catch {} }
+const liveSlugs = new Set(pagesIn(built).map((p) => p.slug).filter(Boolean) as string[]);
+let areas: Folder[] = up ? up.data.areas : built;
+
+/** The folder list as it stands with your changes, to change and save. */
+async function current(): Promise<Outline> {
+  if (!isStaged(OUTLINE) && up) return structuredClone(up.data);
+  const o = await readLocal(OUTLINE);
+  if (!o) throw new Error('Couldn’t find the binder’s folder list. Check your connection and try again.');
+  return JSON.parse(o);
+}
+const saveOutline = (data: Outline, note: string, files: { path: string; content: string }[] = [], extra = {}) =>
+  stage([...files, { path: OUTLINE, content: JSON.stringify(data, null, 2) + '\n' }], note, extra);
+
 /* ---------- folders remember whether they're open ---------- */
 const folds = store.get<Record<string, boolean>>('cfi.folds', {});
-const fold = (title: string) => [...tree.querySelectorAll<HTMLDetailsElement>('details.fold')].find((d) => d.dataset.fold === title);
 const bindFolds = () => tree.querySelectorAll<HTMLDetailsElement>('details.fold').forEach((d) => {
   if (d.dataset.bound) return;
   d.dataset.bound = '1';
   if (d.dataset.fold! in folds) d.open = folds[d.dataset.fold!];
   d.addEventListener('toggle', () => { folds[d.dataset.fold!] = d.open; store.set('cfi.folds', folds); });
 });
-bindFolds();
+const openFold = (key: string) => { folds[key] = true; store.set('cfi.folds', folds); };
 
-/* ---------- the folder list, with changes saved on this device ---------- */
-const LV_ALL = 'pa ir ca';
-const pageHref = (slug: string) => (outboxIndex().news.some((n) => n.slug === slug) ? `${base}draft/?p=${encodeURIComponent(slug)}` : `${base}${slug}/`);
-function renderTree(areas: Area[]) {
+/* ---------- Interactives: David's sims, one folder, each opens full screen ---------- */
+const sims = document.createElement('details');
+sims.className = 'fold'; sims.dataset.fold = 'Interactives';
+{
+  const SIM = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5z"/></svg>';
+  sims.innerHTML = `<summary><span class="chev" aria-hidden="true"></span><span class="ico">${FOLDER}</span><span class="fold-t">Interactives</span><span class="fold-n">${interactives.items.length}</span></summary><ul>${interactives.items.map((s) => `<li><a class="pg" href="${base}interactives/${s.id}/"><span class="ico">${SIM}</span><span class="pg-t">${esc(s.name)}</span><small>${esc(s.tag.split(' · ')[0])}</small></a></li>`).join('')}</ul>`;
+}
+
+/* ---------- the folder list ---------- */
+const isLocal = (slug: string) => outboxIndex().news.some((n) => n.slug === slug);
+const pageHref = (slug: string) => (isLocal(slug) ? `${base}draft/?p=${encodeURIComponent(slug)}` : `${base}${slug}/`);
+function render() {
   const ix = outboxIndex();
   const edited = new Set(ix.pages.filter((p) => ix.files.includes(`src/content/lessons/${p}.mdx`)));
   const local = new Set(ix.news.map((n) => n.slug));
-  const html = areas.map((a) => {
-    const ready = a.topics.filter((t) => t.slug).length;
-    const lv = [...new Set(a.topics.flatMap((t) => t.levels || []))].join(' ') || LV_ALL;
-    const items = a.topics.map((t) => `<li data-for="${(t.levels || []).join(' ')}">${t.slug
-      ? `<a class="pg" href="${pageHref(t.slug)}"><span class="ico">${PAGE}</span><span class="pg-t">${esc(t.title)}</span>${local.has(t.slug) ? '<small class="is-local">On this device</small>' : edited.has(t.slug) ? '<small class="is-local">Edited</small>' : ''}</a>`
-      : `<button type="button" class="pg planned" data-plan="${esc(t.title)}" data-area="${esc(a.title)}" data-levels="${(t.levels || []).join(' ')}"><span class="ico">${PAGE}</span><span class="pg-t">${esc(t.title)}</span><small>Planned</small></button>`}</li>`).join('');
-    return `<details class="fold" data-fold="${esc(a.title)}" data-for="${lv}"${ready ? ' open' : ''}><summary><span class="chev" aria-hidden="true"></span><span class="ico">${FOLDER}</span><span class="fold-t">${esc(a.title)}</span><span class="fold-n">${ready ? `${ready} of ${a.topics.length}` : a.topics.length || ''}</span><button type="button" class="fold-add" data-new-in="${esc(a.title)}" aria-label="New page in ${esc(a.title)}" title="New page here">+</button></summary><ul>${items || '<li class="pg-empty">No pages yet</li>'}</ul></details>`;
-  }).join('');
-  const sims = tree.querySelector('[data-fold="Interactives"]');
-  tree.innerHTML = html;
-  if (sims) tree.append(sims);
+  tree.innerHTML = treeHtml(areas, {
+    base, href: pageHref,
+    tag: (s) => (local.has(s) ? 'On this device' : !liveSlugs.has(s) ? 'building' : edited.has(s) ? 'Edited' : ''),
+  });
+  tree.append(sims);
   bindFolds();
-  syncAreas(areas);
+  if (tree.querySelector('.building')) watchPublishing();
 }
-async function localTree() {
-  if (!isStaged('src/data/outline.json')) return;
-  const t = await readLocal('src/data/outline.json');
-  if (t) renderTree(JSON.parse(t).areas);
-}
-
-/* ---------- Interactives: David's sims, one folder, each opens full screen ---------- */
-{
-  const d = document.createElement('details');
-  d.className = 'fold'; d.dataset.fold = 'Interactives';
-  const SIM = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5z"/></svg>';
-  d.innerHTML = `<summary><span class="chev" aria-hidden="true"></span><span class="ico">${FOLDER}</span><span class="fold-t">Interactives</span><span class="fold-n">${interactives.items.length}</span></summary><ul>${interactives.items.map((s) => `<li><a class="pg" href="${base}interactives/${s.id}/"><span class="ico">${SIM}</span><span class="pg-t">${esc(s.name)}</span><small>${esc(s.tag.split(' · ')[0])}</small></a></li>`).join('')}</ul>`;
-  tree.append(d);
-  bindFolds();
+let watching = 0;
+function watchPublishing() {
+  if (watching) return;
+  watching = window.setInterval(async () => {
+    const waiting = [...tree.querySelectorAll<HTMLElement>('.building[data-slug]')].map((b) => b.dataset.slug!);
+    if (!waiting.length) { clearInterval(watching); watching = 0; return; }
+    let any = false;
+    for (const s of waiting) {
+      const r = await fetch(`${base}${s}/`, { method: 'HEAD', cache: 'no-store' }).catch(() => null);
+      if (r?.ok) { liveSlugs.add(s); any = true; }
+    }
+    if (any) render();
+  }, 20000);
 }
 
 /* ---------- a short note left by another page (e.g. "Deleted …") ---------- */
@@ -74,66 +91,17 @@ const notice = document.querySelector<HTMLElement>('[data-notice]')!;
 function toast(t: string) { notice.textContent = t; notice.hidden = false; }
 try { const n = localStorage.getItem('cfi.notice'); if (n) { toast(n); localStorage.removeItem('cfi.notice'); } } catch {}
 
-function syncAreas(areas: Area[]) {
-  const sel = document.querySelector<HTMLSelectElement>('[data-new-area]');
-  if (!sel) return;
-  for (const a of areas) if (![...sel.options].some((o) => o.value === a.title)) sel.add(new Option(a.title, a.title));
-}
-
 /* ---------- recents ---------- */
-{
-  const live = new Map(outline.flatMap((a) => a.topics.filter((t) => t.slug).map((t) => [t.slug!, { t, a }])));
-  for (const n of outboxIndex().news) live.set(n.slug, { t: { title: n.title, slug: n.slug, levels: n.levels }, a: { title: n.area, topics: [] } });
-  const rec = store.get<{ slug: string; title?: string; area?: string }[]>('cfi.recent', []).filter((r) => live.has(r.slug)).slice(0, 8);
-  if (rec.length) {
-    document.querySelector<HTMLElement>('[data-recents]')!.hidden = false;
-    document.querySelector<HTMLElement>('[data-recent-cards]')!.innerHTML = rec.map((r) => {
-      const { t, a } = live.get(r.slug)!;
-      return `<a class="nh-card" href="${pageHref(r.slug)}"><span class="ico">${PAGE}</span><b>${esc(t.title)}</b><small>${esc(a.title)}</small></a>`;
-    }).join('');
-  }
-}
-
-/* ---------- pages and folders still being published ---------- */
-const known = new Set(outline.flatMap((a) => a.topics.map((t) => t.slug).filter(Boolean)));
-const knownAreas = new Set(outline.map((a) => a.title));
-let pending = store.get<Pending[]>('cfi.pending', []).filter((p) => Date.now() - p.at < 20 * 60e3 && (p.kind === 'page' ? !known.has(p.slug) : !knownAreas.has(p.title)));
-store.set('cfi.pending', pending);
-
-function folderEl(title: string): HTMLDetailsElement {
-  let d = fold(title);
-  if (d) return d;
-  d = document.createElement('details');
-  d.className = 'fold'; d.dataset.fold = title; d.open = true;
-  d.innerHTML = `<summary><span class="chev" aria-hidden="true"></span><span class="ico">${FOLDER}</span><span class="fold-t">${esc(title)}</span><span class="fold-n">Publishing…</span><button type="button" class="fold-add" data-new-in="${esc(title)}" aria-label="New page here">+</button></summary><ul><li class="pg-empty">No pages yet</li></ul>`;
-  tree.append(d);
-  return d;
-}
-function showPending(p: Pending) {
-  const d = folderEl(p.kind === 'folder' ? p.title : p.area);
-  if (p.kind === 'folder') return;
-  d.open = true;
-  const ul = d.querySelector('ul')!;
-  ul.querySelector('.pg-empty')?.remove();
-  const planned = [...ul.querySelectorAll<HTMLElement>('[data-plan]')].find((b) => b.dataset.plan === p.title);
-  const li = planned?.closest('li') || ul.appendChild(document.createElement('li'));
-  li.removeAttribute('data-for');
-  li.innerHTML = `<span class="pg building"><span class="ico">${PAGE}</span><span class="pg-t">${esc(p.title)}</span><small>Publishing…</small></span>`;
-}
-pending.forEach(showPending);
-// Check back while something is publishing, and swap in the live link once the page is up.
-if (pending.length) {
-  const tick = window.setInterval(async () => {
-    for (const p of pending.filter((x) => x.kind === 'page')) {
-      const r = await fetch(`${base}${p.slug}/`, { method: 'HEAD', cache: 'no-store' }).catch(() => null);
-      if (r?.ok) {
-        const el = [...tree.querySelectorAll<HTMLElement>('.building')].find((b) => b.querySelector('.pg-t')?.textContent === p.title);
-        if (el) el.outerHTML = `<a class="pg" href="${base}${p.slug}/"><span class="ico">${PAGE}</span><span class="pg-t">${esc(p.title)}</span><small class="is-new">New</small></a>`;
-        pending = pending.filter((x) => x !== p); store.set('cfi.pending', pending);
-      }
-    }
-    if (!pending.some((x) => x.kind === 'page')) clearInterval(tick);
-  }, 20000);
+function renderRecents() {
+  const live = new Map(pagesIn(areas).filter((t) => t.slug).map((t) => [t.slug!, { title: t.title, where: foldersOf(areas, t.slug!).join(' / ') }]));
+  for (const n of outboxIndex().news) if (!live.has(n.slug)) live.set(n.slug, { title: n.title, where: n.area });
+  const rec = store.get<{ slug: string }[]>('cfi.recent', []).filter((r) => live.has(r.slug)).slice(0, 8);
+  if (!rec.length) return;
+  document.querySelector<HTMLElement>('[data-recents]')!.hidden = false;
+  document.querySelector<HTMLElement>('[data-recent-cards]')!.innerHTML = rec.map((r) => {
+    const t = live.get(r.slug)!;
+    return `<a class="nh-card" href="${pageHref(r.slug)}"><span class="ico">${PAGE}</span><b>${esc(t.title)}</b><small>${esc(t.where)}</small></a>`;
+  }).join('');
 }
 
 /* ---------- compose button: New page / New folder ---------- */
@@ -146,23 +114,35 @@ document.addEventListener('click', (e) => { if (!menu.hidden && !menu.contains(e
 const dlg = document.getElementById('sheet-new') as HTMLDialogElement;
 const form = dlg.querySelector<HTMLFormElement>('[data-new-form]')!;
 const titleIn = form.querySelector<HTMLInputElement>('[data-new-title]')!;
-const areaSel = form.querySelector<HTMLSelectElement>('[data-new-area]')!;
+const whereSel = form.querySelector<HTMLSelectElement>('[data-new-area]')!;
 const note = form.querySelector<HTMLElement>('[data-new-note]')!;
 const go = form.querySelector<HTMLButtonElement>('[data-new-go]')!;
 const NOTE = 'Saved on this device. Tap Upload on the home page to put it on the site.';
 let mode: 'page' | 'folder' = 'page';
 let fromPlan = '';
 
-function openNew(kind: 'page' | 'folder', opts: { title?: string; area?: string; levels?: string[]; plan?: boolean } = {}) {
-  setMenu(false);
-  mode = kind; fromPlan = opts.plan ? opts.title || '' : '';
-  form.querySelector<HTMLElement>('[data-new-h]')!.textContent = kind === 'folder' ? 'New folder' : opts.plan ? 'Start this page' : 'New page';
+function fillWhere(keep = whereSel.value) {
+  const opts = allFolders(areas).map((f) => `<option value="${f.at}">${' '.repeat(f.depth)}${esc(f.title)}</option>`).join('');
+  whereSel.innerHTML = (mode === 'folder' ? '<option value="">Top level</option>' : '') + opts;
+  whereSel.value = keep;
+  if (whereSel.selectedIndex < 0) whereSel.selectedIndex = 0;
+}
+function setKind(kind: 'page' | 'folder') {
+  mode = kind;
+  form.querySelectorAll<HTMLElement>('[data-kind]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.kind === kind)));
+  form.querySelector<HTMLElement>('[data-new-h]')!.textContent = kind === 'folder' ? 'New folder' : fromPlan ? 'Start this page' : 'New page';
   form.querySelector<HTMLElement>('[data-page-only]')!.hidden = kind === 'folder';
   titleIn.placeholder = kind === 'folder' ? 'Folder name' : 'Untitled';
+  fillWhere();
+}
+form.querySelectorAll<HTMLElement>('[data-kind]').forEach((b) => b.addEventListener('click', () => { setKind(b.dataset.kind as 'page' | 'folder'); titleIn.focus(); }));
+
+function openNew(kind: 'page' | 'folder', opts: { title?: string; at?: string; levels?: string[]; plan?: boolean } = {}) {
+  setMenu(false);
+  fromPlan = opts.plan ? opts.title || '' : '';
+  mode = kind; fillWhere(opts.at ?? (kind === 'folder' ? '' : '0'));
+  setKind(kind);
   titleIn.value = opts.title || '';
-  // Folders made earlier on this device may not be in the built list yet.
-  for (const p of pending) if (p.kind === 'folder' && ![...areaSel.options].some((o) => o.value === p.title)) areaSel.add(new Option(p.title, p.title));
-  if (opts.area) areaSel.value = opts.area;
   const lv = opts.levels?.length ? opts.levels : ['pa', 'ir', 'ca'];
   form.querySelectorAll<HTMLInputElement>('input[name="lv"]').forEach((c) => (c.checked = lv.includes(c.value)));
   note.textContent = NOTE; note.dataset.kind = '';
@@ -177,9 +157,9 @@ menu.addEventListener('click', (e) => {
 tree.addEventListener('click', (e) => {
   const t = e.target as HTMLElement;
   const add = t.closest<HTMLElement>('[data-new-in]');
-  if (add) { e.preventDefault(); openNew('page', { area: add.dataset.newIn }); return; }
+  if (add) { e.preventDefault(); openNew('page', { at: add.dataset.newIn }); return; }
   const plan = t.closest<HTMLElement>('[data-plan]');
-  if (plan) openNew('page', { title: plan.dataset.plan, area: plan.dataset.area, levels: plan.dataset.levels!.split(' '), plan: true });
+  if (plan) openNew('page', { title: plan.dataset.plan, at: plan.dataset.in, levels: plan.dataset.levels!.split(' '), plan: true });
 });
 dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
 dlg.querySelector('[data-close]')!.addEventListener('click', () => dlg.close());
@@ -200,37 +180,40 @@ async function create() {
   if (!title) { titleIn.focus(); return; }
   const levels = [...form.querySelectorAll<HTMLInputElement>('input[name="lv"]:checked')].map((c) => c.value);
   if (mode === 'page' && !levels.length) { note.textContent = 'Pick at least one level.'; note.dataset.kind = 'err'; return; }
-  const area = areaSel.value;
+  const at = whereSel.value;
   go.disabled = true; go.textContent = 'Saving…'; note.dataset.kind = '';
   try {
-    const o = await readLocal('src/data/outline.json');
-    if (!o) throw new Error('Couldn’t find the binder’s folder list. Check your connection and try again.');
-    const data: { areas: Area[] } = JSON.parse(o);
-    const save = (files: { path: string; content: string }[], noteText: string, extra = {}) =>
-      stage([...files, { path: 'src/data/outline.json', content: JSON.stringify(data, null, 2) + '\n' }], noteText, extra);
+    const data = await current();
+    const parent = at ? nodeAt(data.areas, at) : null;
+    if (at && (!parent || !isFolder(parent))) throw new Error('That folder has moved. Pick it again.');
+    const list: Node[] = parent ? (parent as Folder).topics : data.areas;
+    const path = parent ? allFolders(data.areas).find((f) => f.at === at)!.path : [];
     if (mode === 'folder') {
-      if (data.areas.some((a) => a.title.toLowerCase() === title.toLowerCase()) || title === 'Interactives') throw new Error('There’s already a folder with that name.');
-      data.areas.push({ title, topics: [] });
-      await save([], `Add folder “${title}”`, { folders: [title] });
-      renderTree(data.areas);
+      if (list.some((n) => isFolder(n) && n.title.toLowerCase() === title.toLowerCase()) || (!parent && title === 'Interactives')) throw new Error('There’s already a folder with that name here.');
+      list.push({ title, topics: [] });
+      await saveOutline(data, `Add folder “${title}”${path.length ? ` to ${path.join(' / ')}` : ''}`, [], { folders: [[...path, title].join(' / ')] });
+      areas = data.areas;
+      [...path.keys()].forEach((i) => openFold(path.slice(0, i + 1).join(' / ')));
+      render();
       dlg.close();
-      const d = fold(title); if (d) { d.open = true; d.scrollIntoView({ block: 'nearest' }); }
-      toast(`Folder “${title}” added on this device. Add a page to it with +.`);
+      tree.querySelector<HTMLElement>(`[data-fold="${CSS.escape([...path, title].join(' / '))}"]`)?.scrollIntoView({ block: 'nearest' });
+      toast(`Folder “${title}” added on this device. Use + on it to add pages or more folders.`);
       refreshUpload();
       return;
     }
-    let a = data.areas.find((x) => x.title === area);
-    if (!a) { a = { title: area, topics: [] }; data.areas.push(a); }
-    // The folder's directory: wherever its existing pages live, else its name in kebab-case.
-    const dir = a.topics.find((t) => t.slug)?.slug!.split('/')[0] || kebab(area);
-    const taken = new Set(data.areas.flatMap((x) => x.topics.map((t) => t.slug)));
+    if (!parent) throw new Error('Pick a folder for the page.');
+    // Pages live in their top folder's directory on GitHub, whichever folder they're shown in.
+    const top = data.areas[Number(at.split('.')[0])];
+    const dir = pagesIn(top.topics).find((t) => t.slug)?.slug!.split('/')[0] || kebab(top.title);
+    const taken = new Set(pagesIn(data.areas).map((t) => t.slug));
     let slug = `${dir}/${kebab(title)}`;
     for (let n = 2; taken.has(slug); n++) slug = `${dir}/${kebab(title)}-${n}`;
-    const plannedTopic = a.topics.find((t) => !t.slug && t.title === (fromPlan || title));
-    if (plannedTopic) { plannedTopic.slug = slug; plannedTopic.title = title; plannedTopic.levels = levels; }
-    else a.topics.push({ title, slug, levels });
-    const np: LocalPage = { slug, title, area, levels, at: Date.now() };
-    await save([{ path: `src/content/lessons/${slug}.mdx`, content: lessonFile({ title, area, levels }) }], `Add page “${title}” to ${area}`, { news: [np] });
+    const planned = list.find((t) => !isFolder(t) && !t.slug && t.title === (fromPlan || title));
+    if (planned && !isFolder(planned)) { planned.slug = slug; planned.title = title; planned.levels = levels; }
+    else list.push({ title, slug, levels });
+    const where = path.join(' / ');
+    const np: LocalPage = { slug, title, area: where, levels, at: Date.now() };
+    await saveOutline(data, `Add page “${title}” to ${where}`, [{ path: `src/content/lessons/${slug}.mdx`, content: lessonFile({ title, area: where, levels }) }], { news: [np] });
     // Straight into the new page, like Notion.
     location.href = `${base}draft/?p=${encodeURIComponent(slug)}&new=1`;
   } catch (err: any) {
@@ -239,6 +222,120 @@ async function create() {
   }
 }
 form.addEventListener('submit', (e) => { e.preventDefault(); create(); });
+
+/* ---------- drag to move: onto a folder puts it inside, between rows reorders ---------- */
+// Mouse: press and move. Touch: hold for a moment, then drag (a quick swipe still scrolls).
+type Where = 'before' | 'after' | 'into' | 'start';
+let press: { x: number; y: number; at: string; label: HTMLElement; touch: boolean; timer?: number } | null = null;
+let drag: { at: string; label: HTMLElement; ghost: HTMLElement; x: number; y: number; target: { at: string; where: Where } | null } | null = null;
+let quietClick = 0;
+const line = document.createElement('div'); line.className = 'drop-line'; line.hidden = true; document.body.append(line);
+
+const labelOf = (t: EventTarget | null) => {
+  const l = (t as HTMLElement | null)?.closest?.<HTMLElement>('.tree summary, .tree .pg');
+  const row = l?.closest<HTMLElement>('[data-node]');
+  return l && row && tree.contains(row) ? { label: l, at: row.dataset.node! } : null;
+};
+tree.addEventListener('pointerdown', (e) => {
+  if (e.button > 0 || (e.target as HTMLElement).closest('.fold-add')) return;
+  const hit = labelOf(e.target); if (!hit) return;
+  press = { x: e.clientX, y: e.clientY, ...hit, touch: e.pointerType !== 'mouse' };
+  if (press.touch) press.timer = window.setTimeout(() => press && startDrag(press.x, press.y), 380);
+});
+tree.addEventListener('dragstart', (e) => e.preventDefault()); // links' own drag would cancel ours
+tree.addEventListener('contextmenu', (e) => { if (press?.touch || drag) e.preventDefault(); });
+window.addEventListener('pointermove', (e) => {
+  if (drag) { moveDrag(e.clientX, e.clientY); return; }
+  if (!press) return;
+  const far = Math.hypot(e.clientX - press.x, e.clientY - press.y) > 8;
+  if (!far) return;
+  if (press.touch) { clearTimeout(press.timer); press = null; } // that's a scroll
+  else startDrag(e.clientX, e.clientY);
+});
+const endPress = () => { if (press) clearTimeout(press.timer); press = null; };
+window.addEventListener('pointerup', () => { endPress(); if (drag) dropDrag(); });
+window.addEventListener('pointercancel', () => { endPress(); if (drag) cancelDrag(); });
+document.addEventListener('touchmove', (e) => { if (drag) e.preventDefault(); }, { passive: false });
+document.addEventListener('keydown', (e) => { if (drag && e.key === 'Escape') cancelDrag(); });
+// The click that ends a drag doesn't open the page or fold the folder.
+tree.addEventListener('click', (e) => { if (Date.now() - quietClick < 400) { e.preventDefault(); e.stopPropagation(); } }, true);
+
+function startDrag(x: number, y: number) {
+  if (!press) return;
+  const { at, label } = press; press = null;
+  const ghost = document.createElement('div');
+  ghost.className = 'drag-ghost';
+  ghost.innerHTML = `${label.querySelector('.ico')?.outerHTML || ''}<span>${esc(label.querySelector('.pg-t, .fold-t')?.textContent || '')}</span>`;
+  document.body.append(ghost);
+  label.classList.add('dragging');
+  document.documentElement.classList.add('tree-drag');
+  getSelection()?.removeAllRanges();
+  navigator.vibrate?.(8);
+  drag = { at, label, ghost, x, y, target: null };
+  moveDrag(x, y);
+  requestAnimationFrame(autoScroll);
+}
+function moveDrag(x: number, y: number) {
+  if (!drag) return;
+  drag.x = x; drag.y = y;
+  drag.ghost.style.transform = `translate(${x + 14}px, ${y - 18}px)`;
+  tree.querySelector('.drop-into')?.classList.remove('drop-into');
+  line.hidden = true; drag.target = null;
+  const hit = labelOf(document.elementFromPoint(x, y));
+  if (!hit) return;
+  const from = drag.at, isF = hit.label.tagName === 'SUMMARY', fromFolder = isFolder(nodeAt(areas, from)!);
+  if (hit.at === from || hit.at.startsWith(from + '.')) return; // not into itself
+  const r = hit.label.getBoundingClientRect(), rel = (y - r.top) / r.height;
+  let where: Where = isF ? (rel < 0.28 ? 'before' : rel > 0.72 ? 'after' : 'into') : rel < 0.5 ? 'before' : 'after';
+  const det = isF ? hit.label.parentElement as HTMLDetailsElement : null;
+  if (where === 'after' && det?.open) where = 'start'; // below an open folder's name = its first item
+  if (!fromFolder && !hit.at.includes('.') && (where === 'before' || where === 'after')) return; // pages go inside folders
+  drag.target = { at: hit.at, where };
+  if (where === 'into') { hit.label.classList.add('drop-into'); return; }
+  const t = tree.getBoundingClientRect(), indent = where === 'start' ? 22 : 0;
+  line.style.top = `${(where === 'before' ? r.top : r.bottom) - 1}px`;
+  line.style.left = `${r.left + indent}px`; line.style.width = `${Math.min(r.width, t.right - r.left) - indent}px`;
+  line.hidden = false;
+}
+function autoScroll() {
+  if (!drag) return;
+  const edge = 80, h = innerHeight - 70; // the bottom bar covers the last 70px
+  const v = drag.y < edge ? -(edge - drag.y) / 4 : drag.y > h - edge ? (drag.y - (h - edge)) / 4 : 0;
+  if (v) { scrollBy(0, v); moveDrag(drag.x, drag.y); }
+  requestAnimationFrame(autoScroll);
+}
+function cancelDrag() {
+  if (!drag) return;
+  drag.ghost.remove(); drag.label.classList.remove('dragging');
+  tree.querySelector('.drop-into')?.classList.remove('drop-into');
+  line.hidden = true; document.documentElement.classList.remove('tree-drag');
+  drag = null; quietClick = Date.now();
+}
+async function dropDrag() {
+  const d = drag!; const t = d.target; cancelDrag();
+  if (!t) return;
+  try {
+    const data = await current();
+    const node = nodeAt(data.areas, d.at), from = listOf(data.areas, d.at), target = nodeAt(data.areas, t.at), dest0 = listOf(data.areas, t.at);
+    if (!node || !from || !target || !dest0) throw new Error('The list changed. Try again.');
+    from.splice(from.indexOf(node), 1);
+    let dest: Node[], i: number;
+    if (t.where === 'into' || t.where === 'start') {
+      dest = (target as Folder).topics; i = t.where === 'start' ? 0 : dest.length;
+      openFold(foldPath(data.areas, target as Folder));
+    } else { dest = dest0; i = dest.indexOf(target) + (t.where === 'after' ? 1 : 0); }
+    if (dest === data.areas && !isFolder(node)) throw new Error('Pages go inside a folder.');
+    dest.splice(i, 0, node);
+    await saveOutline(data, `Rearrange folders`);
+    areas = data.areas;
+    render(); refreshUpload();
+    notice.hidden = true;
+  } catch (err: any) { toast(err.message || 'Couldn’t move that.'); }
+}
+const foldPath = (all: Folder[], f: Folder) => {
+  const hit = allFolders(all).find((x) => nodeAt(all, x.at) === f);
+  return hit ? hit.path.join(' / ') : f.title;
+};
 
 /* ---------- Upload: send everything saved on this device to GitHub ---------- */
 const upBtn = document.querySelector<HTMLButtonElement>('[data-upload]')!;
@@ -252,13 +349,10 @@ function refreshUpload() {
 async function doUpload() {
   upBtn.disabled = true; upBtn.textContent = 'Uploading…'; upNote.textContent = ''; upNote.dataset.kind = '';
   try {
+    const sent = isStaged(OUTLINE) ? await current() : null;
     const done = await withKey(async () => upload(), doUpload);
     if (!done) { refreshUpload(); return; }
-    // New pages and folders show "Publishing…" until the site has rebuilt with them.
-    const up = store.get<{ news: LocalPage[]; folders: string[] }>('cfi.uploaded', { news: [], folders: [] });
-    for (const n of up.news) pending.push({ kind: 'page', title: n.title, area: n.area, slug: n.slug, at: Date.now() });
-    for (const f of up.folders) pending.push({ kind: 'folder', title: f, area: f, at: Date.now() });
-    store.set('cfi.pending', pending);
+    if (sent) store.set('cfi.upOutline', { at: Date.now(), data: sent });
     store.set('cfi.notice', `Uploaded ${done.count} change${done.count === 1 ? '' : 's'}. The site shows them in about 2 minutes.`);
     location.reload();
   } catch (err: any) {
@@ -269,4 +363,12 @@ async function doUpload() {
 upBtn.addEventListener('click', doUpload);
 window.addEventListener('cfi:outbox', refreshUpload);
 refreshUpload();
-localTree();
+
+/* ---------- start: the built list first, then this device's version ---------- */
+render();
+renderRecents();
+(async () => {
+  if (!isStaged(OUTLINE)) return;
+  const t = await readLocal(OUTLINE);
+  if (t) { areas = JSON.parse(t).areas; render(); renderRecents(); }
+})();

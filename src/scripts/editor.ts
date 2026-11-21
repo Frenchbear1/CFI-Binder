@@ -4,6 +4,7 @@
 // redo. + and Turn into open a scrolling sheet of blocks; typing "/" filters the same list in place.
 // Save turns each changed block back into MDX at its exact spot in the lesson file and keeps it on this
 // device (with a copy of the page as you see it); Upload on the home page sends everything to GitHub.
+import { pagesIn, isFolder, type Folder } from '../data/tree';
 import { kebab } from './gh';
 import { stage, readLocal, savePage, loadPage, hasPage, expire, dropPage, index as outboxIndex } from './outbox';
 
@@ -27,7 +28,7 @@ if (article && bar) {
   const popInput = pop.querySelector<HTMLInputElement>('[data-eb-input]')!;
   const srcDlg = document.getElementById('sheet-source') as HTMLDialogElement;
   const tools = document.querySelector<HTMLElement>('[data-blk-tools]')!;
-  const outline: { title: string; topics: { title: string; slug?: string }[] }[] = JSON.parse(document.getElementById('outline-data')?.textContent || '[]');
+  const outline: Folder[] = JSON.parse(document.getElementById('outline-data')?.textContent || '[]');
   const dirty = new Set<HTMLElement>();
   let on = false;
   let armedDiscard = false;
@@ -389,7 +390,7 @@ if (article && bar) {
       panelBody.innerHTML = `<div class="panel-list">${IMAGE_ITEMS.map((i) => `<button type="button" data-img="${i.id}">${i.icon}<span><b>${i.label}</b><small>${i.sub}</small></span></button>`).join('')}</div>`;
     } else if (mode === 'pages') {
       panelH.textContent = 'Link to page';
-      panelBody.innerHTML = outline.map((a) => `<p class="panel-g">${esc(a.title)}</p><div class="panel-list">${a.topics.filter((t) => t.slug).map((t) => `<button type="button" data-page="${t.slug}">${SV('<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/>')}<span><b>${esc(t.title)}</b></span></button>`).join('') || '<p class="muted small">No pages yet</p>'}</div>`).join('');
+      panelBody.innerHTML = outline.map((a) => `<p class="panel-g">${esc(a.title)}</p><div class="panel-list">${pagesIn(a.topics).filter((t) => t.slug).map((t) => `<button type="button" data-page="${t.slug}">${SV('<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/>')}<span><b>${esc(t.title)}</b></span></button>`).join('') || '<p class="muted small">No pages yet</p>'}</div>`).join('');
     } else {
       const canTurn = mode !== 'turn' || turnable(current);
       const list = mode === 'turn' ? (canTurn ? CATALOG.filter((i) => i.turn) : []) : CATALOG;
@@ -610,7 +611,7 @@ if (article && bar) {
     file: (o) => `<span class="filelink">${SV('<path d="m21 12-8.5 8.5a5 5 0 0 1-7-7L14 5a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 8"/>')}<span ${ED} data-f="title" ${ph('File name')}>${esc(o.name || '')}</span></span>`,
     bookmark: (o) => `<span class="bm-t" ${ED} data-f="title" ${ph('Title')}></span><span class="bm-n" ${ED} data-f="note" ${ph('Note (optional)')}></span><span class="bm-h">${esc(o.host)}</span>`,
     embed: (o) => `<div class="embed-load"><span class="embed-t" ${ED} data-f="title" ${ph('Title')}></span><span class="muted small">${esc(o.host)}</span></div>`,
-    pagelink: (o) => `${SV('<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/>')}<span>${esc(outline.flatMap((a) => a.topics).find((t) => t.slug === o.to)?.title || o.to)}</span>`,
+    pagelink: (o) => `${SV('<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/>')}<span>${esc(pagesIn(outline).find((t) => t.slug === o.to)?.title || o.to)}</span>`,
     columns: (o) => Array.from({ length: Number(o.n) }, (_, i) => `<div class="col">${`<div ${ED} data-f="c${i}" ${ph(`Column ${i + 1}`)}></div>`}</div>`).join(''),
   };
   const WRAP: Record<string, string> = { callout: 'div', compare: 'div', level: 'div', panel: 'div', toggle: 'div', video: 'figure', image: 'figure', audio: 'div', file: 'div', bookmark: 'div', embed: 'figure', pagelink: 'div', columns: 'div', code: '' };
@@ -926,7 +927,7 @@ if (article && bar) {
           const o = await readLocal('src/data/outline.json');
           if (o) {
             const data = JSON.parse(o);
-            for (const a of data.areas) for (const t of a.topics) if (t.slug === slug) t.title = newTitle;
+            for (const t of pagesIn(data.areas)) if (t.slug === slug) t.title = newTitle;
             extra.push({ path: 'src/data/outline.json', content: JSON.stringify(data, null, 2) + '\n' });
           }
         }
@@ -971,7 +972,8 @@ if (article && bar) {
       const files: { path: string; content: string | null }[] = local ? [] : [{ path: file, content: null }];
       if (o) {
         const data = JSON.parse(o);
-        for (const a of data.areas) a.topics = a.topics.filter((t: any) => t.slug !== slug);
+        const drop = (f: Folder) => { f.topics = f.topics.filter((t) => isFolder(t) || t.slug !== slug); f.topics.forEach((t) => isFolder(t) && drop(t)); };
+        data.areas.forEach(drop);
         files.push({ path: 'src/data/outline.json', content: JSON.stringify(data, null, 2) + '\n' });
       }
       if (local) await dropPage(slug, file);

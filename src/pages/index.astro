@@ -1,8 +1,8 @@
 ---
 import Base from '../layouts/Base.astro';
 import { outline } from '../data/outline';
+import { treeHtml, allFolders } from '../data/tree';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
-const levelsOf = (a: (typeof outline)[number]) => [...new Set(a.topics.flatMap((t) => t.levels))].join(' ') || 'pa ir ca';
 const LV: Record<string, string> = { pa: 'Private', ir: 'Instrument', ca: 'Commercial' };
 const folderIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
 const pageIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/></svg>';
@@ -25,32 +25,7 @@ const pageIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v1
     </section>
 
     <p class="nh-label">Binder</p>
-    <div class="tree" data-tree>
-      {outline.map((a) => {
-        const ready = a.topics.filter((t) => t.slug).length;
-        return (
-          <details class="fold" data-fold={a.title} data-for={levelsOf(a)} open={ready > 0}>
-            <summary>
-              <span class="chev" aria-hidden="true"></span>
-              <span class="ico" set:html={folderIcon} />
-              <span class="fold-t">{a.title}</span>
-              <span class="fold-n">{ready ? `${ready} of ${a.topics.length}` : a.topics.length || ''}</span>
-              <button type="button" class="fold-add" data-new-in={a.title} aria-label={`New page in ${a.title}`} title="New page here">+</button>
-            </summary>
-            <ul>
-              {a.topics.map((t) => (
-                <li data-for={t.levels.join(' ')}>
-                  {t.slug
-                    ? <a class="pg" href={base + t.slug + '/'}><span class="ico" set:html={pageIcon} /><span class="pg-t">{t.title}</span></a>
-                    : <button type="button" class="pg planned" data-plan={t.title} data-area={a.title} data-levels={t.levels.join(' ')}><span class="ico" set:html={pageIcon} /><span class="pg-t">{t.title}</span><small>Planned</small></button>}
-                </li>
-              ))}
-              {a.topics.length === 0 && <li class="pg-empty">No pages yet</li>}
-            </ul>
-          </details>
-        );
-      })}
-    </div>
+    <div class="tree" data-tree set:html={treeHtml(outline, { base })}></div>
     <div class="nh-upload">
       <button type="button" class="nh-up" data-upload disabled>Everything’s uploaded</button>
       <p class="muted small" data-upload-note></p>
@@ -78,13 +53,17 @@ const pageIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v1
         <p class="sheet-h" data-new-h>New page</p>
         <button type="submit" class="eb-save" data-new-go>Create</button>
       </div>
+      <div class="seg seg-full new-kind" role="radiogroup" aria-label="Make a">
+        <button type="button" role="radio" data-kind="page" aria-checked="true">Page</button>
+        <button type="button" role="radio" data-kind="folder" aria-checked="false">Folder</button>
+      </div>
       <input class="new-title" name="title" placeholder="Untitled" autocomplete="off" required data-new-title />
+      <label class="new-row"><span>In</span>
+        <select name="area" data-new-area>
+          {allFolders(outline).map((f) => <option value={f.at}>{'\u2003'.repeat(f.depth) + f.title}</option>)}
+        </select>
+      </label>
       <div data-page-only>
-        <label class="new-row"><span>Folder</span>
-          <select name="area" data-new-area>
-            {outline.map((a) => <option value={a.title}>{a.title}</option>)}
-          </select>
-        </label>
         <p class="new-row-l">Shows for</p>
         <div class="new-levels">
           {Object.entries(LV).map(([k, v]) => <label><input type="checkbox" name="lv" value={k} checked /> {v}</label>)}
