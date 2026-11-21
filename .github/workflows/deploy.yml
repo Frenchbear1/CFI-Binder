@@ -34,6 +34,8 @@ jobs:
           restore-keys: library-
       - name: Download the latest handbooks and index their text
         run: node scripts/fetch-sources.mjs
+        env:
+          WEB_DEBUG: "1"
       - name: Check video stats (views, likes, comments, channel)
         run: node scripts/video-stats.mjs
         env:

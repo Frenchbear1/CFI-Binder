@@ -204,6 +204,14 @@ function prepMedia(document, finalUrl) {
 function webDoc(doc, html, finalUrl) {
   const { document } = parseHTML(html);
   const site = document.querySelector('meta[property="og:site_name"]')?.getAttribute('content') || new URL(finalUrl).hostname.replace(/^www\./, '');
+  if (process.env.WEB_DEBUG) {
+    const imgs = [...document.querySelectorAll('img, picture, figure, iframe, video, [style*="background-image"], [data-bg], noscript')];
+    console.log(`debug ${doc.id}: ${imgs.length} media-ish elements`);
+    for (const el of imgs.slice(0, 40)) {
+      const chain = []; for (let p = el.parentElement, i = 0; p && i < 4; p = p.parentElement, i++) chain.push(p.tagName.toLowerCase() + (p.className ? '.' + String(p.className).trim().split(/\s+/).slice(0, 2).join('.') : '') + (p.tagName === 'A' ? `[${p.getAttribute('href')}]` : ''));
+      console.log('  ' + el.outerHTML.replace(/\s+/g, ' ').slice(0, 260) + '  <- ' + chain.join(' < '));
+    }
+  }
   const keep = prepMedia(document, finalUrl);
   const art = new Readability(document, { charThreshold: 300, keepClasses: false }).parse();
   if (!art?.content) throw new Error('no article text found');
@@ -280,7 +288,7 @@ for (const doc of docs) {
       writeFileSync(join(OUT, `${doc.id}.json`), json);
       meta[doc.id] = { pages: pages.length, checked: new Date().toISOString(), updated: changed ? new Date().toISOString() : old?.updated };
       index.push({ id: doc.id, title: doc.title, short: doc.short, url: doc.url, pages: pages.length, updated: meta[doc.id].updated });
-      console.log(`${changed ? 'updated ' : 'current '} ${doc.id} (${pages.length} sections)`);
+      console.log(`${changed ? 'updated ' : 'current '} ${doc.id} (${pages.length} sections, ${(json.match(/\[\[(img|embed|video|audio) /g) || []).length} media)`);
     } catch (e) {
       console.warn(`skipped  ${doc.id}: ${e.message}`);
       if (existsSync(join(OUT, `${doc.id}.json`))) index.push({ id: doc.id, title: doc.title, short: doc.short, url: doc.url, pages: meta[doc.id]?.pages, updated: meta[doc.id]?.updated });
