@@ -1,0 +1,3 @@
+/* Accent colours used by the sims. Light pages get a deeper shade so they read on paper. */
+:root{--sc-5ccfe3:#1aa9c1;--sc-ffb54a:#db8200;--sc-ef7fd1:#ca1298;--sc-e2574a:#c32718;--sc-7fd98a:#2dae3d;--sc-ffb3aa:#db1700;--sc-33505a:#31515c;--sc-4d6a73:#4b6b75;--sc-a99bff:#1f00db;--sc-5b9dff:#0058db;--sc-e063c6:#bd1e9c;--sc-8fe3b5:#27b567;--sc-c9b98f:#978044;--sc-3d6a74:#3b6b76}
+:root[data-theme="dark"]{--sc-5ccfe3:#5ccfe3;--sc-ffb54a:#ffb54a;--sc-ef7fd1:#ef7fd1;--sc-e2574a:#e2574a;--sc-7fd98a:#7fd98a;--sc-ffb3aa:#ffb3aa;--sc-33505a:#33505a;--sc-4d6a73:#4d6a73;--sc-a99bff:#a99bff;--sc-5b9dff:#5b9dff;--sc-e063c6:#e063c6;--sc-8fe3b5:#8fe3b5;--sc-c9b98f:#c9b98f;--sc-3d6a74:#3d6a74}

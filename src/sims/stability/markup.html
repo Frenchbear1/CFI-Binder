@@ -1,0 +1,58 @@
+<div class="homebar"></div>
+
+<div class="wrap">
+  <section class="lesson" aria-live="polite">
+    <div class="lesson-meta"><span id="stepNum">Step 1</span><div class="dots" id="dots" role="tablist" aria-label="Lesson steps"></div></div>
+    <div class="lesson-text">
+      <h2 id="stepTitle"></h2>
+      <p id="stepBody"></p>
+    </div>
+    <div class="lctl">
+      <div class="btns">
+        <button class="b" id="prev" type="button">◀ Back</button>
+        <button class="b primary" id="play" type="button">Pause</button>
+        <button class="b" id="next" type="button">Next ▶</button>
+        <button class="b" id="explore" type="button">Explore freely</button>
+      </div>
+      <label class="speed" for="speed">Speed <input id="speed" type="range" min="0.25" max="2" step="0.25" value="1"> <span id="speedTxt">1×</span></label>
+    </div>
+    <div class="bar"><div id="stepBar"></div></div>
+  </section>
+
+  <main class="stage">
+    <div class="panel">
+      <div class="plabel"><span>Side view</span><span id="dragHint">drag the CG on the ruler</span></div>
+      <canvas id="view" aria-label="Side view of a light trainer showing lift at the center of pressure, weight at the center of gravity, tail load, and a percent-MAC ruler with the CG envelope and neutral point"></canvas>
+    </div>
+    <div class="side">
+      <div class="panel">
+        <div class="plabel"><span>Departure from trim</span><span class="chip" id="warpTxt"></span></div>
+        <canvas id="trace" aria-label="Time history of pitch attitude and airspeed departures from trim"></canvas>
+        <div class="ro">
+          <div><span>IAS</span><strong id="roV">100<small>kt</small></strong></div>
+          <div><span>Pitch</span><strong id="roTh">2.4°</strong></div>
+          <div><span>AoA</span><strong id="roA">2.4°</strong></div>
+          <div><span>Tail load</span><strong id="roTail">↓ 105<small>lb</small></strong></div>
+          <div><span>Static margin</span><strong id="roSM">15<small>% MAC</small></strong></div>
+          <div><span>Stall speed</span><strong id="roVs">54<small>kt</small></strong></div>
+        </div>
+        <div class="status ok" id="status">TRIMMED · HANDS OFF</div>
+      </div>
+      <div class="panel ctlp">
+        <div class="plabel"><span>Controls</span></div>
+        <label class="sl" for="cg"><span class="h"><span class="lab">CG position</span><output id="cgO">25% MAC</output></span>
+          <input id="cg" type="range" min="0" max="50" step="0.5" value="25"></label>
+        <label class="sl" for="wt"><span class="h"><span class="lab">Weight</span><output id="wtO">2,400 lb</output></span>
+          <input id="wt" type="range" min="1800" max="2550" step="10" value="2400"></label>
+        <label class="sl" for="vt"><span class="h"><span class="lab">Trim speed</span><output id="vtO">100 kt</output></span>
+          <input id="vt" type="range" min="60" max="130" step="1" value="100"></label>
+        <div class="acts">
+          <button class="b" id="nUp" type="button">Nudge ▲</button>
+          <button class="b" id="nDn" type="button">Nudge ▼</button>
+          <button class="b" id="stl" type="button">Stall</button>
+          <button class="b" id="rtr" type="button">Re-trim</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

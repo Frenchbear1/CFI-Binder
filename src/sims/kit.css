@@ -1,0 +1,34 @@
+/* Shared lesson kit styles (all sims). */
+/* Shared lesson kit: reference chips, "Go deeper" panel and the Sources popup. Used by every sim so they look and behave the same. */
+.sim-root .homebar.kit-hb{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.sim-root .kit-srcbtn{font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--doc-ink) 65.3%, var(--doc-page));background:none;border:1px solid color-mix(in srgb, var(--doc-ink) 13.3%, var(--doc-page));border-radius:6px;padding:5px 10px;cursor:pointer}
+.sim-root .kit-srcbtn:hover,.sim-root .kit-srcbtn:focus-visible{color:var(--doc-ink);border-color:color-mix(in srgb, var(--doc-ink) 29.5%, var(--doc-page))}
+.sim-root .kit-srcbtn:focus-visible,.sim-root .kit-more:focus-visible,.sim-root .kit-chip:focus-visible,.kit-dlg button:focus-visible{outline:2px solid var(--sc-5ccfe3);outline-offset:2px}
+.sim-root .kit-row{display:flex;align-items:center;gap:6px 8px;flex-wrap:wrap;margin-top:8px;min-height:26px}
+.sim-root .kit-more{font:500 12px var(--mono);letter-spacing:.04em;color:var(--doc-ink);background:color-mix(in srgb, var(--doc-ink) 7.9%, var(--doc-page));border:1px solid var(--sc-33505a);border-radius:6px;padding:3px 10px;cursor:pointer;min-height:26px}
+.sim-root .kit-more[aria-expanded=true]{background:var(--doc-ink);color:var(--doc-page);border-color:var(--doc-ink)}
+.sim-root .kit-refs{display:contents}
+.sim-root .kit-chip{font:500 11px var(--mono);letter-spacing:.03em;color:var(--sc-5ccfe3);border:1px solid color-mix(in srgb, var(--sc-5ccfe3) 35%, transparent);border-radius:999px;padding:2px 9px;text-decoration:none;white-space:nowrap;line-height:1.6}
+.sim-root .kit-chip:hover{background:color-mix(in srgb, var(--sc-5ccfe3) 12%, transparent)}
+.sim-root .kit-chip.web{color:color-mix(in srgb, var(--doc-ink) 65.3%, var(--doc-page));border-color:color-mix(in srgb, var(--doc-ink) 20.3%, var(--doc-page))}
+.sim-root .kit-chip.web:hover{color:var(--doc-ink);background:color-mix(in srgb, var(--doc-ink) 7.9%, var(--doc-page))}
+.sim-root .kit-deep{margin-top:8px;max-height:13.5em;overflow:auto;background:color-mix(in srgb, var(--doc-ink) 1.6%, var(--doc-page));border:1px solid color-mix(in srgb, var(--doc-ink) 13.3%, var(--doc-page));border-left:3px solid var(--sc-5ccfe3);border-radius:6px;padding:8px 12px;font-size:13.5px;line-height:1.5;max-width:80ch}
+.sim-root .kit-deep ul{margin:0;padding-left:1.1em}
+.sim-root .kit-deep li{margin:2px 0}
+.sim-root .kit-deep li::marker{color:var(--sc-5ccfe3)}
+.sim-root .kit-deep b{color:var(--doc-ink);font-weight:600}
+.sim-root .kit-deep .k{font-family:var(--mono);font-size:12.5px;color:var(--sc-ffb54a)}
+.sim-root .kit-deep table{border-collapse:collapse;font-size:12.5px;margin:4px 0;width:100%}
+.sim-root .kit-deep th,.sim-root .kit-deep td{border-bottom:1px solid color-mix(in srgb, var(--doc-ink) 13.3%, var(--doc-page));padding:3px 6px;text-align:left;vertical-align:top}
+.sim-root .kit-deep th{font:500 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb, var(--doc-ink) 65.3%, var(--doc-page))}
+.kit-dlg{background:color-mix(in srgb, var(--doc-ink) 3.4%, var(--doc-page));color:var(--doc-ink);border:1px solid var(--sc-33505a);border-radius:10px;padding:0;width:min(640px,calc(100vw - 32px));max-height:min(80vh,760px)}
+.kit-dlg::backdrop{background:color-mix(in srgb, var(--doc-page) 70%, transparent)}
+.kit-dlg .kh{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:color-mix(in srgb, var(--doc-ink) 3.4%, var(--doc-page));border-bottom:1px solid color-mix(in srgb, var(--doc-ink) 13.3%, var(--doc-page));font:600 22px sans-serif}
+.kit-dlg .kh button{background:none;border:0;color:color-mix(in srgb, var(--doc-ink) 65.3%, var(--doc-page));font:20px var(--mono);cursor:pointer;line-height:1;padding:2px 6px}
+.kit-dlg .kb{padding:6px 16px 14px}
+.kit-dlg h3{font:500 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:color-mix(in srgb, var(--doc-ink) 65.3%, var(--doc-page));margin:12px 0 4px}
+.kit-dlg a.kr{display:grid;grid-template-columns:7.5em minmax(0,1fr);gap:10px;padding:7px 0;border-bottom:1px solid color-mix(in srgb, var(--doc-ink) 13.3%, var(--doc-page));color:inherit;text-decoration:none;font-size:13.5px;line-height:1.4}
+.kit-dlg a.kr:hover .kt{color:var(--sc-5ccfe3)}
+.kit-dlg a.kr span:first-child{font:500 12px var(--mono);color:var(--sc-5ccfe3)}
+.kit-dlg a.kr.web span:first-child{color:color-mix(in srgb, var(--doc-ink) 65.3%, var(--doc-page))}
+.kit-dlg .kf{font-size:12px;color:color-mix(in srgb, var(--doc-ink) 65.3%, var(--doc-page));margin:12px 0 0}

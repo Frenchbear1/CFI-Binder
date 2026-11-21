@@ -1,0 +1,68 @@
+<div class="homebar"><a href="../index.html">← All simulations</a></div>
+<div class="wrap">
+  <section class="lesson" aria-live="polite">
+    <div class="lesson-meta"><span id="stepNum">Step 1</span><div class="dots" id="dots" role="tablist" aria-label="Lesson steps"></div></div>
+    <div class="lesson-text">
+      <h2 id="stepTitle"></h2>
+      <p id="stepBody"></p>
+    </div>
+    <div class="lctl">
+      <div class="btns">
+        <button class="b" id="prev" type="button">◀ Back</button>
+        <button class="b primary" id="play" type="button">Pause</button>
+        <button class="b" id="next" type="button">Next ▶</button>
+        <button class="b" id="explore" type="button">Explore freely</button>
+      </div>
+      <label class="speed" for="speed">Speed <input id="speed" type="range" min="0.25" max="2" step="0.25" value="1"> <span id="speedTxt">1×</span></label>
+    </div>
+    <div class="bar"><div id="stepBar"></div></div>
+  </section>
+
+  <div class="stage">
+    <div class="panel view">
+      <svg id="fv" viewBox="0 0 400 320" role="img" aria-label="Rear view of the airplane in a bank with lift, its components and weight" />
+      <div class="pop a" id="popFV" hidden>DESCENDING</div>
+    </div>
+    <div class="panel view">
+      <svg id="vg" viewBox="0 0 640 420" role="img" aria-label="V-g diagram: airspeed against load factor. Drag the dot." />
+      <div class="pop" id="popVG" hidden></div>
+    </div>
+  </div>
+
+  <div class="deck">
+    <div class="panel ctl">
+      <div class="sl"><div class="h"><label class="lab" for="ias">Airspeed</label><output id="iasOut">100 KIAS</output></div>
+        <input id="ias" type="range" min="30" max="180" step="1" value="100"></div>
+      <div class="sl"><div class="h"><label class="lab" for="bank">Bank · level turn</label><output id="bankOut">0°</output></div>
+        <input id="bank" type="range" min="0" max="80" step="1" value="0"></div>
+      <div class="sl"><div class="h"><label class="lab" for="wt">Weight</label><output id="wtOut">2,550 lb</output></div>
+        <input id="wt" type="range" min="1917" max="2550" step="1" value="2550"></div>
+      <div class="tg">
+        <button type="button" id="tFl" aria-pressed="false">Full flaps</button>
+        <button type="button" id="tGu" aria-pressed="false">Gust lines</button>
+        <button type="button" id="limBtn">Limits…</button>
+        <button type="button" id="resetBtn" class="reset">Reset</button>
+      </div>
+    </div>
+    <div class="panel ro">
+      <div><span class="lab">Load factor</span><strong id="rN">1.00<small>G</small></strong></div>
+      <div><span class="lab">Stall speed</span><strong id="rVs">50<small>KIAS</small></strong></div>
+      <div><span class="lab">Stall margin</span><strong id="rM">+50<small>kt</small></strong></div>
+      <div><span class="lab">Turn rate</span><strong id="rR">—</strong></div>
+      <div><span class="lab">Turn radius</span><strong id="rRad">—</strong></div>
+      <div><span class="lab">VA this weight</span><strong id="rVa">113<small>KIAS</small></strong></div>
+    </div>
+  </div>
+</div>
+
+<dialog class="kit-dlg" id="limDlg" aria-label="V-g limits">
+  <div class="kh"><span>Limits</span><button type="button" id="limClose" aria-label="Close">×</button></div>
+  <div class="kb">
+    <div class="lim-top">
+      <select id="limPreset" aria-label="Airplane preset"></select>
+      <button type="button" class="b" id="limReset">Reset preset</button>
+    </div>
+    <div class="lim-grid" id="limGrid"></div>
+    <p class="kf">Stall speeds and VA are at max weight; the sim scales them by √(weight). Utility presets are scaled from the normal-category POH figures. Use your own POH for real limits.</p>
+  </div>
+</dialog>

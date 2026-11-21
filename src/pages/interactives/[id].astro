@@ -1,6 +1,7 @@
 ---
 // A sim on its own page, in the binder's theme. Listed in the Interactives folder on the home page.
 import Base from '../../layouts/Base.astro';
+import Interactive from '../../components/Interactive.astro';
 import data from '../../data/interactives.json';
 export function getStaticPaths() { return data.items.map((s) => ({ params: { id: s.id }, props: { s } })); }
 const { s } = Astro.props;
@@ -10,6 +11,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
   <div class="sim-page">
     <p class="crumbs"><a href={base}>Binder</a> / Interactives</p>
     <h1 class="sim-h">{s.name}</h1>
-    <iframe class="sim-frame" src={`${base}${data.site}${s.path}`} title={s.name} data-sim-frame></iframe>
+    <Interactive id={s.id} full />
   </div>
 </Base>

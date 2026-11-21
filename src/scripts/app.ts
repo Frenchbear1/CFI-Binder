@@ -258,16 +258,6 @@ if (!portable && 'serviceWorker' in navigator && location.protocol === 'https:')
   navigator.serviceWorker.register(base + 'sw.js').catch(() => {});
 }
 
-/* ---------- Sims grow to their full height, so they scroll with the page ---------- */
-function fitSim(f: HTMLIFrameElement) {
-  const fit = () => { try { const b = f.contentDocument?.body; if (b) f.style.height = `${Math.ceil(b.getBoundingClientRect().height + 2)}px`; } catch {} };
-  const hook = () => { fit(); try { new ResizeObserver(fit).observe(f.contentDocument!.body); } catch {} };
-  f.addEventListener('load', hook);
-  try { if (f.contentDocument?.readyState === 'complete' && f.contentDocument.body?.childElementCount) hook(); } catch {}
-}
-document.querySelectorAll<HTMLIFrameElement>('iframe[data-sim-frame]').forEach(fitSim);
-document.addEventListener('cfi:article', () => document.querySelectorAll<HTMLIFrameElement>('iframe[data-sim-frame]').forEach(fitSim));
-
 /* ---------- Embeds load on tap ---------- */
 document.addEventListener('click', (e) => {
   const b = (e.target as HTMLElement).closest<HTMLElement>('[data-embed-load]');

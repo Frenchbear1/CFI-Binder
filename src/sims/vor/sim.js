@@ -1,151 +1,10 @@
-<!doctype html>
-<html lang="en">
-<head>
-<script src="sim-theme.js"></script>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<style>html{color-scheme:dark}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}
-.homebar{max-width:1200px;margin:0 auto;padding-top:14px}
-.homebar a{font:500 13px "IBM Plex Mono",ui-monospace,monospace;color:#8ea2a5;text-decoration:none;letter-spacing:.06em}
-.homebar a:hover,.homebar a:focus-visible{color:#e4ece9}</style>
-<meta name="theme-color" content="#0a1014">
-<title>VOR Signal Lab</title>
-<link rel="stylesheet" href="kit.css">
-<style>
-/* Layout: lesson strip on top, then a two-column "glass cockpit" stage: map left, receiver scope + CDI right. Single dark avionics look by choice. */
-:root{
-  --bg:#0a1014; --panel:#0f181c; --panel2:#0c1418; --line:#1f2f36; --ink:#e4ece9; --dim:#8ea2a5;
-  --ref:#5ccfe3; --var:#ffb54a; --cmp:#ef7fd1; --warn:#e2574a;
-  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
-  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
-  color-scheme:dark;
-}
-html,body{background:var(--bg);color:var(--ink)}
-body{font-family:var(--f-body);font-size:15px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.wrap{max-width:1200px;margin:0 auto;padding-block:20px 40px;display:flex;flex-direction:column;gap:16px}
-.top{display:flex;flex-direction:column;gap:4px}
-.eyebrow{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
-h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,4.4vw,46px);line-height:1.02;margin:0;letter-spacing:.005em;text-wrap:balance}
-h1 .r{color:var(--ref)} h1 .v{color:var(--var)}
-.lede{margin:4px 0 0;color:var(--dim);max-width:68ch}
+// @ts-nocheck
+// vor sim (from Aviation Interactives, now part of the binder). mount() runs it inside its block on the page:
+// `document` here is scoped to that block (see ../runtime.js), and canvas colours follow the reading theme.
+import { makeKit } from '../kit.js';
+export function mount(root, document) {
+const Kit = makeKit(document);
 
-.lesson{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 20px;align-items:start}
-.lesson-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;grid-column:1/-1}
-#stepNum{font-family:var(--f-mono);font-size:12px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
-.dots{display:flex;gap:6px;flex-wrap:wrap}
-.dots button{width:22px;height:6px;border-radius:3px;border:0;background:var(--line);padding:0;cursor:pointer}
-.dots button.on{background:var(--ink)} .dots button.done{background:#4d6268}
-.dots button:focus-visible{outline:2px solid var(--ref);outline-offset:3px}
-.lesson-text{min-width:0}
-#stepTitle{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.1;margin:2px 0 4px;text-wrap:balance}
-#stepBody{margin:0;max-width:72ch;min-height:4.5em}
-#stepBody b.r{color:var(--ref);font-weight:600} #stepBody b.v{color:var(--var);font-weight:600} #stepBody b.c{color:var(--cmp);font-weight:600}
-.bar{grid-column:1/-1;height:2px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:6px}
-#stepBar{height:100%;width:0;background:var(--dim)}
-.ctl{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
-.btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-button.b{font:500 13px var(--f-body);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;min-height:34px}
-button.b:hover{border-color:#3d545c} button.b:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
-button.b.primary{background:var(--ink);color:#0a1014;border-color:var(--ink);min-width:84px}
-.speed{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:12px;color:var(--dim)}
-.speed input{width:120px;accent-color:var(--ink)}
-@media (max-width:760px){.lesson{grid-template-columns:minmax(0,1fr)}.ctl{align-items:stretch}.btns{justify-content:flex-start}}
-
-.stage{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);gap:16px;align-items:start}
-@media (max-width:900px){.stage{grid-template-columns:minmax(0,1fr)}}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
-.plabel{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
-canvas{display:block;width:100%}
-#map{aspect-ratio:1/1;max-width:100%;touch-action:manipulation;cursor:grab;border-radius:6px}
-#scope{height:310px;border-radius:6px}
-.hint{font-size:12.5px;color:var(--dim)}
-.side{display:flex;flex-direction:column;gap:16px;min-width:0}
-.cockpit{display:grid;grid-template-columns:minmax(0,230px) minmax(0,1fr);gap:14px;align-items:center}
-@media (max-width:480px){.cockpit{grid-template-columns:minmax(0,1fr)}#cdi{max-width:260px;margin:0 auto}}
-#cdi{aspect-ratio:1/1;max-width:100%;cursor:ew-resize;touch-action:none}
-.ro{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}
-.ro>div{display:flex;flex-direction:column;min-width:0}
-.ro>.obs{flex-direction:row;align-items:center}
-.ro span{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
-.ro strong{font-family:var(--f-display);font-weight:600;font-size:28px;line-height:1.05;font-variant-numeric:tabular-nums}
-#roRadial{color:#fff} #roLag{color:var(--cmp)}
-.cdiwrap{display:flex;flex-direction:column;gap:6px;min-width:0}
-.flagrow{font-family:var(--f-mono);font-size:13px;font-weight:500;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;height:1.5em;line-height:1.5em}
-.advice{grid-column:1/-1;font-size:13.5px;color:var(--ink);min-height:2.9em}
-.obs{grid-column:1/-1;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.obs label{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;color:var(--dim)}
-.obs input[type=range]{flex:1 1 90px;min-width:80px;accent-color:var(--ink)}
-.obs button.b{padding:5px 8px;min-height:30px;font-family:var(--f-mono);font-size:12px}
-
-.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.fact{background:var(--panel);padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
-.fact span{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
-.fact strong{font-family:var(--f-display);font-weight:600;font-size:21px;line-height:1.15}
-.fact p{margin:0;font-size:13px;color:var(--dim)}
-.foot{font-size:12.5px;color:var(--dim);max-width:90ch;margin:0}
-</style>
-<link rel="stylesheet" href="sim-theme.css">
-</head><body>
-<div class="homebar"><a href="../index.html" id="home">← All simulations</a></div>
-
-<div class="wrap">
-  <section class="lesson" aria-live="polite">
-    <div class="lesson-meta"><span id="stepNum">Step 1 of 9</span><div class="dots" id="dots" role="tablist" aria-label="Lesson steps"></div></div>
-    <div class="lesson-text">
-      <h2 id="stepTitle">A radio lighthouse</h2>
-      <p id="stepBody"></p>
-    </div>
-    <div class="ctl">
-      <div class="btns">
-        <button class="b" id="prev" type="button">◀ Back</button>
-        <button class="b primary" id="play" type="button">Pause</button>
-        <button class="b" id="next" type="button">Next ▶</button>
-        <button class="b" id="explore" type="button">Explore freely</button>
-      </div>
-      <label class="speed" for="speed">Sweep speed <input id="speed" type="range" min="0.25" max="2" step="0.25" value="1"> <span id="speedTxt">1×</span></label>
-    </div>
-    <div class="bar"><div id="stepBar"></div></div>
-  </section>
-
-  <main class="stage">
-    <div class="panel">
-      <div class="plabel"><span>Top view</span><span id="slowTxt" hidden></span></div>
-      <canvas id="map" aria-label="Animated top view of a VOR station with its rotating signal pattern and aircraft on radials"></canvas>
-      <div class="hint">Drag an aircraft to move it. Tap one to select it.</div>
-    </div>
-    <div class="side">
-      <div class="panel">
-        <div class="plabel"><span>Receiver</span></div>
-        <canvas id="scope" aria-label="Oscilloscope traces of the reference and variable 30 Hz signals and their phase difference"></canvas>
-      </div>
-      <div class="panel">
-        <div class="plabel"><span>CDI</span><span>drag the dial to turn the OBS</span></div>
-        <div class="cockpit">
-          <div class="cdiwrap"><canvas id="cdi" aria-label="Course deviation indicator"></canvas><div class="flagrow" id="roFlag">FROM</div></div>
-          <div class="ro">
-            <div><span>Your radial</span><strong id="roRadial">R-060</strong></div>
-            <div><span>Phase lag</span><strong id="roLag">060°</strong></div>
-            <div><span>OBS course</span><strong id="roObs">360</strong></div>
-            <div class="advice" id="advice" hidden></div>
-            <div class="obs">
-              <label for="obs">OBS</label>
-              <button class="b" type="button" data-d="-10">−10</button>
-              <button class="b" type="button" data-d="-1">−1</button>
-              <input id="obs" type="range" min="0" max="359" step="1" value="0" aria-label="OBS course">
-              <button class="b" type="button" data-d="1">+1</button>
-              <button class="b" type="button" data-d="10">+10</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </main>
-
-</div>
-
-<script src="kit.js"></script>
-<script>
 (()=>{
 const TAU=Math.PI*2, rad=d=>d*Math.PI/180, deg=r=>r*180/Math.PI;
 const w360=d=>((d%360)+360)%360, w180=d=>{d=w360(d);return d>180?d-360:d;};
@@ -523,6 +382,5 @@ function frame(now){const dt=Math.min(.05,(now-prev)/1000);prev=now;const st=ste
   requestAnimationFrame(frame);}
 goStep(0);setPlay(S.playing);requestAnimationFrame(frame);
 })();
-</script>
-<script>document.getElementById("home").addEventListener("click",e=>{if(history.length>1&&document.referrer){e.preventDefault();history.back();}});</script>
-</body></html>
+
+}

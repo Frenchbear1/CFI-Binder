@@ -1,146 +1,10 @@
-<!doctype html>
-<html lang="en">
-<head>
-<script src="sim-theme.js"></script>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<style>html{color-scheme:dark}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}
-.homebar{max-width:1200px;margin:0 auto;padding-top:14px}
-.homebar a{font:500 13px "IBM Plex Mono",ui-monospace,monospace;color:#8ea2a5;text-decoration:none;letter-spacing:.06em}
-.homebar a:hover,.homebar a:focus-visible{color:#e4ece9}</style>
-<meta name="theme-color" content="#0a1014">
-<title>Balance &amp; Stability Lab</title>
-<link rel="stylesheet" href="kit.css">
-<style>
-/* Layout: lesson strip on top, then side view (left) and pitch trace + readouts + controls (right). Single dark avionics look, same as the other sims. */
-:root{
-  --bg:#0a1014; --panel:#0f181c; --panel2:#0c1418; --line:#1f2f36; --ink:#e4ece9; --dim:#8ea2a5;
-  --ref:#5ccfe3; --var:#ffb54a; --tail:#a99bff; --ok:#7fd98a; --warn:#e2574a;
-  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
-  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
-  color-scheme:dark;
-}
-html,body{background:var(--bg);color:var(--ink)}
-body{font-family:var(--f-body);font-size:15px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.wrap{max-width:1200px;margin:0 auto;padding-block:20px 40px;display:flex;flex-direction:column;gap:16px}
+// @ts-nocheck
+// stability sim (from Aviation Interactives, now part of the binder). mount() runs it inside its block on the page:
+// `document` here is scoped to that block (see ../runtime.js), and canvas colours follow the reading theme.
+import { makeKit } from '../kit.js';
+export function mount(root, document) {
+const Kit = makeKit(document);
 
-.lesson{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 20px;align-items:start}
-.lesson-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;grid-column:1/-1}
-#stepNum{font-family:var(--f-mono);font-size:12px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
-.dots{display:flex;gap:6px;flex-wrap:wrap}
-.dots button{width:22px;height:6px;border-radius:3px;border:0;background:var(--line);padding:0;cursor:pointer}
-.dots button.on{background:var(--ink)} .dots button.done{background:#4d6268}
-.dots button:focus-visible{outline:2px solid var(--ref);outline-offset:3px}
-.lesson-text{min-width:0}
-#stepTitle{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.1;margin:2px 0 4px;text-wrap:balance}
-#stepBody{margin:0;max-width:72ch;min-height:4.5em}
-#stepBody b.r{color:var(--ref);font-weight:600} #stepBody b.v{color:var(--var);font-weight:600} #stepBody b.t{color:var(--tail);font-weight:600} #stepBody b.w{color:var(--warn);font-weight:600} #stepBody b.g{color:var(--ok);font-weight:600}
-.bar{grid-column:1/-1;height:2px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:6px}
-#stepBar{height:100%;width:0;background:var(--dim)}
-.lctl{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
-.btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-button.b{font:500 13px var(--f-body);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;min-height:34px}
-button.b:hover{border-color:#3d545c} button.b:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
-button.b.primary{background:var(--ink);color:#0a1014;border-color:var(--ink);min-width:84px}
-button.b:disabled{opacity:.4;cursor:default}
-.speed{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:12px;color:var(--dim)}
-.speed input{width:120px;accent-color:var(--ink)}
-@media (max-width:760px){.lesson{grid-template-columns:minmax(0,1fr)}.lctl{align-items:stretch}.btns{justify-content:flex-start}}
-
-.stage{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px;align-items:start}
-@media (max-width:900px){.stage{grid-template-columns:minmax(0,1fr)}}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
-.plabel{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.plabel .chip{color:var(--var)}
-canvas{display:block;width:100%}
-#view{aspect-ratio:16/11;border-radius:6px;touch-action:none}
-#trace{height:170px;border-radius:6px}
-@media (max-width:600px){#view{aspect-ratio:1/1}}
-.side{display:flex;flex-direction:column;gap:16px;min-width:0}
-.ro{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px}
-.ro>div{display:flex;flex-direction:column;min-width:0}
-.ro span{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
-.ro strong{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.05;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ro strong small{font-size:15px;color:var(--dim);font-weight:500;margin-left:3px}
-#roTail{color:var(--tail)}
-.status{font-family:var(--f-mono);font-size:13px;font-weight:500;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:1.9em;line-height:1.9em;border-radius:6px;background:var(--panel2);letter-spacing:.06em}
-.status.ok{color:var(--ok)} .status.amb{color:var(--var)} .status.bad{color:#160806;background:var(--warn)}
-.ctlp{display:flex;flex-direction:column;gap:10px}
-.sl{display:flex;flex-direction:column;gap:2px}
-.sl .h{display:flex;justify-content:space-between;align-items:baseline}
-.lab{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
-.sl output{font:600 20px var(--f-display);font-variant-numeric:tabular-nums;white-space:nowrap}
-input[type=range]{width:100%;accent-color:var(--ink);margin:0;height:26px}
-input[type=range]:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
-.acts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.acts button.b{padding:6px 4px;font-size:12.5px}
-@media (max-width:420px){.ro{grid-template-columns:repeat(2,minmax(0,1fr))}.acts{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.kit-deep svg{display:block;max-width:420px;width:100%;height:auto;margin:6px 0}
-</style>
-<link rel="stylesheet" href="sim-theme.css">
-</head><body>
-<div class="homebar"><a href="../index.html" id="home">← All simulations</a></div>
-
-<div class="wrap">
-  <section class="lesson" aria-live="polite">
-    <div class="lesson-meta"><span id="stepNum">Step 1</span><div class="dots" id="dots" role="tablist" aria-label="Lesson steps"></div></div>
-    <div class="lesson-text">
-      <h2 id="stepTitle"></h2>
-      <p id="stepBody"></p>
-    </div>
-    <div class="lctl">
-      <div class="btns">
-        <button class="b" id="prev" type="button">◀ Back</button>
-        <button class="b primary" id="play" type="button">Pause</button>
-        <button class="b" id="next" type="button">Next ▶</button>
-        <button class="b" id="explore" type="button">Explore freely</button>
-      </div>
-      <label class="speed" for="speed">Speed <input id="speed" type="range" min="0.25" max="2" step="0.25" value="1"> <span id="speedTxt">1×</span></label>
-    </div>
-    <div class="bar"><div id="stepBar"></div></div>
-  </section>
-
-  <main class="stage">
-    <div class="panel">
-      <div class="plabel"><span>Side view</span><span id="dragHint">drag the CG on the ruler</span></div>
-      <canvas id="view" aria-label="Side view of a light trainer showing lift at the center of pressure, weight at the center of gravity, tail load, and a percent-MAC ruler with the CG envelope and neutral point"></canvas>
-    </div>
-    <div class="side">
-      <div class="panel">
-        <div class="plabel"><span>Departure from trim</span><span class="chip" id="warpTxt"></span></div>
-        <canvas id="trace" aria-label="Time history of pitch attitude and airspeed departures from trim"></canvas>
-        <div class="ro">
-          <div><span>IAS</span><strong id="roV">100<small>kt</small></strong></div>
-          <div><span>Pitch</span><strong id="roTh">2.4°</strong></div>
-          <div><span>AoA</span><strong id="roA">2.4°</strong></div>
-          <div><span>Tail load</span><strong id="roTail">↓ 105<small>lb</small></strong></div>
-          <div><span>Static margin</span><strong id="roSM">15<small>% MAC</small></strong></div>
-          <div><span>Stall speed</span><strong id="roVs">54<small>kt</small></strong></div>
-        </div>
-        <div class="status ok" id="status">TRIMMED · HANDS OFF</div>
-      </div>
-      <div class="panel ctlp">
-        <div class="plabel"><span>Controls</span></div>
-        <label class="sl" for="cg"><span class="h"><span class="lab">CG position</span><output id="cgO">25% MAC</output></span>
-          <input id="cg" type="range" min="0" max="50" step="0.5" value="25"></label>
-        <label class="sl" for="wt"><span class="h"><span class="lab">Weight</span><output id="wtO">2,400 lb</output></span>
-          <input id="wt" type="range" min="1800" max="2550" step="10" value="2400"></label>
-        <label class="sl" for="vt"><span class="h"><span class="lab">Trim speed</span><output id="vtO">100 kt</output></span>
-          <input id="vt" type="range" min="60" max="130" step="1" value="100"></label>
-        <div class="acts">
-          <button class="b" id="nUp" type="button">Nudge ▲</button>
-          <button class="b" id="nDn" type="button">Nudge ▼</button>
-          <button class="b" id="stl" type="button">Stall</button>
-          <button class="b" id="rtr" type="button">Re-trim</button>
-        </div>
-      </div>
-    </div>
-  </main>
-</div>
-
-<script src="kit.js"></script>
-<script>
 (()=>{
 /* ================= Flight model =================
    Longitudinal (pitch-plane) model of a generic PA-28-class trainer, sea level, standard day.
@@ -525,6 +389,5 @@ function frame(now){const dt=Math.min(.05,(now-prev)/1000);prev=now;const st=STE
   requestAnimationFrame(frame);}
 goStep(0);setPlay(S.playing);requestAnimationFrame(frame);
 })();
-</script>
-<script>document.getElementById("home").addEventListener("click",e=>{if(history.length>1&&document.referrer){e.preventDefault();history.back();}});</script>
-</body></html>
+
+}

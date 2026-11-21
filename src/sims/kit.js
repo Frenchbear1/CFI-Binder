@@ -2,7 +2,9 @@
    Kit.mount({pause, sources:[keys]}) adds the Sources button + popup and the "Go deeper" row under #stepBody.
    Kit.step(step) shows that step's reference chips (step.refs = [keys]) and its deep-dive HTML (step.more).
    All references live in REFS below so every sim cites sources the same way. faa:true = FAA / CFR source. */
-(function(){
+// @ts-nocheck
+// Shared lesson kit for every sim (Sources popup, Go deeper, reference chips). One per mounted sim.
+export function makeKit(document){
 const PHAK='https://www.faa.gov/regulationspolicies/handbooksmanuals/aviation/phak/';
 const AFH='https://www.faa.gov/sites/faa.gov/files/regulations_policies/handbooks_manuals/aviation/airplane_handbook/';
 const AIM='https://www.faa.gov/air_traffic/publications/atpubs/aim_html/';
@@ -155,5 +157,5 @@ function mount(opt){
 let cur=null;
 function sync(){const has=!!(cur&&cur.more);moreBtn.hidden=!has;moreBtn.setAttribute('aria-expanded',deepOpen&&has);moreBtn.textContent=deepOpen&&has?'Hide detail':'Go deeper';deepEl.hidden=!(deepOpen&&has);}
 function step(st){cur=st;refsEl.innerHTML=(st.refs||[]).map(chip).join('');deepEl.innerHTML=st.more||'';deepEl.scrollTop=0;sync();}
-window.Kit={mount,step,chip,REFS,isDeepOpen:()=>deepOpen};
-})();
+return {mount,step,chip,REFS,isDeepOpen:()=>deepOpen};
+}

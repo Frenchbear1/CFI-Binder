@@ -699,7 +699,10 @@ body.home main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .pg small.is-local { color: var(--accent); opacity: .9; }
 /* sims */
 .sim { margin: 1.4em 0; }
-.sim-frame { display: block; width: 100%; height: 640px; border: 1px solid var(--line); border-radius: 14px; background: var(--doc-page); color-scheme: normal; }
+.sim-root { display: block; border: 1px solid var(--line); border-radius: 14px; background: var(--doc-page); color: var(--doc-ink); min-height: 320px; overflow: hidden; }
+.sim-root[data-mounted] { min-height: 0; }
+.sim-full .sim-root { border: 0; border-radius: 0; background: none; }
+.sim-err { padding: 16px; color: var(--ink-3); }
 .sim figcaption { font-size: .8rem; color: var(--ink-3); margin-top: 6px; }
 .sim-page { max-width: 1240px; margin: 0 auto; padding: 0 4px 40px; }
 .sim-h { margin: 4px 0 14px; }

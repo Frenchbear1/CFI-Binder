@@ -1,0 +1,65 @@
+<div class="homebar"></div>
+<div class="wrap">
+  <section class="lesson" aria-live="polite">
+    <div class="lesson-meta"><span id="stepNum">Step 1</span><div class="dots" id="dots" role="tablist" aria-label="Lesson steps"></div></div>
+    <div class="lesson-text">
+      <h2 id="stepTitle"></h2>
+      <p id="stepBody"></p>
+    </div>
+    <div class="lctl">
+      <div class="btns">
+        <button class="b" id="prev" type="button">◀ Back</button>
+        <button class="b primary" id="play" type="button">Pause</button>
+        <button class="b" id="next" type="button">Next ▶</button>
+        <button class="b" id="explore" type="button">Explore freely</button>
+      </div>
+      <label class="speed" for="speed">Speed <input id="speed" type="range" min="0.25" max="2" step="0.25" value="1"> <span id="speedTxt">1×</span></label>
+    </div>
+    <div class="bar"><div id="stepBar"></div></div>
+  </section>
+
+  <main class="stage">
+    <div class="col">
+      <div class="panel">
+        <div class="plabel"><span>Map · sample area</span>
+          <span class="grp">
+            <span class="seg" role="group" aria-label="Map style"><button type="button" data-style="terrain" aria-pressed="true">Terrain</button><button type="button" data-style="sect" aria-pressed="false">Sectional</button></span>
+            <button type="button" class="zb" id="zOut" aria-label="Zoom out">−</button><button type="button" class="zb" id="zIn" aria-label="Zoom in">+</button>
+            <button type="button" class="tgb zb" id="guideBtn" style="font-size:12.5px;padding:5px 10px">Airspace guide</button>
+          </span></div>
+        <canvas id="plan" aria-label="Top view of a sample airspace area over terrain, with your aircraft and course line"></canvas>
+        <div class="hint">Tap or drag on the map to move the aircraft. The side view follows the dashed course line.</div>
+      </div>
+      <div class="panel ctl" id="ctl">
+        <div class="plabel"><span>Conditions</span></div>
+        <div class="sl"><div class="h"><label class="lab" for="alt">Altitude</label><output id="altOut">4,500 ft MSL</output></div><input id="alt" type="range" min="0" max="1000" step="1" value="180"></div>
+        <div class="sl"><div class="h"><label class="lab" for="hdg">Course</label><output id="hdgOut">090°</output></div><input id="hdg" type="range" min="0" max="355" step="5" value="90"></div>
+        <div class="sl"><div class="h"><label class="lab" for="time">Local time</label><output id="timeOut">14:00 · Day</output></div><input id="time" type="range" min="0" max="23.75" step="0.25" value="14"></div>
+        <div class="sl"><div class="h"><label class="lab" for="vis">Flight visibility</label><output id="visOut">10 SM</output></div><input id="vis" type="range" min="0.5" max="10" step="0.5" value="10"></div>
+        <div class="sl"><div class="h"><label class="lab" for="cloud">Cloud layer base</label><output id="cloudOut">None</output></div><input id="cloud" type="range" min="1000" max="16000" step="100" value="16000"></div>
+        <div class="tg"><span class="lab" style="margin-right:4px">NOTAM</span><button type="button" id="tfrBtn" aria-pressed="false">Fire TFR active</button></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="panel">
+        <div class="plabel"><span>Side view · along your course</span><span id="slTxt">course 090°</span></div>
+        <canvas id="side" aria-label="Side view cross-section of the airspace along your course, 20 NM behind to 50 NM ahead"></canvas>
+        <div class="hint">Drag the aircraft up or down to change altitude, sideways to fly along the course.</div>
+      </div>
+      <div class="panel ro" aria-live="polite">
+        <div class="top">
+          <div><span class="lab">You are in</span><strong id="rCls">Class E</strong><em id="rSpan">1,200 AGL – 18,000 MSL</em></div>
+          <div><span class="lab">Position</span><strong id="rPos">4,500 MSL</strong><em id="rAgl">3,700 AGL</em></div>
+        </div>
+        <div class="row"><span class="lab">VFR minimums</span><p id="rMin"></p></div>
+        <div class="row"><span class="lab">Weather</span><p id="rWx"></p></div>
+        <div class="row"><span class="lab">To enter</span><p id="rEnt"></p></div>
+        <div class="row"><span class="lab">Equipment</span><p id="rEq"></p></div>
+        <div class="row"><span class="lab">Speed</span><p id="rSpd"></p></div>
+        <div class="row"><span class="lab">Also here</span><p id="rOv"></p></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<dialog class="kit-dlg gd" id="guide" aria-label="Airspace guide"><div class="kh"><span>Airspace guide</span><button type="button" aria-label="Close">×</button></div><div class="kb" id="guideBody"></div></dialog>

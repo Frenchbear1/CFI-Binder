@@ -1,146 +1,10 @@
-<!doctype html>
-<html lang="en">
-<head>
-<script src="sim-theme.js"></script>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<style>html{color-scheme:dark}body{margin:0;font:14px system-ui,sans-serif}[hidden]{display:none!important}
-.homebar{max-width:1200px;margin:0 auto;padding-top:14px}
-.homebar a{font:500 13px "IBM Plex Mono",ui-monospace,monospace;color:#8ea2a5;text-decoration:none;letter-spacing:.06em}
-.homebar a:hover,.homebar a:focus-visible{color:#e4ece9}</style>
-<meta name="theme-color" content="#0a1014">
-<title>Airfoil Flow Lab</title>
-<link rel="stylesheet" href="kit.css">
-<style>
-/* Layout: flow "wind tunnel" canvas on top, lesson strip on top, controls + readouts below. Single dark avionics look, matching the other sims. */
-:root{
-  --bg:#0a1014; --panel:#0f181c; --panel2:#0c1418; --line:#1f2f36; --ink:#e4ece9; --dim:#8ea2a5;
-  --ref:#5ccfe3; --var:#ffb54a; --cmp:#ef7fd1; --warn:#e2574a; --ok:#7fd98a;
-  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
-  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
-  color-scheme:dark;
-}
-html,body{background:var(--bg);color:var(--ink)}
-body{font-family:var(--f-body);font-size:15px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.wrap{max-width:1200px;margin:0 auto;padding-block:14px 40px;display:flex;flex-direction:column;gap:12px}
-.hint{font-size:13.5px;color:var(--dim)}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
-.stage{position:relative;padding:0;overflow:hidden}
-#flow{display:block;width:100%;touch-action:none;cursor:crosshair}
-.pop{position:absolute;left:50%;top:12px;transform:translateX(-50%);font:600 15px var(--f-mono);letter-spacing:.16em;padding:5px 14px;border-radius:6px;pointer-events:none;white-space:nowrap}
-#popStall{background:var(--warn);color:#160806}
-#popWarn{background:var(--var);color:#1a1004}
-#popG{top:auto;bottom:12px;background:#2a1311;color:#ffb3aa;border:1px solid var(--warn);font-size:12.5px;letter-spacing:.1em}
-.probe{position:absolute;width:230px;background:rgba(9,16,19,.96);border:1px solid #33505a;border-radius:8px;padding:8px 10px 10px;pointer-events:auto;box-shadow:0 8px 24px rgba(0,0,0,.45)}
-.probe .ph{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
-.probe .ph button{background:none;border:0;color:var(--dim);font:16px var(--f-mono);cursor:pointer;padding:0 2px;line-height:1}
-.probe .pt{font:600 19px var(--f-display);line-height:1.1;margin:2px 0 4px;white-space:nowrap}
-.probe canvas{display:block;width:100%;height:150px}
-.probe .pr{display:flex;justify-content:space-between;font:12px var(--f-mono);color:var(--dim);margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.probe .pr b{color:var(--ink);font-weight:500}
+// @ts-nocheck
+// airfoil sim (from Aviation Interactives, now part of the binder). mount() runs it inside its block on the page:
+// `document` here is scoped to that block (see ../runtime.js), and canvas colours follow the reading theme.
+import { makeKit } from '../kit.js';
+export function mount(root, document) {
+const Kit = makeKit(document);
 
-.lesson{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 20px;align-items:start}
-.lesson-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;grid-column:1/-1}
-#stepNum{font-family:var(--f-mono);font-size:12px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
-.dots{display:flex;gap:6px;flex-wrap:wrap}
-.dots button{width:22px;height:6px;border-radius:3px;border:0;background:var(--line);padding:0;cursor:pointer}
-.dots button.on{background:var(--ink)} .dots button.done{background:#4d6268}
-.dots button:focus-visible{outline:2px solid var(--ref);outline-offset:3px}
-.lesson-text{min-width:0}
-#stepTitle{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.1;margin:2px 0 4px;text-wrap:balance}
-#stepBody{margin:0;max-width:72ch;min-height:4.5em}
-#stepBody b.l{color:var(--ref);font-weight:600} #stepBody b.t{color:var(--var);font-weight:600} #stepBody b.s{color:var(--warn);font-weight:600} #stepBody b.g{color:var(--ok);font-weight:600} #stepBody b.d{color:var(--cmp);font-weight:600}
-.bar{grid-column:1/-1;height:2px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:6px}
-#stepBar{height:100%;width:0;background:var(--dim)}
-.lctl{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
-.btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-button.b{font:500 13px var(--f-body);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;min-height:34px}
-button.b:hover{border-color:#3d545c} button.b:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
-button.b.primary{background:var(--ink);color:#0a1014;border-color:var(--ink);min-width:84px}
-button.b:disabled{opacity:.4;cursor:default}
-.speed{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:12px;color:var(--dim)}
-.speed input{width:120px;accent-color:var(--ink);height:auto}
-#speedTxt{min-width:4ch}
-@media (max-width:480px){.dots button{width:14px}}
-@media (max-width:760px){.lesson{grid-template-columns:minmax(0,1fr)}.lctl{align-items:stretch}.btns{justify-content:flex-start}}
-.deck{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:12px;align-items:stretch}
-@media (max-width:640px){.deck{grid-template-columns:minmax(0,1fr)}}
-.ctl{display:flex;flex-direction:column;gap:14px}
-.sl{display:flex;flex-direction:column;gap:4px}
-.sl .h{display:flex;justify-content:space-between;align-items:baseline}
-.lab{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
-.sl output{font:600 22px var(--f-display);font-variant-numeric:tabular-nums;min-width:4.5ch;text-align:right}
-input[type=range]{width:100%;accent-color:var(--ink);margin:0;height:26px}
-.tg{display:flex;gap:6px;flex-wrap:wrap}
-.tg button{font:500 13px var(--f-body);color:var(--dim);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:6px 12px;cursor:pointer;min-height:34px}
-.tg button[aria-pressed=true]{color:var(--ink);border-color:#4d6a73;background:#14232a}
-.tg button:focus-visible,input[type=range]:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
-.tg button.reset{margin-left:auto}
-.ro{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;align-content:start}
-.ro>div{display:flex;flex-direction:column;min-width:0}
-.ro strong{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.05;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ro strong small{font-size:15px;color:var(--dim);font-weight:500;margin-left:3px}
-.warnc{color:var(--warn)!important} .ambc{color:var(--var)!important}
-</style>
-<link rel="stylesheet" href="sim-theme.css">
-</head>
-<body>
-<div class="homebar"><a href="../index.html">← All simulations</a></div>
-<div class="wrap">
-  <section class="lesson" aria-live="polite">
-    <div class="lesson-meta"><span id="stepNum">Step 1 of 12</span><div class="dots" id="dots" role="tablist" aria-label="Lesson steps"></div></div>
-    <div class="lesson-text">
-      <h2 id="stepTitle"></h2>
-      <p id="stepBody"></p>
-    </div>
-    <div class="lctl">
-      <div class="btns">
-        <button class="b" id="prev" type="button">◀ Back</button>
-        <button class="b primary" id="play" type="button">Pause</button>
-        <button class="b" id="next" type="button">Next ▶</button>
-        <button class="b" id="explore" type="button">Explore freely</button>
-      </div>
-      <label class="speed" for="speed">Speed <input id="speed" type="range" min="0.25" max="2" step="0.25" value="1"> <span id="speedTxt">1×</span></label>
-    </div>
-    <div class="bar"><div id="stepBar"></div></div>
-  </section>
-
-  <div class="panel stage" id="stage">
-    <canvas id="flow" aria-label="Airflow around a NACA 2412 airfoil"></canvas>
-    <div class="pop" id="popStall" hidden>STALL</div>
-    <div class="pop" id="popWarn" hidden>STALL WARNING</div>
-    <div class="probe" id="probe" hidden>
-      <div class="ph"><span id="pbWhere">Upper · 40% chord</span><button id="pbClose" aria-label="Close">×</button></div>
-      <div class="pt" id="pbType">Laminar</div>
-      <canvas id="pbCv"></canvas>
-      <div class="pr"><span>Thickness <b id="pbD">0.0 mm</b></span><span>H <b id="pbH">2.59</b></span></div>
-      <div class="pr"><span>Edge <b id="pbU">1.00 V∞</b></span><b id="pbG">Pressure falling</b></div>
-    </div>
-  </div>
-
-  <div class="deck">
-    <div class="panel ctl">
-      <div class="sl"><div class="h"><label class="lab" for="aoa">Angle of attack</label><output id="aoaOut">4.0°</output></div>
-        <input id="aoa" type="range" min="-6" max="22" step="0.1" value="4"></div>
-      <div class="tg">
-        <button id="tP" aria-pressed="false">Pressure</button>
-        <button id="tB" aria-pressed="true">Boundary layer</button>
-        <button id="tF" aria-pressed="true">Forces</button>
-        <button id="tS" aria-pressed="false">Slow motion</button>
-      </div>
-    </div>
-    <div class="panel ro">
-      <div><span class="lab">Lift coeff.</span><strong id="rCL">0.65</strong></div>
-      <div><span class="lab">Lift / drag</span><strong id="rLD">95</strong></div>
-      <div><span class="lab">Level-flight speed</span><strong id="rV">77<small>KIAS</small></strong></div>
-      <div><span class="lab">Reynolds no.</span><strong id="rRe">3.6<small>M</small></strong></div>
-    </div>
-  </div>
-</div>
-
-<script src="kit.js"></script>
-<script>
 "use strict";
 /* ================= Physics =================
    Geometry: NACA 2412 (Cessna 172 wing section), chord 1.47 m.
@@ -690,5 +554,5 @@ function frame(now){
   requestAnimationFrame(frame);}
 const ro=new ResizeObserver(()=>{resize();dirty=true;});ro.observe($('stage'));
 resize();goStep(0);setRot();solveState();buildZone();readouts();requestAnimationFrame(frame);
-</script>
-</body></html>
+
+}

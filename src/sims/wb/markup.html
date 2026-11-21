@@ -1,0 +1,107 @@
+<div class="homebar"><a href="../index.html">← All simulations</a></div>
+<div class="wrap">
+  <section class="lesson" aria-live="polite">
+    <div class="lesson-meta"><span id="stepNum">Step 1</span><div class="dots" id="dots" role="tablist" aria-label="Lesson steps"></div></div>
+    <div class="lesson-text">
+      <h2 id="stepTitle"></h2>
+      <p id="stepBody"></p>
+    </div>
+    <div class="lctl">
+      <div class="btns">
+        <button class="b" id="prev" type="button">◀ Back</button>
+        <button class="b primary" id="play" type="button">Pause</button>
+        <button class="b" id="next" type="button">Next ▶</button>
+        <button class="b" id="explore" type="button">Explore freely</button>
+      </div>
+      <label class="speed" for="speed">Speed <input id="speed" type="range" min="0.25" max="2" step="0.25" value="1"> <span id="speedTxt">1×</span></label>
+    </div>
+    <div class="bar"><div id="stepBar"></div></div>
+  </section>
+
+  <div class="stage">
+    <div class="panel view">
+      <svg id="side" viewBox="0 0 460 300" role="img" aria-label="Side view of the airplane with its loading stations, and a balance beam showing each weight at its arm and the center of gravity" />
+      <svg id="rwy" viewBox="0 0 460 300" role="img" aria-label="Runway profile: ground roll, distance to 50 feet and required distance with margin" hidden />
+      <div class="pop" id="popL" hidden></div>
+    </div>
+    <div class="panel view" id="envP">
+      <svg id="env" viewBox="0 0 460 330" role="img" aria-label="CG envelope: weight against CG or moment, with takeoff and landing points" />
+      <div class="pop" id="popR" hidden></div>
+    </div>
+    <div class="panel chart" id="chartP" hidden>
+      <div class="ch-h"><span id="chTitle">Takeoff distance</span><span class="blocks" id="blocks"></span></div>
+      <table class="pt" id="pt"></table>
+      <div class="key"><span>ground roll</span><i>over 50 ft</i><span id="chNote"></span></div>
+      <svg id="wf" viewBox="0 0 440 150" role="img" aria-label="Corrections from chart value to required distance, against the runway length" />
+    </div>
+  </div>
+
+  <div class="deck">
+    <div class="panel ctl">
+      <div class="tg tabs" id="tabs">
+        <button type="button" data-v="load" aria-pressed="true">Loading</button>
+        <button type="button" data-v="to" aria-pressed="false">Takeoff</button>
+        <button type="button" data-v="ldg" aria-pressed="false">Landing</button>
+      </div>
+      <div id="ctlLoad" class="ctl">
+        <div class="sls">
+          <div class="sl"><div class="h"><label class="lab" for="front">Front seats · 37 in</label><output id="frontO"></output></div><input id="front" type="range" min="0" max="440" step="5"></div>
+          <div class="sl"><div class="h"><label class="lab" for="rear">Rear seats · 73 in</label><output id="rearO"></output></div><input id="rear" type="range" min="0" max="440" step="5"></div>
+          <div class="sl"><div class="h"><label class="lab" for="bagA">Baggage 1 · 95 in</label><output id="bagAO"></output></div><input id="bagA" type="range" min="0" max="150" step="5"></div>
+          <div class="sl"><div class="h"><label class="lab" for="bagB">Baggage 2 · 123 in</label><output id="bagBO"></output></div><input id="bagB" type="range" min="0" max="80" step="5"></div>
+          <div class="sl"><div class="h"><label class="lab" for="fuel">Fuel · 48 in</label><output id="fuelO"></output></div><input id="fuel" type="range" min="0" max="53" step="1"></div>
+          <div class="sl"><div class="h"><label class="lab" for="burn">Fuel burned</label><output id="burnO"></output></div><input id="burn" type="range" min="0" max="53" step="1"></div>
+        </div>
+        <div class="tg">
+          <button type="button" id="tAx" aria-pressed="false">Moment view</button>
+          <button type="button" id="tUt" aria-pressed="false">Utility category</button>
+          <button type="button" id="ewBtn">Empty weight…</button>
+          <button type="button" class="reset" id="resetL">Reset</button>
+        </div>
+      </div>
+      <div id="ctlPerf" class="ctl" hidden>
+        <div class="sls">
+          <div class="sl"><div class="h"><label class="lab" for="pa">Pressure altitude</label><output id="paO"></output></div><input id="pa" type="range" min="0" max="9000" step="100"></div>
+          <div class="sl"><div class="h"><label class="lab" for="oat">Temperature</label><output id="oatO"></output></div><input id="oat" type="range" min="-10" max="45" step="1"></div>
+          <div class="sl"><div class="h"><label class="lab" for="wind">Wind component</label><output id="windO"></output></div><input id="wind" type="range" min="-12" max="25" step="1"></div>
+          <div class="sl"><div class="h"><label class="lab" for="slope">Runway slope</label><output id="slopeO"></output></div><input id="slope" type="range" min="-3" max="3" step="0.5"></div>
+          <div class="sl"><div class="h"><label class="lab" for="rwyL">Runway length</label><output id="rwyLO"></output></div><input id="rwyL" type="range" min="1200" max="6000" step="50"></div>
+        </div>
+        <div class="tg" id="surf">
+          <button type="button" data-s="paved" aria-pressed="true">Paved, dry</button>
+          <button type="button" data-s="dry" aria-pressed="false">Dry grass</button>
+          <button type="button" data-s="wet" aria-pressed="false">Wet grass</button>
+          <button type="button" class="reset" id="resetP">Reset</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel ro" id="roLoad">
+      <div><span class="lab">Takeoff weight</span><strong id="rW"></strong></div>
+      <div><span class="lab">CG</span><strong id="rCg"></strong></div>
+      <div><span class="lab">Moment /1000</span><strong id="rM"></strong></div>
+      <div><span class="lab">Useful load left</span><strong id="rU"></strong></div>
+      <div><span class="lab">Landing weight</span><strong id="rLw"></strong></div>
+      <div><span class="lab">Landing CG</span><strong id="rLc"></strong></div>
+    </div>
+    <div class="panel ro" id="roPerf" hidden>
+      <div><span class="lab">Density altitude</span><strong id="rDa"></strong></div>
+      <div><span class="lab">Ground roll</span><strong id="rGr"></strong></div>
+      <div><span class="lab">Over 50 ft</span><strong id="rTot"></strong></div>
+      <div><span class="lab" id="rReqL">With ×1.33</span><strong id="rReq"></strong></div>
+      <div><span class="lab">Runway</span><strong id="rRw"></strong></div>
+      <div><span class="lab">Margin</span><strong id="rMg"></strong></div>
+    </div>
+  </div>
+</div>
+
+<dialog class="kit-dlg" id="ewDlg" aria-label="Empty weight">
+  <div class="kh"><span>Empty weight</span><button type="button" id="ewClose" aria-label="Close">×</button></div>
+  <div class="kb">
+    <div class="ew-grid">
+      <label for="ewW"><span>Basic empty weight · lb</span><input id="ewW" type="number" inputmode="decimal" step="any"></label>
+      <label for="ewA"><span>Empty CG arm · in</span><input id="ewA" type="number" inputmode="decimal" step="any"></label>
+    </div>
+    <div class="tg" style="margin-top:10px"><button type="button" class="b" id="ewReset">Sample airplane</button></div>
+    <p class="kf">Copy these from your airplane's current weight and balance record (it changes with every installed item). Stations, envelope and charts stay those of the sample C172S-class trainer.</p>
+  </div>
+</dialog>

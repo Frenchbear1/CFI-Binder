@@ -59,6 +59,8 @@ if (article && bar) {
   const snapshot = () => {
     const c = article.cloneNode(true) as HTMLElement;
     c.querySelectorAll('[contenteditable]').forEach((x) => { x.removeAttribute('contenteditable'); x.removeAttribute('spellcheck'); });
+    // A running interactive is saved as it was before it started; it starts afresh when the page is shown again.
+    c.querySelectorAll('.sim-root[data-mounted]').forEach((r) => { r.replaceChildren(); r.removeAttribute('data-mounted'); r.removeAttribute('style'); });
     return c.innerHTML;
   };
   (async () => {
@@ -90,7 +92,7 @@ if (article && bar) {
       else el.removeAttribute('contenteditable');
     }
     // References, figures and videos inside a block move as one piece.
-    article.querySelectorAll<HTMLElement>('.r, .video, svg, .pagelink, .bookmark').forEach((x) => (on ? (x.contentEditable = 'false') : x.removeAttribute('contenteditable')));
+    article.querySelectorAll<HTMLElement>('.r, .video, svg, .pagelink, .bookmark, .sim').forEach((x) => (on ? (x.contentEditable = 'false') : x.removeAttribute('contenteditable')));
     article.querySelectorAll<HTMLInputElement>('li > input[type="checkbox"]').forEach((c) => (c.disabled = !on));
     if (on) say(pending() ? '' : 'Tap any text to edit');
     // An empty page starts with one empty line to type into, like a new Notion page.
@@ -774,7 +776,7 @@ if (article && bar) {
     if (!on) return;
     const t = e.target as HTMLElement;
     if (!(t === document.body || t === html || mainEl.contains(t))) return;
-    if (t.closest('[contenteditable="true"], a, button, input, select, textarea, summary, iframe, video, .blk-tools, .editbar, .edit-head')) return;
+    if (t.closest('[contenteditable="true"], a, button, input, select, textarea, summary, iframe, video, .sim, .blk-tools, .editbar, .edit-head')) return;
     const kids = [...article.children].filter((c) => (c as HTMLElement).offsetParent && (c as HTMLElement).dataset.deleted === undefined && !c.matches('.crumbs, .meta-line')) as HTMLElement[];
     if (!kids.length) return;
     const y = e.clientY, x = e.clientX;

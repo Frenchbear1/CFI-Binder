@@ -1,0 +1,77 @@
+/* airfoil: converted from Aviation Interactives, now part of the binder. Colours follow the reading theme. */
+.sim-airfoil { container: sim / inline-size; }
+.sim-airfoil{}.sim-airfoil{margin:0;font:14px var(--font)}.sim-airfoil [hidden]{display:none!important}
+.sim-airfoil .homebar{max-width:1200px;margin:0 auto;padding-top:14px}
+.sim-airfoil .homebar a{font:500 13px var(--mono);color:color-mix(in srgb, var(--doc-ink) 65.3%, var(--doc-page));text-decoration:none;letter-spacing:.06em}
+.sim-airfoil .homebar a:hover,.sim-airfoil .homebar a:focus-visible{color:var(--doc-ink)}
+
+/* Layout: flow "wind tunnel" canvas on top, lesson strip on top, controls + readouts below. Single dark avionics look, matching the other sims. */
+.sim-airfoil{
+  --bg:var(--doc-page); --panel:color-mix(in srgb, var(--doc-ink) 3.4%, var(--doc-page)); --panel2:color-mix(in srgb, var(--doc-ink) 1.6%, var(--doc-page)); --line:color-mix(in srgb, var(--doc-ink) 13.3%, var(--doc-page)); --ink:var(--doc-ink); --dim:color-mix(in srgb, var(--doc-ink) 65.3%, var(--doc-page));
+  --ref:var(--sc-5ccfe3); --var:var(--sc-ffb54a); --cmp:var(--sc-ef7fd1); --warn:var(--sc-e2574a); --ok:var(--sc-7fd98a);
+  --f-display:var(--font);
+  --f-body:var(--font);
+  --f-mono:var(--mono);
+}
+.sim-airfoil,.sim-airfoil{background:var(--bg);color:var(--ink)}
+.sim-airfoil{font-family:var(--f-body);font-size:15px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.sim-airfoil .wrap{max-width:1200px;margin:0 auto;padding-block:14px 40px;display:flex;flex-direction:column;gap:12px}
+.sim-airfoil .hint{font-size:13.5px;color:var(--dim)}
+.sim-airfoil .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
+.sim-airfoil .stage{position:relative;padding:0;overflow:hidden}
+.sim-airfoil #flow{display:block;width:100%;touch-action:none;cursor:crosshair}
+.sim-airfoil .pop{position:absolute;left:50%;top:12px;transform:translateX(-50%);font:600 15px var(--f-mono);letter-spacing:.16em;padding:5px 14px;border-radius:6px;pointer-events:none;white-space:nowrap}
+.sim-airfoil #popStall{background:var(--warn);color:var(--doc-page)}
+.sim-airfoil #popWarn{background:var(--var);color:color-mix(in srgb, var(--doc-ink) 1%, var(--doc-page))}
+.sim-airfoil #popG{top:auto;bottom:12px;background:color-mix(in srgb, var(--doc-ink) 4%, var(--doc-page));color:var(--sc-ffb3aa);border:1px solid var(--warn);font-size:12.5px;letter-spacing:.1em}
+.sim-airfoil .probe{position:absolute;width:230px;background:color-mix(in srgb, var(--doc-page) 96%, transparent);border:1px solid var(--sc-33505a);border-radius:8px;padding:8px 10px 10px;pointer-events:auto;box-shadow:0 8px 24px color-mix(in srgb, var(--doc-page) 45%, transparent)}
+.sim-airfoil .probe .ph{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.sim-airfoil .probe .ph button{background:none;border:0;color:var(--dim);font:16px var(--f-mono);cursor:pointer;padding:0 2px;line-height:1}
+.sim-airfoil .probe .pt{font:600 19px var(--f-display);line-height:1.1;margin:2px 0 4px;white-space:nowrap}
+.sim-airfoil .probe canvas{display:block;width:100%;height:150px}
+.sim-airfoil .probe .pr{display:flex;justify-content:space-between;font:12px var(--f-mono);color:var(--dim);margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sim-airfoil .probe .pr b{color:var(--ink);font-weight:500}
+
+.sim-airfoil .lesson{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 20px;align-items:start}
+.sim-airfoil .lesson-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;grid-column:1/-1}
+.sim-airfoil #stepNum{font-family:var(--f-mono);font-size:12px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.sim-airfoil .dots{display:flex;gap:6px;flex-wrap:wrap}
+.sim-airfoil .dots button{width:22px;height:6px;border-radius:3px;border:0;background:var(--line);padding:0;cursor:pointer}
+.sim-airfoil .dots button.on{background:var(--ink)} .sim-airfoil .dots button.done{background:color-mix(in srgb, var(--doc-ink) 36%, var(--doc-page))}
+.sim-airfoil .dots button:focus-visible{outline:2px solid var(--ref);outline-offset:3px}
+.sim-airfoil .lesson-text{min-width:0}
+.sim-airfoil #stepTitle{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.1;margin:2px 0 4px;text-wrap:balance}
+.sim-airfoil #stepBody{margin:0;max-width:72ch;min-height:4.5em}
+.sim-airfoil #stepBody b.l{color:var(--ref);font-weight:600} .sim-airfoil #stepBody b.t{color:var(--var);font-weight:600} .sim-airfoil #stepBody b.s{color:var(--warn);font-weight:600} .sim-airfoil #stepBody b.g{color:var(--ok);font-weight:600} .sim-airfoil #stepBody b.d{color:var(--cmp);font-weight:600}
+.sim-airfoil .bar{grid-column:1/-1;height:2px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:6px}
+.sim-airfoil #stepBar{height:100%;width:0;background:var(--dim)}
+.sim-airfoil .lctl{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.sim-airfoil .btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.sim-airfoil button.b{font:500 13px var(--f-body);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;min-height:34px}
+.sim-airfoil button.b:hover{border-color:color-mix(in srgb, var(--doc-ink) 29.5%, var(--doc-page))} .sim-airfoil button.b:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+.sim-airfoil button.b.primary{background:var(--ink);color:var(--doc-page);border-color:var(--ink);min-width:84px}
+.sim-airfoil button.b:disabled{opacity:.4;cursor:default}
+.sim-airfoil .speed{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:12px;color:var(--dim)}
+.sim-airfoil .speed input{width:120px;accent-color:var(--ink);height:auto}
+.sim-airfoil #speedTxt{min-width:4ch}
+@container sim (max-width:480px){.sim-airfoil .dots button{width:14px}}
+@container sim (max-width:760px){.sim-airfoil .lesson{grid-template-columns:minmax(0,1fr)}.sim-airfoil .lctl{align-items:stretch}.sim-airfoil .btns{justify-content:flex-start}}
+.sim-airfoil .deck{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:12px;align-items:stretch}
+@container sim (max-width:640px){.sim-airfoil .deck{grid-template-columns:minmax(0,1fr)}}
+.sim-airfoil .ctl{display:flex;flex-direction:column;gap:14px}
+.sim-airfoil .sl{display:flex;flex-direction:column;gap:4px}
+.sim-airfoil .sl .h{display:flex;justify-content:space-between;align-items:baseline}
+.sim-airfoil .lab{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.sim-airfoil .sl output{font:600 22px var(--f-display);font-variant-numeric:tabular-nums;min-width:4.5ch;text-align:right}
+.sim-airfoil input[type=range]{width:100%;accent-color:var(--ink);margin:0;height:26px}
+.sim-airfoil .tg{display:flex;gap:6px;flex-wrap:wrap}
+.sim-airfoil .tg button{font:500 13px var(--f-body);color:var(--dim);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:6px 12px;cursor:pointer;min-height:34px}
+.sim-airfoil .tg button[aria-pressed=true]{color:var(--ink);border-color:var(--sc-4d6a73);background:color-mix(in srgb, var(--doc-ink) 7.9%, var(--doc-page))}
+.sim-airfoil .tg button:focus-visible,.sim-airfoil input[type=range]:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+.sim-airfoil .tg button.reset{margin-left:auto}
+.sim-airfoil .ro{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;align-content:start}
+.sim-airfoil .ro>div{display:flex;flex-direction:column;min-width:0}
+.sim-airfoil .ro strong{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.05;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sim-airfoil .ro strong small{font-size:15px;color:var(--dim);font-weight:500;margin-left:3px}
+.sim-airfoil .warnc{color:var(--warn)!important} .sim-airfoil .ambc{color:var(--var)!important}
+

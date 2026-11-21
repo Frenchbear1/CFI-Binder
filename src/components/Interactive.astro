@@ -1,15 +1,26 @@
 ---
-// One of the binder's sims (from Aviation Interactives, in public/sims/), part of the lesson: it takes on
-// the reading theme and fonts and grows to its full height, so it scrolls with the page.
+// One of the binder's sims (src/sims/<id>/), running right in the page: it uses the reading theme and fonts,
+// and starts when it comes near the screen. full: the sim's own page (its keyboard shortcuts always work there).
 import data from '../data/interactives.json';
-interface Props { id: string; title?: string }
-const { id, title } = Astro.props;
+import '../sims/palette.css';
+import '../sims/kit.css';
+interface Props { id: string; title?: string; full?: boolean }
+const { id, title, full } = Astro.props;
 const sim = data.items.find((s) => s.id === id);
+const markup = import.meta.glob('../sims/*/markup.html', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+import.meta.glob('../sims/*/style.css', { eager: true });
+const html = markup[`../sims/${id}/markup.html`] || '';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
 ---
 {sim && (
-  <figure class="sim" data-sim={id}>
-    <iframe class="sim-frame" src={`${base}${data.site}${sim.path}`} title={title || sim.name} loading="lazy" data-sim-frame></iframe>
-    <figcaption><span>{title || sim.name}</span> · <a href={`${base}interactives/${id}/`}>Full screen</a></figcaption>
+  <figure class:list={['sim', { 'sim-full': full }]} data-sim-box={id} data-pagefind-ignore>
+    <template data-sim-tpl={id} set:html={html} />
+    <div class={`sim-root sim-${id}`} data-sim={id} data-sim-full={full ? '' : undefined} aria-label={title || sim.name}></div>
+    {!full && <figcaption><span>{title || sim.name}</span> · <a href={`${base}interactives/${id}/`}>Full screen</a></figcaption>}
   </figure>
 )}
+<script>
+  import { bootSims } from '../sims/runtime.js';
+  bootSims();
+  document.addEventListener('cfi:article', () => bootSims());
+</script>

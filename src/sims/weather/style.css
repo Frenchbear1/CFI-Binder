@@ -1,0 +1,94 @@
+/* weather: converted from Aviation Interactives, now part of the binder. Colours follow the reading theme. */
+.sim-weather { container: sim / inline-size; }
+.sim-weather{}.sim-weather{margin:0;font:14px var(--font)}.sim-weather [hidden]{display:none!important}
+.sim-weather .homebar{max-width:1200px;margin:0 auto;padding-top:14px}
+.sim-weather .homebar a{font:500 13px var(--mono);color:color-mix(in srgb, var(--doc-ink) 65.3%, var(--doc-page));text-decoration:none;letter-spacing:.06em}
+.sim-weather .homebar a:hover,.sim-weather .homebar a:focus-visible{color:var(--doc-ink)}
+
+/* Layout: lesson strip on top; stage = route map + product timeline (left), product reader + flight/decision panel (right). Same dark avionics look as the other sims. */
+.sim-weather{
+  --bg:var(--doc-page); --panel:color-mix(in srgb, var(--doc-ink) 3.4%, var(--doc-page)); --panel2:color-mix(in srgb, var(--doc-ink) 1.6%, var(--doc-page)); --line:color-mix(in srgb, var(--doc-ink) 13.3%, var(--doc-page)); --ink:var(--doc-ink); --dim:color-mix(in srgb, var(--doc-ink) 65.3%, var(--doc-page));
+  --ref:var(--sc-5ccfe3); --var:var(--sc-ffb54a); --warn:var(--sc-e2574a); --ok:var(--sc-7fd98a);
+  --vfr:var(--sc-7fd98a); --mvfr:var(--sc-5b9dff); --ifr:var(--sc-e2574a); --lifr:var(--sc-ef7fd1);
+  --f-display:var(--font);
+  --f-body:var(--font);
+  --f-mono:var(--mono);
+}
+.sim-weather,.sim-weather{background:var(--bg);color:var(--ink)}
+.sim-weather{font-family:var(--f-body);font-size:15px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.sim-weather .wrap{max-width:1200px;margin:0 auto;padding-block:20px 40px;display:flex;flex-direction:column;gap:16px}
+
+.sim-weather .lesson{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 20px;align-items:start}
+.sim-weather .lesson-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;grid-column:1/-1}
+.sim-weather #stepNum{font-family:var(--f-mono);font-size:12px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.sim-weather .dots{display:flex;gap:6px;flex-wrap:wrap}
+.sim-weather .dots button{width:22px;height:6px;border-radius:3px;border:0;background:var(--line);padding:0;cursor:pointer}
+.sim-weather .dots button.on{background:var(--ink)} .sim-weather .dots button.done{background:color-mix(in srgb, var(--doc-ink) 36%, var(--doc-page))}
+.sim-weather .dots button:focus-visible{outline:2px solid var(--ref);outline-offset:3px}
+.sim-weather .lesson-text{min-width:0}
+.sim-weather #stepTitle{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.1;margin:2px 0 4px;text-wrap:balance}
+.sim-weather #stepBody{margin:0;max-width:74ch;min-height:4.5em}
+.sim-weather #stepBody b{font-weight:600} .sim-weather #stepBody b.r{color:var(--ref)} .sim-weather #stepBody b.v{color:var(--var)} .sim-weather #stepBody b.w{color:var(--warn)}
+.sim-weather .bar{grid-column:1/-1;height:2px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:6px}
+.sim-weather #stepBar{height:100%;width:0;background:var(--dim)}
+.sim-weather .ctl{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.sim-weather .btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.sim-weather button.b{font:500 13px var(--f-body);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;min-height:34px}
+.sim-weather button.b:hover{border-color:color-mix(in srgb, var(--doc-ink) 29.5%, var(--doc-page))} .sim-weather button.b:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+.sim-weather button.b.primary{background:var(--ink);color:var(--doc-page);border-color:var(--ink);min-width:84px}
+.sim-weather button.b:disabled{opacity:.4;cursor:default}
+.sim-weather .speed{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:12px;color:var(--dim)}
+.sim-weather .speed input{width:120px;accent-color:var(--ink)}
+@container sim (max-width:760px){.sim-weather .lesson{grid-template-columns:minmax(0,1fr)}.sim-weather .ctl{align-items:stretch}.sim-weather .btns{justify-content:flex-start}}
+
+.sim-weather .stage{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+@container sim (max-width:920px){.sim-weather .stage{grid-template-columns:minmax(0,1fr)}}
+.sim-weather .col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.sim-weather .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.sim-weather .plabel{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.sim-weather .plabel b{color:var(--ink);font-weight:500}
+.sim-weather canvas{display:block;width:100%}
+.sim-weather #map{aspect-ratio:16/10;border-radius:6px;touch-action:manipulation}
+@container sim (max-width:600px){.sim-weather #map{aspect-ratio:4/3}}
+.sim-weather #tl{height:178px;border-radius:6px}
+.sim-weather .lay{display:flex;gap:6px;flex-wrap:wrap}
+.sim-weather .tg{font:500 11.5px var(--f-mono);letter-spacing:.04em;color:var(--dim);background:none;border:1px solid var(--line);border-radius:999px;padding:3px 10px;cursor:pointer;min-height:26px}
+.sim-weather .tg[aria-pressed=true]{color:var(--ink);border-color:color-mix(in srgb, var(--doc-ink) 36%, var(--doc-page));background:color-mix(in srgb, var(--doc-ink) 7.9%, var(--doc-page))}
+.sim-weather .tg:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+
+.sim-weather .tabs{display:flex;gap:4px;flex-wrap:wrap}
+.sim-weather .tabs button{font:500 12px var(--f-mono);letter-spacing:.05em;color:var(--dim);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:4px 9px;cursor:pointer;min-height:28px}
+.sim-weather .tabs button.on{color:var(--doc-page);background:var(--ink);border-color:var(--ink)}
+.sim-weather .tabs button.none{opacity:.45}
+.sim-weather .tabs button:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+.sim-weather #plist{max-height:318px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding-right:2px}
+.sim-weather .card{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 9px}
+.sim-weather .card.fresh{border-color:var(--sc-3d6a74)}
+.sim-weather .ch{display:flex;justify-content:space-between;gap:8px;font:500 11px var(--f-mono);letter-spacing:.06em;color:var(--dim);margin-bottom:3px;flex-wrap:wrap}
+.sim-weather .ch b{color:var(--ink);font-weight:500}
+.sim-weather .age.stale{color:var(--var)}
+.sim-weather .pill{font:600 10.5px var(--f-mono);letter-spacing:.08em;padding:0 6px;border-radius:4px;color:var(--doc-page)}
+.sim-weather .raw{font:400 13px/1.65 var(--f-mono);word-break:break-word}
+.sim-weather .tk{cursor:pointer;border-radius:3px;padding:0 1px}
+.sim-weather .tk.d:hover{background:color-mix(in srgb, var(--doc-ink) 13.4%, var(--doc-page))}
+.sim-weather .tk.sel{background:var(--var);color:var(--doc-page)}
+.sim-weather .empty{font-size:13px;color:var(--dim);padding:6px 2px}
+.sim-weather #dec{min-height:4.6em;font-size:13.5px;line-height:1.45;border-left:3px solid var(--var);padding:4px 10px;background:var(--panel2);border-radius:0 6px 6px 0}
+.sim-weather #dec code{font:500 13px var(--f-mono);color:var(--var);margin-right:6px}
+.sim-weather #dec .h{color:var(--dim)}
+
+.sim-weather .ro{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 12px;font-size:13.5px;align-items:baseline}
+.sim-weather .ro span{font:500 10.5px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.sim-weather .ro strong{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.sim-weather #roClock{font:600 20px var(--f-display);letter-spacing:.02em}
+.sim-weather .ctrls{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 10px;align-items:center}
+.sim-weather .ctrls label{font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.sim-weather .ctrls input[type=range]{width:100%;accent-color:var(--ink)}
+.sim-weather .ctrls output{font:500 12.5px var(--f-mono);min-width:6.5em;text-align:right}
+.sim-weather select{font:500 12.5px var(--f-mono);background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+.sim-weather .dec{display:flex;gap:6px;flex-wrap:wrap}
+.sim-weather .dec button.b{padding:6px 10px;min-height:32px}
+.sim-weather #fb{min-height:5.8em;font-size:13.5px;line-height:1.45;padding:6px 10px;border-radius:6px;background:var(--panel2);border:1px solid var(--line)}
+.sim-weather #fb.good{border-color:color-mix(in srgb, var(--sc-7fd98a) 50%, transparent)} .sim-weather #fb.bad{border-color:color-mix(in srgb, var(--sc-e2574a) 60%, transparent)} .sim-weather #fb.warn{border-color:color-mix(in srgb, var(--sc-ffb54a) 55%, transparent)}
+.sim-weather #fb b{font-weight:600}
+

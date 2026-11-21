@@ -1,0 +1,107 @@
+/* wb: converted from Aviation Interactives, now part of the binder. Colours follow the reading theme. */
+.sim-wb { container: sim / inline-size; }
+.sim-wb{}.sim-wb{margin:0;font:14px var(--font)}.sim-wb [hidden]{display:none!important}
+.sim-wb .homebar{max-width:1200px;margin:0 auto;padding-top:14px}
+.sim-wb .homebar a{font:500 13px var(--mono);color:color-mix(in srgb, var(--doc-ink) 65.3%, var(--doc-page));text-decoration:none;letter-spacing:.06em}
+.sim-wb .homebar a:hover,.sim-wb .homebar a:focus-visible{color:var(--doc-ink)}
+
+/* Layout: lesson strip on top; stage = side view + balance beam (or runway) beside the CG envelope (or POH chart); controls + readouts below. Same dark avionics look as the other sims. */
+.sim-wb{
+  --bg:var(--doc-page); --panel:color-mix(in srgb, var(--doc-ink) 3.4%, var(--doc-page)); --panel2:color-mix(in srgb, var(--doc-ink) 1.6%, var(--doc-page)); --line:color-mix(in srgb, var(--doc-ink) 13.3%, var(--doc-page)); --ink:var(--doc-ink); --dim:color-mix(in srgb, var(--doc-ink) 65.3%, var(--doc-page));
+  --ref:var(--sc-5ccfe3); --var:var(--sc-ffb54a); --warn:var(--sc-e2574a); --ok:var(--sc-7fd98a); --wht:color-mix(in srgb, var(--doc-ink) 93.6%, var(--doc-page)); --va:var(--sc-a99bff);
+  --f-display:var(--font);
+  --f-body:var(--font);
+  --f-mono:var(--mono);
+}
+.sim-wb,.sim-wb{background:var(--bg);color:var(--ink)}
+.sim-wb{font-family:var(--f-body);font-size:15px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.sim-wb .wrap{max-width:1200px;margin:0 auto;padding-block:14px 40px;display:flex;flex-direction:column;gap:12px}
+.sim-wb .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
+
+.sim-wb .lesson{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 20px;align-items:start}
+.sim-wb .lesson-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;grid-column:1/-1}
+.sim-wb #stepNum{font-family:var(--f-mono);font-size:12px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.sim-wb .dots{display:flex;gap:6px;flex-wrap:wrap}
+.sim-wb .dots button{width:22px;height:6px;border-radius:3px;border:0;background:var(--line);padding:0;cursor:pointer}
+.sim-wb .dots button.on{background:var(--ink)} .sim-wb .dots button.done{background:color-mix(in srgb, var(--doc-ink) 36%, var(--doc-page))}
+.sim-wb .dots button:focus-visible{outline:2px solid var(--ref);outline-offset:3px}
+.sim-wb .lesson-text{min-width:0}
+.sim-wb #stepTitle{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.1;margin:2px 0 4px;text-wrap:balance}
+.sim-wb #stepBody{margin:0;max-width:72ch;min-height:4.5em}
+.sim-wb #stepBody b.l{color:var(--ref);font-weight:600} .sim-wb #stepBody b.t{color:var(--var);font-weight:600} .sim-wb #stepBody b.s{color:var(--warn);font-weight:600} .sim-wb #stepBody b.g{color:var(--ok);font-weight:600} .sim-wb #stepBody b.v{color:var(--va);font-weight:600}
+.sim-wb .bar{grid-column:1/-1;height:2px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:6px}
+.sim-wb #stepBar{height:100%;width:0;background:var(--dim)}
+.sim-wb .lctl{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.sim-wb .btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.sim-wb button.b{font:500 13px var(--f-body);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;min-height:34px}
+.sim-wb button.b:hover{border-color:color-mix(in srgb, var(--doc-ink) 29.5%, var(--doc-page))} .sim-wb button.b:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+.sim-wb button.b.primary{background:var(--ink);color:var(--doc-page);border-color:var(--ink);min-width:84px}
+.sim-wb button.b:disabled{opacity:.4;cursor:default}
+.sim-wb .speed{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:12px;color:var(--dim)}
+.sim-wb .speed input{width:120px;accent-color:var(--ink);height:auto}
+.sim-wb #speedTxt{min-width:4ch}
+@container sim (max-width:480px){.sim-wb .dots button{width:12px}}
+@container sim (max-width:760px){.sim-wb .lesson{grid-template-columns:minmax(0,1fr)}.sim-wb .lctl{align-items:stretch}.sim-wb .btns{justify-content:flex-start}}
+
+.sim-wb .stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@container sim (max-width:820px){.sim-wb .stage{grid-template-columns:minmax(0,1fr)}}
+.sim-wb .view{position:relative;padding:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center}
+.sim-wb .view svg{display:block;width:100%;height:auto}
+.sim-wb .pop{position:absolute;left:50%;transform:translateX(-50%);font:600 13px var(--f-mono);letter-spacing:.14em;padding:4px 12px;border-radius:6px;pointer-events:none;white-space:nowrap;top:10px}
+.sim-wb .pop.r{background:var(--warn);color:var(--doc-page)} .sim-wb .pop.a{background:var(--var);color:color-mix(in srgb, var(--doc-ink) 1%, var(--doc-page))} .sim-wb .pop.g{background:var(--ok);color:color-mix(in srgb, var(--doc-ink) 0.6%, var(--doc-page))}
+.sim-wb svg text{font-family:var(--f-mono)}
+.sim-wb .tk{font-size:10px;fill:var(--dim)}
+.sim-wb .ml{font-size:11px;font-weight:500}
+.sim-wb .hl{filter:drop-shadow(0 0 5px currentColor)}
+@container sim (max-width:600px){.sim-wb svg .tk{font-size:12.5px}.sim-wb svg .ml{font-size:13px}}
+
+/* POH-style chart */
+.sim-wb .chart{padding:10px 10px 4px;display:flex;flex-direction:column;gap:6px}
+.sim-wb .ch-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);white-space:nowrap;overflow:hidden}
+.sim-wb .ch-h b{color:var(--ink);font-weight:500}
+.sim-wb .blocks{display:flex;gap:4px}
+.sim-wb .blocks span{border:1px solid var(--line);border-radius:4px;padding:0 6px;color:var(--dim)}
+.sim-wb .blocks span.on{border-color:var(--var);color:var(--var)}
+.sim-wb table.pt{border-collapse:collapse;width:100%;table-layout:fixed;font:500 11.5px var(--f-mono);font-variant-numeric:tabular-nums}
+.sim-wb table.pt th{font-weight:500;color:var(--dim);font-size:10.5px;padding:2px 0;text-align:center}
+.sim-wb table.pt th.r{text-align:right;padding-right:6px;width:4.6em}
+.sim-wb table.pt td{text-align:center;padding:2px 0;border:1px solid var(--line);line-height:1.2;color:color-mix(in srgb, var(--doc-ink) 73%, var(--doc-page))}
+.sim-wb table.pt td b{display:block;font-weight:500;color:color-mix(in srgb, var(--doc-ink) 73%, var(--doc-page))}
+.sim-wb table.pt td i{display:block;font-style:normal;color:var(--ink)}
+.sim-wb table.pt td.br{border:1.5px solid var(--var);background:color-mix(in srgb, var(--sc-ffb54a) 10%, transparent)}
+.sim-wb table.pt td.br i{color:var(--var)}
+.sim-wb .key{display:flex;gap:14px;font:500 10.5px var(--f-mono);color:var(--dim);letter-spacing:.06em}
+.sim-wb .key i{font-style:normal;color:var(--ink)}
+.sim-wb #wf{margin-top:2px}
+
+.sim-wb .deck{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px;align-items:stretch}
+@container sim (max-width:640px){.sim-wb .deck{grid-template-columns:minmax(0,1fr)}}
+.sim-wb .ctl{display:flex;flex-direction:column;gap:10px}
+.sim-wb .sls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
+@container sim (max-width:420px){.sim-wb .sls{grid-template-columns:minmax(0,1fr)}}
+.sim-wb .sl{display:flex;flex-direction:column;gap:0}
+.sim-wb .sl .h{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.sim-wb .lab{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.sim-wb .sl output{font:600 19px var(--f-display);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.sim-wb .sl output.warnc{color:var(--warn)}
+.sim-wb input[type=range]{width:100%;accent-color:var(--ink);margin:0;height:26px}
+.sim-wb .tg{display:flex;gap:6px;flex-wrap:wrap}
+.sim-wb .tg button{font:500 13px var(--f-body);color:var(--dim);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:6px 12px;cursor:pointer;min-height:34px}
+.sim-wb .tg button[aria-pressed=true]{color:var(--ink);border-color:var(--sc-4d6a73);background:color-mix(in srgb, var(--doc-ink) 7.9%, var(--doc-page))}
+.sim-wb .tg button:focus-visible,.sim-wb input[type=range]:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+.sim-wb .tg .reset{margin-left:auto}
+.sim-wb .tabs button{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.sim-wb .ro{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px;align-content:start}
+@container sim (max-width:420px){.sim-wb .ro{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.sim-wb .ro>div{display:flex;flex-direction:column;min-width:0}
+.sim-wb .ro strong{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.05;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sim-wb .ro strong small{font-size:15px;color:var(--dim);font-weight:500;margin-left:3px}
+.sim-wb .warnc{color:var(--warn)!important} .sim-wb .ambc{color:var(--var)!important} .sim-wb .okc{color:var(--ok)!important}
+
+.sim-wb .ew-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;margin-top:10px}
+@container sim (max-width:420px){.sim-wb .ew-grid{grid-template-columns:minmax(0,1fr)}}
+.sim-wb .ew-grid label{display:flex;justify-content:space-between;align-items:center;gap:8px;font:500 12px var(--f-mono);color:var(--dim);letter-spacing:.04em}
+.sim-wb .ew-grid input{width:6.5em;font:500 14px var(--f-mono);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 7px;text-align:right}
+.sim-wb .ew-grid input[aria-invalid=true]{border-color:var(--warn);color:var(--warn)}
+.sim-wb .ew-grid input:focus-visible{outline:2px solid var(--ref);outline-offset:1px}
+

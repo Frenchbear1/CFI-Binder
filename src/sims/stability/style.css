@@ -1,0 +1,72 @@
+/* stability: converted from Aviation Interactives, now part of the binder. Colours follow the reading theme. */
+.sim-stability { container: sim / inline-size; }
+.sim-stability{}.sim-stability{margin:0;font:14px var(--font)}.sim-stability img{max-width:100%}.sim-stability [hidden]{display:none!important}
+.sim-stability .homebar{max-width:1200px;margin:0 auto;padding-top:14px}
+.sim-stability .homebar a{font:500 13px var(--mono);color:color-mix(in srgb, var(--doc-ink) 65.3%, var(--doc-page));text-decoration:none;letter-spacing:.06em}
+.sim-stability .homebar a:hover,.sim-stability .homebar a:focus-visible{color:var(--doc-ink)}
+
+/* Layout: lesson strip on top, then side view (left) and pitch trace + readouts + controls (right). Single dark avionics look, same as the other sims. */
+.sim-stability{
+  --bg:var(--doc-page); --panel:color-mix(in srgb, var(--doc-ink) 3.4%, var(--doc-page)); --panel2:color-mix(in srgb, var(--doc-ink) 1.6%, var(--doc-page)); --line:color-mix(in srgb, var(--doc-ink) 13.3%, var(--doc-page)); --ink:var(--doc-ink); --dim:color-mix(in srgb, var(--doc-ink) 65.3%, var(--doc-page));
+  --ref:var(--sc-5ccfe3); --var:var(--sc-ffb54a); --tail:var(--sc-a99bff); --ok:var(--sc-7fd98a); --warn:var(--sc-e2574a);
+  --f-display:var(--font);
+  --f-body:var(--font);
+  --f-mono:var(--mono);
+}
+.sim-stability,.sim-stability{background:var(--bg);color:var(--ink)}
+.sim-stability{font-family:var(--f-body);font-size:15px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.sim-stability .wrap{max-width:1200px;margin:0 auto;padding-block:20px 40px;display:flex;flex-direction:column;gap:16px}
+
+.sim-stability .lesson{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 20px;align-items:start}
+.sim-stability .lesson-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;grid-column:1/-1}
+.sim-stability #stepNum{font-family:var(--f-mono);font-size:12px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.sim-stability .dots{display:flex;gap:6px;flex-wrap:wrap}
+.sim-stability .dots button{width:22px;height:6px;border-radius:3px;border:0;background:var(--line);padding:0;cursor:pointer}
+.sim-stability .dots button.on{background:var(--ink)} .sim-stability .dots button.done{background:color-mix(in srgb, var(--doc-ink) 36%, var(--doc-page))}
+.sim-stability .dots button:focus-visible{outline:2px solid var(--ref);outline-offset:3px}
+.sim-stability .lesson-text{min-width:0}
+.sim-stability #stepTitle{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.1;margin:2px 0 4px;text-wrap:balance}
+.sim-stability #stepBody{margin:0;max-width:72ch;min-height:4.5em}
+.sim-stability #stepBody b.r{color:var(--ref);font-weight:600} .sim-stability #stepBody b.v{color:var(--var);font-weight:600} .sim-stability #stepBody b.t{color:var(--tail);font-weight:600} .sim-stability #stepBody b.w{color:var(--warn);font-weight:600} .sim-stability #stepBody b.g{color:var(--ok);font-weight:600}
+.sim-stability .bar{grid-column:1/-1;height:2px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:6px}
+.sim-stability #stepBar{height:100%;width:0;background:var(--dim)}
+.sim-stability .lctl{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.sim-stability .btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.sim-stability button.b{font:500 13px var(--f-body);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;min-height:34px}
+.sim-stability button.b:hover{border-color:color-mix(in srgb, var(--doc-ink) 29.5%, var(--doc-page))} .sim-stability button.b:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+.sim-stability button.b.primary{background:var(--ink);color:var(--doc-page);border-color:var(--ink);min-width:84px}
+.sim-stability button.b:disabled{opacity:.4;cursor:default}
+.sim-stability .speed{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:12px;color:var(--dim)}
+.sim-stability .speed input{width:120px;accent-color:var(--ink)}
+@container sim (max-width:760px){.sim-stability .lesson{grid-template-columns:minmax(0,1fr)}.sim-stability .lctl{align-items:stretch}.sim-stability .btns{justify-content:flex-start}}
+
+.sim-stability .stage{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px;align-items:start}
+@container sim (max-width:900px){.sim-stability .stage{grid-template-columns:minmax(0,1fr)}}
+.sim-stability .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.sim-stability .plabel{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.sim-stability .plabel .chip{color:var(--var)}
+.sim-stability canvas{display:block;width:100%}
+.sim-stability #view{aspect-ratio:16/11;border-radius:6px;touch-action:none}
+.sim-stability #trace{height:170px;border-radius:6px}
+@container sim (max-width:600px){.sim-stability #view{aspect-ratio:1/1}}
+.sim-stability .side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.sim-stability .ro{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px}
+.sim-stability .ro>div{display:flex;flex-direction:column;min-width:0}
+.sim-stability .ro span{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.sim-stability .ro strong{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.05;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sim-stability .ro strong small{font-size:15px;color:var(--dim);font-weight:500;margin-left:3px}
+.sim-stability #roTail{color:var(--tail)}
+.sim-stability .status{font-family:var(--f-mono);font-size:13px;font-weight:500;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:1.9em;line-height:1.9em;border-radius:6px;background:var(--panel2);letter-spacing:.06em}
+.sim-stability .status.ok{color:var(--ok)} .sim-stability .status.amb{color:var(--var)} .sim-stability .status.bad{color:var(--doc-page);background:var(--warn)}
+.sim-stability .ctlp{display:flex;flex-direction:column;gap:10px}
+.sim-stability .sl{display:flex;flex-direction:column;gap:2px}
+.sim-stability .sl .h{display:flex;justify-content:space-between;align-items:baseline}
+.sim-stability .lab{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.sim-stability .sl output{font:600 20px var(--f-display);font-variant-numeric:tabular-nums;white-space:nowrap}
+.sim-stability input[type=range]{width:100%;accent-color:var(--ink);margin:0;height:26px}
+.sim-stability input[type=range]:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+.sim-stability .acts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.sim-stability .acts button.b{padding:6px 4px;font-size:12.5px}
+@container sim (max-width:420px){.sim-stability .ro{grid-template-columns:repeat(2,minmax(0,1fr))}.sim-stability .acts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.sim-stability .kit-deep svg{display:block;max-width:420px;width:100%;height:auto;margin:6px 0}
+

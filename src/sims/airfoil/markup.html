@@ -1,0 +1,52 @@
+<div class="homebar"><a href="../index.html">← All simulations</a></div>
+<div class="wrap">
+  <section class="lesson" aria-live="polite">
+    <div class="lesson-meta"><span id="stepNum">Step 1 of 12</span><div class="dots" id="dots" role="tablist" aria-label="Lesson steps"></div></div>
+    <div class="lesson-text">
+      <h2 id="stepTitle"></h2>
+      <p id="stepBody"></p>
+    </div>
+    <div class="lctl">
+      <div class="btns">
+        <button class="b" id="prev" type="button">◀ Back</button>
+        <button class="b primary" id="play" type="button">Pause</button>
+        <button class="b" id="next" type="button">Next ▶</button>
+        <button class="b" id="explore" type="button">Explore freely</button>
+      </div>
+      <label class="speed" for="speed">Speed <input id="speed" type="range" min="0.25" max="2" step="0.25" value="1"> <span id="speedTxt">1×</span></label>
+    </div>
+    <div class="bar"><div id="stepBar"></div></div>
+  </section>
+
+  <div class="panel stage" id="stage">
+    <canvas id="flow" aria-label="Airflow around a NACA 2412 airfoil"></canvas>
+    <div class="pop" id="popStall" hidden>STALL</div>
+    <div class="pop" id="popWarn" hidden>STALL WARNING</div>
+    <div class="probe" id="probe" hidden>
+      <div class="ph"><span id="pbWhere">Upper · 40% chord</span><button id="pbClose" aria-label="Close">×</button></div>
+      <div class="pt" id="pbType">Laminar</div>
+      <canvas id="pbCv"></canvas>
+      <div class="pr"><span>Thickness <b id="pbD">0.0 mm</b></span><span>H <b id="pbH">2.59</b></span></div>
+      <div class="pr"><span>Edge <b id="pbU">1.00 V∞</b></span><b id="pbG">Pressure falling</b></div>
+    </div>
+  </div>
+
+  <div class="deck">
+    <div class="panel ctl">
+      <div class="sl"><div class="h"><label class="lab" for="aoa">Angle of attack</label><output id="aoaOut">4.0°</output></div>
+        <input id="aoa" type="range" min="-6" max="22" step="0.1" value="4"></div>
+      <div class="tg">
+        <button id="tP" aria-pressed="false">Pressure</button>
+        <button id="tB" aria-pressed="true">Boundary layer</button>
+        <button id="tF" aria-pressed="true">Forces</button>
+        <button id="tS" aria-pressed="false">Slow motion</button>
+      </div>
+    </div>
+    <div class="panel ro">
+      <div><span class="lab">Lift coeff.</span><strong id="rCL">0.65</strong></div>
+      <div><span class="lab">Lift / drag</span><strong id="rLD">95</strong></div>
+      <div><span class="lab">Level-flight speed</span><strong id="rV">77<small>KIAS</small></strong></div>
+      <div><span class="lab">Reynolds no.</span><strong id="rRe">3.6<small>M</small></strong></div>
+    </div>
+  </div>
+</div>

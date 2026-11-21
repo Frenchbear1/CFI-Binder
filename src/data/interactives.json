@@ -1,53 +1,45 @@
 {
-  "site": "sims/",
   "items": [
     {
       "id": "vor",
       "name": "VOR",
-      "tag": "Navigation · radio",
-      "path": "vor.html",
+      "tag": "Navigation \u00b7 radio",
       "about": "Reference and variable phase, radials, OBS/CDI and TO/FROM."
     },
     {
       "id": "airfoil",
       "name": "Airfoil",
-      "tag": "Aerodynamics · flow",
-      "path": "airfoil.html",
+      "tag": "Aerodynamics \u00b7 flow",
       "about": "NACA 2412 flow, pressure, boundary layer and the stall."
     },
     {
       "id": "airspace",
       "name": "Airspace",
-      "tag": "Regulations · NAS",
-      "path": "airspace.html",
-      "about": "Classes A–G, MSL/AGL, special use, VFR minimums, entry and equipment rules."
+      "tag": "Regulations \u00b7 NAS",
+      "about": "Classes A\u2013G, MSL/AGL, special use, VFR minimums, entry and equipment rules."
     },
     {
       "id": "vg",
       "name": "V-g & Bank",
-      "tag": "Aerodynamics · loads",
-      "path": "vg.html",
+      "tag": "Aerodynamics \u00b7 loads",
       "about": "Load factor in turns, accelerated stalls, the V-g envelope, VA and gusts."
     },
     {
       "id": "stability",
       "name": "Balance & Stability",
-      "tag": "Aerodynamics · CG & pitch",
-      "path": "stability.html",
+      "tag": "Aerodynamics \u00b7 CG & pitch",
       "about": "CG vs CP, tail download, trim, static and dynamic stability, neutral point and CG limits."
     },
     {
       "id": "weather",
       "name": "Weather Brief",
-      "tag": "Weather · go / no-go",
-      "path": "weather.html",
+      "tag": "Weather \u00b7 go / no-go",
       "about": "METAR, TAF, PIREP, winds aloft, AIRMET and SIGMET on a go/no-go route."
     },
     {
       "id": "wb",
       "name": "Weight & Performance",
-      "tag": "Performance · W&B · takeoff",
-      "path": "wb.html",
+      "tag": "Performance \u00b7 W&B \u00b7 takeoff",
       "about": "Arm and moment, the CG envelope, density altitude and takeoff/landing tables."
     }
   ]

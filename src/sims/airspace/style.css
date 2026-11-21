@@ -1,0 +1,108 @@
+/* airspace: converted from Aviation Interactives, now part of the binder. Colours follow the reading theme. */
+.sim-airspace { container: sim / inline-size; }
+.sim-airspace{}.sim-airspace{margin:0;font:14px var(--font)}.sim-airspace [hidden]{display:none!important}
+.sim-airspace .homebar{max-width:1240px;margin:0 auto;padding-top:14px}
+.sim-airspace .homebar a{font:500 13px var(--mono);color:color-mix(in srgb, var(--doc-ink) 65.3%, var(--doc-page));text-decoration:none;letter-spacing:.06em}
+.sim-airspace .homebar a:hover,.sim-airspace .homebar a:focus-visible{color:var(--doc-ink)}
+
+/* Layout: lesson strip, then map (terrain or sectional style) + conditions on the left, side profile along your course + "what applies here" on the right. */
+.sim-airspace{
+  --bg:var(--doc-page); --panel:color-mix(in srgb, var(--doc-ink) 3.4%, var(--doc-page)); --panel2:color-mix(in srgb, var(--doc-ink) 1.6%, var(--doc-page)); --line:color-mix(in srgb, var(--doc-ink) 13.3%, var(--doc-page)); --ink:var(--doc-ink); --dim:color-mix(in srgb, var(--doc-ink) 65.3%, var(--doc-page));
+  --ref:var(--sc-5ccfe3); --var:var(--sc-ffb54a); --warn:var(--sc-e2574a); --ok:var(--sc-7fd98a);
+  --cA:var(--sc-a99bff); --cB:var(--sc-5b9dff); --cC:var(--sc-e063c6); --cD:var(--sc-5b9dff); --cE:var(--sc-8fe3b5); --cG:var(--sc-c9b98f);
+  --f-display:var(--font);
+  --f-body:var(--font);
+  --f-mono:var(--mono);
+}
+.sim-airspace,.sim-airspace{background:var(--bg);color:var(--ink)}
+.sim-airspace{font-family:var(--f-body);font-size:15px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.sim-airspace .wrap{max-width:1240px;margin:0 auto;padding-block:14px 40px;display:flex;flex-direction:column;gap:16px}
+
+.sim-airspace .lesson{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 20px;align-items:start}
+.sim-airspace .lesson-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;grid-column:1/-1}
+.sim-airspace #stepNum{font-family:var(--f-mono);font-size:12px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.sim-airspace .dots{display:flex;gap:6px;flex-wrap:wrap}
+.sim-airspace .dots button{width:18px;height:6px;border-radius:3px;border:0;background:var(--line);padding:0;cursor:pointer}
+.sim-airspace .dots button.on{background:var(--ink)} .sim-airspace .dots button.done{background:color-mix(in srgb, var(--doc-ink) 36%, var(--doc-page))}
+.sim-airspace .dots button:focus-visible{outline:2px solid var(--ref);outline-offset:3px}
+.sim-airspace .lesson-text{min-width:0}
+.sim-airspace #stepTitle{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.1;margin:2px 0 4px;text-wrap:balance}
+.sim-airspace #stepBody{margin:0;max-width:74ch;min-height:4.5em}
+.sim-airspace b.A{color:var(--cA)} .sim-airspace b.B{color:var(--cB)} .sim-airspace b.C{color:var(--cC)} .sim-airspace b.D{color:var(--cD)} .sim-airspace b.E{color:var(--cE)} .sim-airspace b.G{color:var(--cG)} .sim-airspace b.w{color:var(--warn)} .sim-airspace b.m{color:var(--cC)}
+.sim-airspace #stepBody b{font-weight:600}
+.sim-airspace .bar{grid-column:1/-1;height:2px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:6px}
+.sim-airspace #stepBar{height:100%;width:0;background:var(--dim)}
+.sim-airspace .lctl{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.sim-airspace .btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.sim-airspace button.b{font:500 13px var(--f-body);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;min-height:34px}
+.sim-airspace button.b:hover{border-color:color-mix(in srgb, var(--doc-ink) 29.5%, var(--doc-page))} .sim-airspace button.b:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+.sim-airspace button.b.primary{background:var(--ink);color:var(--doc-page);border-color:var(--ink);min-width:84px}
+.sim-airspace button.b:disabled{opacity:.4;cursor:default}
+.sim-airspace .speed{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:12px;color:var(--dim)}
+.sim-airspace .speed input{width:120px;accent-color:var(--ink)}
+.sim-airspace #speedTxt{min-width:4ch}
+@container sim (max-width:480px){.sim-airspace .dots button{width:11px}}
+@container sim (max-width:760px){.sim-airspace .lesson{grid-template-columns:minmax(0,1fr)}.sim-airspace .lctl{align-items:stretch}.sim-airspace .btns{justify-content:flex-start}}
+
+.sim-airspace .stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+.sim-airspace .col{display:flex;flex-direction:column;gap:16px;min-width:0}
+@container sim (max-width:920px){.sim-airspace .stage{grid-template-columns:minmax(0,1fr)}.sim-airspace .col{display:contents}.sim-airspace #ctl{order:9}}
+.sim-airspace .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.sim-airspace .plabel{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;min-height:30px}
+.sim-airspace .plabel .grp{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.sim-airspace canvas{display:block;width:100%;border-radius:6px}
+.sim-airspace #plan{aspect-ratio:1/1;touch-action:none;cursor:crosshair}
+.sim-airspace #side{height:290px;touch-action:none;cursor:grab}
+@container sim (max-width:520px){.sim-airspace #side{height:240px}}
+.sim-airspace .hint{font-size:12.5px;color:var(--dim)}
+
+.sim-airspace .lab{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.sim-airspace .ctl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 16px}
+.sim-airspace .ctl .plabel,.sim-airspace .ctl .tg{grid-column:1/-1}
+@container sim (max-width:520px){.sim-airspace .ctl{grid-template-columns:minmax(0,1fr)}}
+.sim-airspace .sl{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sim-airspace .sl .h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sim-airspace .sl output{font:600 18px var(--f-display);font-variant-numeric:tabular-nums;white-space:nowrap}
+.sim-airspace input[type=range]{width:100%;accent-color:var(--ink);margin:0;height:24px}
+.sim-airspace input[type=range]:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+.sim-airspace .tg{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.sim-airspace .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.sim-airspace .seg button,.sim-airspace .tg button,.sim-airspace .zb{font:500 12.5px var(--f-body);letter-spacing:0;text-transform:none;color:var(--dim);background:var(--panel2);border:0;padding:5px 11px;cursor:pointer;min-height:30px}
+.sim-airspace .seg button+button{border-left:1px solid var(--line)}
+.sim-airspace .seg button[aria-pressed=true],.sim-airspace .tg button[aria-pressed=true]{color:var(--ink);background:color-mix(in srgb, var(--doc-ink) 11.7%, var(--doc-page))}
+.sim-airspace .tg button,.sim-airspace .zb{border:1px solid var(--line);border-radius:7px}
+.sim-airspace .zb{min-width:32px;padding:5px 8px;font-size:15px;line-height:1}
+.sim-airspace .seg button:focus-visible,.sim-airspace .tg button:focus-visible,.sim-airspace .zb:focus-visible{outline:2px solid var(--ref);outline-offset:1px}
+
+.sim-airspace .ro{display:flex;flex-direction:column;gap:0}
+.sim-airspace .ro .top{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:4px 14px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.sim-airspace .ro .top div{display:flex;flex-direction:column;min-width:0}
+.sim-airspace .ro strong{font-family:var(--f-display);font-weight:600;font-size:28px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.sim-airspace .ro em{font-style:normal;font-family:var(--f-mono);font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sim-airspace .row{display:grid;grid-template-columns:7.2em minmax(0,1fr);gap:10px;padding:6px 0;border-bottom:1px solid var(--line);align-items:start}
+.sim-airspace .row:last-child{border-bottom:0}
+.sim-airspace .row .lab{padding-top:3px}
+.sim-airspace .row p{margin:0;font-size:13.5px;line-height:1.4;min-height:2.8em}
+.sim-airspace .row p .kit-chip{margin-left:4px;font-size:10.5px;padding:0 7px;vertical-align:1px}
+.sim-airspace .row p span.ov{display:block}
+.sim-airspace .okc{color:var(--ok)} .sim-airspace .badc{color:var(--warn)} .sim-airspace .cau{color:var(--var)}
+
+/* airspace guide popup */
+.sim-airspace .gd .kb{padding-top:2px}
+.sim-airspace .gd details{border-bottom:1px solid var(--line)}
+.sim-airspace .gd summary{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;cursor:pointer;list-style:none}
+.sim-airspace .gd summary::-webkit-details-marker{display:none}
+.sim-airspace .gd summary:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+.sim-airspace .gd summary .nm{font-weight:600;font-size:14.5px}
+.sim-airspace .gd summary .lm{font:500 11px var(--f-mono);color:var(--dim);white-space:nowrap}
+.sim-airspace .gd summary::after{content:"+";font:16px var(--f-mono);color:var(--dim);grid-column:3;grid-row:1;justify-self:end;display:none}
+.sim-airspace .sw{width:22px;height:14px;border-radius:3px;display:block}
+.sim-airspace .gd .gb{padding:0 0 10px 32px;font-size:13.5px;line-height:1.45}
+.sim-airspace .gd dl{display:grid;grid-template-columns:6.6em minmax(0,1fr);gap:4px 10px;margin:0 0 6px}
+.sim-airspace .gd dt{font:500 10.5px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);padding-top:2px}
+.sim-airspace .gd dd{margin:0}
+.sim-airspace .gd .gx{color:var(--dim);margin:4px 0 6px}
+.sim-airspace .gd .gf{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sim-airspace .gd .gf button{font:500 12px var(--f-mono);color:var(--doc-page);background:var(--ink);border:0;border-radius:6px;padding:3px 10px;cursor:pointer;min-height:26px}
+@container sim (max-width:520px){.sim-airspace .gd .gb{padding-left:0}.sim-airspace .gd summary .lm{display:none}.sim-airspace .gd summary{grid-template-columns:22px minmax(0,1fr)}}
+
