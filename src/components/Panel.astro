@@ -1,0 +1,15 @@
+---
+// Content for one kind of instrument panel. The reader picks Round dials, Glass or Both in settings.
+// <Panel analog> … </Panel>  → shows for Round dials (and Both).
+// <Panel glass> … </Panel>   → shows for Glass (and Both).
+// <Panel analog keep> … </Panel> → round-dial material the FAA still expects you to teach on any panel
+//                                   (e.g. partial panel on the standby instruments): never hidden.
+interface Props { analog?: boolean; glass?: boolean; keep?: boolean; label?: string }
+const { analog, glass, keep, label } = Astro.props;
+const kind = analog ? 'analog' : glass ? 'glass' : 'analog';
+const tag = label ?? (kind === 'analog' ? (keep ? 'Round dials · teach on every panel' : 'Round dials') : 'Glass panel');
+---
+<div class="pnl" data-panel-only={kind} data-keep={keep ? '' : undefined}>
+  <p class="pnl-tag">{tag}</p>
+  <slot />
+</div>

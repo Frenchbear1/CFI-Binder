@@ -9,7 +9,7 @@ const here = Astro.url.pathname.replace(/\/$/, '');
 const href = (slug: string) => base + slug + '/';
 ---
 <!doctype html>
-<html lang="en" data-level="pa" data-ac="both">
+<html lang="en" data-level="pa" data-ac="both" data-panel="both">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -30,6 +30,7 @@ const href = (slug: string) => base + slug + '/';
     try {
       var d = document.documentElement, l = localStorage.getItem('cfi.level'), a = localStorage.getItem('cfi.ac');
       if (l) d.dataset.level = l; if (a) d.dataset.ac = a;
+      var pn = localStorage.getItem('cfi.panel'); if (pn) d.dataset.panel = pn;
       // reading theme (Instant Search's), before anything paints
       var c = JSON.parse(localStorage.getItem('cfi.theme') || 'null');
       if (c && c.css && !c.auto) {
@@ -65,6 +66,11 @@ const href = (slug: string) => base + slug + '/';
         <button role="radio" data-v="both">Both</button>
         <button role="radio" data-v="c172">C172</button>
         <button role="radio" data-v="pa28">PA-28</button>
+      </div>
+      <div class="seg" role="radiogroup" aria-label="Instrument panel" data-pref="panel">
+        <button role="radio" data-v="both">Both</button>
+        <button role="radio" data-v="analog" title="Round dials">Dials</button>
+        <button role="radio" data-v="glass">Glass</button>
       </div>
     </div>
   </header>
@@ -109,7 +115,7 @@ const href = (slug: string) => base + slug + '/';
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
     </button>
     <button class="dock-chip" type="button" data-open="prefs" aria-label="Level and aircraft">
-      <span data-chip-level>PVT</span><span class="dot">·</span><span data-chip-ac>Both</span>
+      <span data-chip-level>PVT</span><span class="dot">·</span><span data-chip-ac>Both</span><span data-chip-panel></span>
     </button>
   </div>}
 
@@ -162,6 +168,12 @@ const href = (slug: string) => base + slug + '/';
       <button role="radio" data-v="both">Both</button>
       <button role="radio" data-v="c172">C172</button>
       <button role="radio" data-v="pa28">PA-28-181</button>
+    </div>
+    <p class="sheet-h">Instrument panel</p>
+    <div class="seg seg-full" role="radiogroup" aria-label="Instrument panel" data-pref="panel">
+      <button role="radio" data-v="both">Both</button>
+      <button role="radio" data-v="analog">Round dials</button>
+      <button role="radio" data-v="glass">Glass</button>
     </div>
     {isLesson && <button type="button" class="sheet-row" data-edit-toggle><span>Edit this lesson</span><span>Change anything ›</span></button>}
     <button type="button" class="sheet-row" data-open="theme"><span>Reading theme</span><span>Colours, paper ›</span></button>

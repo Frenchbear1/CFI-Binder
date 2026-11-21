@@ -147,6 +147,12 @@ html[data-level="pa"] [data-for]:not([data-for~="pa"]),
 html[data-level="ir"] [data-for]:not([data-for~="ir"]),
 html[data-level="ca"] [data-for]:not([data-for~="ca"]) { display: none; }
 html[data-ac="c172"] [data-only="pa28"], html[data-ac="pa28"] [data-only="c172"] { display: none !important; }
+html[data-panel="glass"] [data-panel-only="analog"]:not([data-keep]), html[data-panel="analog"] [data-panel-only="glass"] { display: none !important; }
+.pnl { margin: 1.2em 0; padding: 2px 0 2px 16px; border-left: 3px solid #b07a2a; }
+.pnl[data-panel-only="glass"] { border-left-color: #2a8fb0; }
+.pnl-tag { font-size: .72rem !important; text-transform: uppercase; letter-spacing: .07em; font-weight: 700; margin: 0 0 .1em !important; color: #b07a2a; }
+.pnl[data-panel-only="glass"] .pnl-tag { color: #2a8fb0; }
+.pnl > :last-child { margin-bottom: 0; }
 
 /* ===== Desktop / large tablet ===== */
 @media (min-width: 1100px) {

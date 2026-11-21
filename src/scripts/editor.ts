@@ -302,6 +302,9 @@ if (article && bar) {
     { id: 'lv-irca', label: 'Instrument + Commercial only', icon: '<b class="tx">IR·CA</b>', group: 'Binder', kind: 'level', opts: { lv: 'ir ca' }, keys: 'level only ir ca instrument commercial', turn: true },
     { id: 'lv-ir', label: 'Instrument only', icon: '<b class="tx">IR</b>', group: 'Binder', kind: 'level', opts: { lv: 'ir' }, keys: 'level only ir instrument', turn: true },
     { id: 'lv-ca', label: 'Commercial only', icon: '<b class="tx">CA</b>', group: 'Binder', kind: 'level', opts: { lv: 'ca' }, keys: 'level only ca commercial', turn: true },
+    { id: 'pn-analog', label: 'Round dials only', icon: '<b class="tx">DIAL</b>', group: 'Binder', kind: 'panel', opts: { p: 'analog' }, keys: 'round dials analog steam gauges panel six pack', turn: true },
+    { id: 'pn-glass', label: 'Glass panel only', icon: '<b class="tx">GLASS</b>', group: 'Binder', kind: 'panel', opts: { p: 'glass' }, keys: 'glass g1000 pfd panel avionics', turn: true },
+    { id: 'pn-keep', label: 'Round dials, every panel', icon: '<b class="tx">DIAL+</b>', group: 'Binder', kind: 'panel', opts: { p: 'analog keep' }, keys: 'round dials partial panel standby faa every panel', turn: true },
     { id: 'lv-pa', label: 'Private only', icon: '<b class="tx">PVT</b>', group: 'Binder', kind: 'level', opts: { lv: 'pa' }, keys: 'level only pvt private', turn: true },
 
     { id: 'image', label: 'Image', icon: SV('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/>'), group: 'Media', kind: 'image', keys: 'image picture photo' },
@@ -506,6 +509,7 @@ if (article && bar) {
     callout: (el) => `<Callout kind="${el.dataset.k}"${optAttr('title', plain(field(el, 'title')))}>\n\n${body(field(el, 'body'))}\n\n</Callout>`,
     compare: (el) => `<Compare>\n  <Fragment slot="c172">\n\n${body(field(el, 'c172'))}\n\n  </Fragment>\n  <Fragment slot="pa28">\n\n${body(field(el, 'pa28'))}\n\n  </Fragment>\n</Compare>`,
     level: (el) => `<Level ${el.dataset.lv}>\n\n${body(field(el, 'body'))}\n\n</Level>`,
+    panel: (el) => `<Panel ${el.dataset.p}>\n\n${body(field(el, 'body'))}\n\n</Panel>`,
     toggle: (el) => `<Toggle title="${jsxAttr(plain(field(el, 'title')) || 'More')}"${el.dataset.h ? ` heading={${el.dataset.h}}` : ''}>\n\n${body(field(el, 'body'))}\n\n</Toggle>`,
     video: (el) => `<Video youtube="${el.dataset.yt}" title="${jsxAttr(plain(field(el, 'title')) || 'Video')}"${optAttr('channel', plain(field(el, 'channel')))} />`,
     image: (el) => `<Figure caption="${jsxAttr(plain(field(el, 'caption')))}"${optAttr('credit', plain(field(el, 'credit')))}>\n  <img src="${jsxAttr(el.dataset.url || '')}" alt="${jsxAttr(plain(field(el, 'caption')))}" />\n</Figure>`,
@@ -548,6 +552,7 @@ if (article && bar) {
     hr: () => `<hr>`,
     callout: (o, c) => `<aside class="callout ${o.k}"><span class="callout-icon" aria-hidden="true">${({ teach: '🎓', fleet: '✈️', warn: '⚠️', acs: '✅', note: '💡' } as any)[o.k]}</span><div class="callout-body"><p class="callout-title" ${ED} data-f="title" ${ph('Title (optional)')}></p>${bodyBox(c, 'What to say')}</div></aside>`,
     compare: () => `<div class="compare"><div class="ac-card" data-only="c172"><p class="ac-name">Cessna 172</p><ul ${ED} data-f="c172"><li></li></ul></div><div class="ac-card" data-only="pa28"><p class="ac-name">Piper PA-28-181</p><ul ${ED} data-f="pa28"><li></li></ul></div></div>`,
+    panel: (o, c) => `<div class="pnl" data-panel-only="${o.p.split(' ')[0]}"><p class="pnl-tag">${o.p === 'glass' ? 'Glass panel' : o.p.includes('keep') ? 'Round dials · teach on every panel' : 'Round dials'}</p>${bodyBox(c, 'Shows only for this panel')}</div>`,
     level: (o, c) => `<div class="lvl-preview"><p class="lvl-tag">${o.lv.split(' ').map((k) => LV[k]).join(' · ')} only</p>${bodyBox(c, 'Shows only at this level')}</div>`,
     toggle: (o, c) => `<details class="toggle${o.h ? ` toggle-h${o.h}` : ''}" open><summary ${ED} data-f="title" ${ph(o.h ? 'Toggle heading' : 'Toggle')}>${o.h && c?.length ? c.join(' ') : ''}</summary><div class="toggle-body">${bodyBox(o.h ? [] : c, 'Hidden until tapped')}</div></details>`,
     video: (o) => `<div class="video-frame" style="background:#000 url(https://i.ytimg.com/vi/${o.yt}/hqdefault.jpg) center/cover"></div><figcaption><strong ${ED} data-f="title" ${ph('Video title')}></strong> · <span ${ED} data-f="channel" ${ph('Channel')}></span></figcaption>`,
@@ -559,7 +564,7 @@ if (article && bar) {
     pagelink: (o) => `${SV('<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/>')}<span>${esc(outline.flatMap((a) => a.topics).find((t) => t.slug === o.to)?.title || o.to)}</span>`,
     columns: (o) => Array.from({ length: Number(o.n) }, (_, i) => `<div class="col">${`<div ${ED} data-f="c${i}" ${ph(`Column ${i + 1}`)}></div>`}</div>`).join(''),
   };
-  const WRAP: Record<string, string> = { callout: 'div', compare: 'div', level: 'div', toggle: 'div', video: 'figure', image: 'figure', audio: 'div', file: 'div', bookmark: 'div', embed: 'figure', pagelink: 'div', columns: 'div', code: '' };
+  const WRAP: Record<string, string> = { callout: 'div', compare: 'div', level: 'div', panel: 'div', toggle: 'div', video: 'figure', image: 'figure', audio: 'div', file: 'div', bookmark: 'div', embed: 'figure', pagelink: 'div', columns: 'div', code: '' };
   const WRAP_CLASS: Record<string, string> = { video: 'video', image: 'figure', bookmark: 'bookmark', embed: 'embed', pagelink: 'pagelink', columns: 'columns' };
 
   const askFor = (label: string, phText: string) => new Promise<string | null>((ok) => {
@@ -641,7 +646,7 @@ if (article && bar) {
     el.classList.add('blk-new');
     if (WRAP_CLASS[kind]) el.classList.add(WRAP_CLASS[kind]);
     if (w !== undefined || kind === 'hr') { el.dataset.kind = kind; if (w) el.contentEditable = 'false'; }
-    for (const k of ['k', 'lv', 'yt', 'h', 'n', 'to', 'url', 'upload', 'ext', 'name']) if (o[k]) el.dataset[k] = o[k];
+    for (const k of ['k', 'lv', 'p', 'yt', 'h', 'n', 'to', 'url', 'upload', 'ext', 'name']) if (o[k]) el.dataset[k] = o[k];
     el.querySelectorAll('summary').forEach((x) => x.addEventListener('click', (e) => { if (on) e.preventDefault(); }));
     at.after(el);
     if (record) pushStep(() => { el.remove(); refresh(); }, () => { at.after(el); refresh(); });
@@ -659,7 +664,7 @@ if (article && bar) {
 
   /* ---------- turn into ---------- */
   const TURNABLE = /^(P|H2|H3|H4|UL|OL|BLOCKQUOTE|PRE)$/;
-  function turnable(el: HTMLElement | null) { return !!el && (TURNABLE.test(el.tagName) || ['callout', 'toggle', 'level'].includes(el.dataset.kind || '')) && el.dataset.jsx === undefined && !el.dataset.comp; }
+  function turnable(el: HTMLElement | null) { return !!el && (TURNABLE.test(el.tagName) || ['callout', 'toggle', 'level', 'panel'].includes(el.dataset.kind || '')) && el.dataset.jsx === undefined && !el.dataset.comp; }
   function contentOf(el: HTMLElement): Content {
     const pick = (x: Element) => [...x.childNodes].filter((n) => !(n.nodeType === 1 && (n as HTMLElement).matches('input, ul, ol'))).map((n) => (n.nodeType === 1 ? (n as HTMLElement).outerHTML : esc(n.textContent || ''))).join('').trim();
     if (el.dataset.kind) { const b = el.querySelector<HTMLElement>('[data-f="body"]'); const t = el.querySelector<HTMLElement>('[data-f="title"]'); const lines = [...(b?.querySelectorAll('p') || [])].map((p) => p.innerHTML).filter(Boolean); if (b && !lines.length && b.textContent?.trim()) lines.push(b.innerHTML); return [t?.innerHTML || '', ...lines].filter(Boolean); }

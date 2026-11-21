@@ -19,24 +19,27 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if
 
 const LEVEL_SHORT: Record<string, string> = { pa: 'PVT', ir: 'IFR', ca: 'COM' };
 const AC_SHORT: Record<string, string> = { both: 'Both', c172: 'C172', pa28: 'PA-28' };
+const PANEL_SHORT: Record<string, string> = { both: '', analog: ' · Dials', glass: ' · Glass' };
 
 /* ---------- Preferences (level + aircraft) ---------- */
 function applyPrefs() {
   const lvl = root.dataset.level || 'pa';
   const ac = root.dataset.ac || 'both';
+  const panel = root.dataset.panel || 'both';
   document.querySelectorAll<HTMLElement>('[data-pref]').forEach((g) => {
-    const v = g.dataset.pref === 'level' ? lvl : ac;
+    const v = g.dataset.pref === 'level' ? lvl : g.dataset.pref === 'panel' ? panel : ac;
     g.querySelectorAll<HTMLButtonElement>('button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === v)));
   });
   document.querySelectorAll('[data-chip-level]').forEach((e) => (e.textContent = LEVEL_SHORT[lvl]));
   document.querySelectorAll('[data-chip-ac]').forEach((e) => (e.textContent = AC_SHORT[ac]));
+  document.querySelectorAll('[data-chip-panel]').forEach((e) => (e.textContent = PANEL_SHORT[panel] ?? ''));
   buildToc();
 }
 document.querySelectorAll<HTMLElement>('[data-pref]').forEach((g) => {
   g.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest('button');
     if (!b?.dataset.v) return;
-    const key = g.dataset.pref === 'level' ? 'level' : 'ac';
+    const key = g.dataset.pref === 'level' ? 'level' : g.dataset.pref === 'panel' ? 'panel' : 'ac';
     root.dataset[key] = b.dataset.v;
     try { localStorage.setItem('cfi.' + key, b.dataset.v); } catch {}
     applyPrefs();

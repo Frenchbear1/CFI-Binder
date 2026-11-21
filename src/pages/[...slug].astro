@@ -3,6 +3,7 @@ import { getCollection, render } from 'astro:content';
 import Lesson from '../layouts/Lesson.astro';
 // Every lesson can use these without importing them (pages made in the app have no imports).
 import Level from '../components/Level.astro';
+import Panel from '../components/Panel.astro';
 import Compare from '../components/Compare.astro';
 import Specs from '../components/Specs.astro';
 import Callout from '../components/Callout.astro';
@@ -18,7 +19,7 @@ import Embed from '../components/Embed.astro';
 import Bookmark from '../components/Bookmark.astro';
 import PageLink from '../components/PageLink.astro';
 import FileLink from '../components/FileLink.astro';
-const components = { Level, Compare, Specs, Callout, Figure, Video, Toggle, Refs, AC, R, Columns, Col, Embed, Bookmark, PageLink, FileLink };
+const components = { Level, Panel, Compare, Specs, Callout, Figure, Video, Toggle, Refs, AC, R, Columns, Col, Embed, Bookmark, PageLink, FileLink };
 export async function getStaticPaths() {
   const lessons = await getCollection('lessons');
   return lessons.map((l) => ({ params: { slug: l.id }, props: { l } }));
