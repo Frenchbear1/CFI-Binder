@@ -83,28 +83,141 @@ async function textDoc(doc) {
   if (!pages.length) throw new Error('no paragraphs found');
   return { labels, pages };
 }
-// A web article becomes one "page" per heading, with its pictures kept as [[img url|caption]] lines.
+// A web article becomes one "page" per heading. Everything visual is kept as a marker line the reader draws:
+// [[img url|caption]] for photos, figures and diagrams, [[embed url|caption]] for YouTube/Vimeo players,
+// [[video url|caption]] and [[audio url|caption]] for media files, and [[table]] blocks (one row per line, cells split by tabs).
+const VIDEO_HOST = /(youtube(-nocookie)?\.com|youtu\.be|player\.vimeo\.com|vimeo\.com|wistia\.(com|net)|loom\.com|dailymotion\.com|streamable\.com)/i;
+function bestSrc(el) {
+  if (!el?.getAttribute) return '';
+  const set = el.getAttribute('data-srcset') || el.getAttribute('data-lazy-srcset') || el.getAttribute('srcset');
+  if (set) {
+    // largest candidate wins ("a.jpg 400w, b.jpg 1200w" or "a.jpg 1x, b.jpg 2x")
+    const c = set.split(/,\s+(?=\S)/).map((x) => x.trim().split(/\s+/)).filter((x) => x[0] && !x[0].startsWith('data:'))
+      .map(([u, d]) => [u, parseFloat(d) * (/x$/.test(d || '') ? 1000 : 1) || 1]).sort((a, b) => b[1] - a[1]);
+    if (c[0]) return c[0][0];
+  }
+  for (const a of ['data-src', 'data-lazy-src', 'data-original', 'data-url', 'data-hi-res-src', 'data-full-src', 'data-lazy', 'src']) {
+    const v = el.getAttribute(a);
+    if (v && !v.startsWith('data:') && !/^(about:|javascript:)/.test(v)) return v;
+  }
+  return '';
+}
+const embedUrl = (u) => {
+  try {
+    const x = new URL(u);
+    const yt = x.hostname.includes('youtu') && (x.searchParams.get('v') || x.pathname.match(/\/(?:embed|shorts|live)\/([\w-]{6,})/)?.[1] || (x.hostname === 'youtu.be' && x.pathname.slice(1)));
+    if (yt) return `https://www.youtube-nocookie.com/embed/${yt}`;
+    const vm = x.hostname.includes('vimeo') && x.pathname.match(/(\d{6,})/)?.[1];
+    if (vm) return `https://player.vimeo.com/video/${vm}`;
+    return x.href;
+  } catch { return ''; }
+};
+// Before Readability runs: wake lazy images, unwrap <noscript> fallbacks, and swap players, videos, audio and
+// diagrams for plain <img> stand-ins (Readability keeps pictures, but throws players and SVG away).
+function prepMedia(document, finalUrl) {
+  const abs = (u) => { try { return new URL(u, finalUrl).href; } catch { return ''; } };
+  const keep = [];
+  const stand = (el, kind, url, cap = '') => {
+    if (!url) return;
+    const f = document.createElement('figure');
+    const img = document.createElement('img');
+    img.setAttribute('src', `https://keep.invalid/${keep.length}.png`);
+    img.setAttribute('alt', cap);
+    f.appendChild(img);
+    keep.push({ kind, url, cap });
+    el.replaceWith(f);
+  };
+  for (const ns of [...document.querySelectorAll('noscript')]) {
+    const inner = ns.innerHTML.includes('<') ? ns.innerHTML : ns.textContent;
+    if (!/<(img|picture|iframe|video)/i.test(inner || '')) { ns.remove(); continue; }
+    const prev = ns.previousElementSibling;
+    if (prev?.tagName === 'IMG' && !bestSrc(prev)) prev.remove();
+    const t = document.createElement('div'); t.innerHTML = inner; ns.replaceWith(...t.childNodes);
+  }
+  for (const pic of [...document.querySelectorAll('picture')]) {
+    const img = pic.querySelector('img');
+    const srcs = [...pic.querySelectorAll('source')];
+    const src = srcs.map(bestSrc).find(Boolean) || (img && bestSrc(img)); // <source> sets usually carry the big versions
+    if (src) { const n = img || document.createElement('img'); n.setAttribute('src', src); n.removeAttribute('srcset'); if (!img) pic.appendChild(n); }
+  }
+  for (const img of [...document.querySelectorAll('img')]) {
+    const src = bestSrc(img);
+    if (src) { img.setAttribute('src', abs(src)); for (const a of [...img.attributes].map((x) => x.name)) if (/srcset|^data-|^loading$/.test(a)) img.removeAttribute(a); img.removeAttribute('class'); }
+    else if ((img.getAttribute('src') || '').startsWith('data:image/svg') && img.getAttribute('src').length < 150000) { /* inline svg picture: keep as is */ }
+    else img.remove();
+  }
+  for (const el of [...document.querySelectorAll('iframe, lite-youtube, lite-vimeo, [data-youtube-id], [data-video-id][data-provider]')]) {
+    const tag = el.tagName.toLowerCase();
+    let u = '';
+    if (tag === 'iframe') u = el.getAttribute('src') || el.getAttribute('data-src') || el.getAttribute('data-lazy-src') || '';
+    else if (tag === 'lite-youtube' || el.getAttribute('data-youtube-id')) u = `https://youtu.be/${el.getAttribute('videoid') || el.getAttribute('data-youtube-id')}`;
+    else if (tag === 'lite-vimeo') u = `https://vimeo.com/${el.getAttribute('videoid')}`;
+    u = abs(u);
+    if (u && VIDEO_HOST.test(u)) stand(el, 'embed', embedUrl(u), el.getAttribute('title') || '');
+    else el.remove();
+  }
+  for (const v of [...document.querySelectorAll('video')]) {
+    const src = v.getAttribute('src') || v.getAttribute('data-src') || [...v.querySelectorAll('source')].map((s) => s.getAttribute('src') || s.getAttribute('data-src')).find(Boolean);
+    stand(v, 'video', src ? abs(src) : '', v.getAttribute('title') || v.getAttribute('aria-label') || '');
+    if (!src) v.remove();
+  }
+  for (const a of [...document.querySelectorAll('audio')]) {
+    const src = a.getAttribute('src') || [...a.querySelectorAll('source')].map((s) => s.getAttribute('src')).find(Boolean);
+    if (src) stand(a, 'audio', abs(src), a.getAttribute('title') || ''); else a.remove();
+  }
+  // Diagrams drawn as inline SVG: keep the bigger ones (icons and logos are small) as SVG pictures.
+  for (const svg of [...document.querySelectorAll('svg')]) {
+    if (svg.parentElement?.closest('svg')) continue;
+    const vb = (svg.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+    const w = parseFloat(svg.getAttribute('width')) || vb[2] || 0, h = parseFloat(svg.getAttribute('height')) || vb[3] || 0;
+    const markup = svg.outerHTML;
+    if (w < 120 || h < 80 || markup.length > 150000 || svg.closest('nav, header, footer, button, a')) { continue; }
+    if (!/xmlns=/.test(markup.slice(0, 200))) svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    stand(svg, 'img', 'data:image/svg+xml;base64,' + Buffer.from(svg.outerHTML).toString('base64'), svg.querySelector('title')?.textContent || svg.getAttribute('aria-label') || '');
+  }
+  return keep;
+}
 function webDoc(doc, html, finalUrl) {
   const { document } = parseHTML(html);
   const site = document.querySelector('meta[property="og:site_name"]')?.getAttribute('content') || new URL(finalUrl).hostname.replace(/^www\./, '');
-  const art = new Readability(document, { charThreshold: 300 }).parse();
+  const keep = prepMedia(document, finalUrl);
+  const art = new Readability(document, { charThreshold: 300, keepClasses: false }).parse();
   if (!art?.content) throw new Error('no article text found');
   const { document: d } = parseHTML(`<!doctype html><html><body>${art.content}</body></html>`);
   const labels = [], pages = [];
   let cur = { label: 'Intro', text: [] };
   const flush = () => { const t = cur.text.join('\n\n').trim(); if (t) { labels.push(cur.label); pages.push(t); } };
   const clean = (t) => t.replace(/\s+/g, ' ').trim();
+  const capOf = (n, img) => clean(n.querySelector?.('figcaption')?.textContent || img?.getAttribute('alt') || img?.getAttribute('title') || '').replace(/[|\]\[]/g, ' ');
+  const seen = new Set();
+  const media = (n, img) => {
+    const src = img.getAttribute('src') || '';
+    const k = src.match(/^https:\/\/keep\.invalid\/(\d+)\.png$/);
+    let m = k ? keep[+k[1]] : { kind: 'img', url: src, cap: '' };
+    if (m && !m.url.startsWith('data:')) { try { m = { ...m, url: new URL(m.url, finalUrl).href }; } catch { return; } }
+    if (!m?.url || seen.has(m.url)) return;
+    seen.add(m.url);
+    const cap = capOf(n, img) || clean(m.cap).replace(/[|\]\[]/g, ' ');
+    cur.text.push(`[[${m.kind} ${m.url}|${cap}]]`);
+  };
   const visit = (el) => {
     for (const n of el.children) {
       const tag = n.tagName.toLowerCase();
       if (/^h[1-4]$/.test(tag)) { flush(); cur = { label: clean(n.textContent).slice(0, 60) || 'Section', text: [clean(n.textContent)] }; }
-      else if (tag === 'img' || (tag === 'figure' && n.querySelector('img')) || (tag === 'picture')) {
-        const img = tag === 'img' ? n : n.querySelector('img');
-        const src = img.getAttribute('src') || img.getAttribute('data-src');
-        if (src && !src.startsWith('data:')) { const cap = clean(n.querySelector?.('figcaption')?.textContent || img.getAttribute('alt') || ''); cur.text.push(`[[img ${new URL(src, finalUrl).href}|${cap.replace(/[|\]]/g, ' ')}]]`); }
+      else if (tag === 'img') media(n, n);
+      else if (tag === 'figure' || tag === 'picture') {
+        const imgs = [...n.querySelectorAll('img')];
+        if (imgs.length) for (const img of imgs) media(n, img);
+        else { const t = clean(n.textContent); if (t) cur.text.push(t); }
       }
-      else if (tag === 'li') cur.text.push('• ' + clean(n.textContent));
-      else if (/^(p|blockquote|pre|td|th|figcaption|dt|dd)$/.test(tag)) { const t = clean(n.textContent); if (t) cur.text.push(t); }
+      else if (tag === 'table') {
+        const rows = [...n.querySelectorAll('tr')].map((tr) => [...tr.children].filter((c) => /^t[dh]$/i.test(c.tagName)).map((c) => clean(c.textContent).replace(/\t/g, ' '))).filter((r) => r.some(Boolean));
+        if (rows.length > 1 && rows.some((r) => r.length > 1)) cur.text.push('[[table]]\n' + rows.map((r) => r.join('\t')).join('\n'));
+        else for (const r of rows) { const t = r.join(' '); if (t) cur.text.push(t); }
+        for (const img of n.querySelectorAll('img')) media(n, img);
+      }
+      else if (tag === 'li') { cur.text.push('• ' + clean(n.textContent)); for (const img of n.querySelectorAll('img')) media(n, img); }
+      else if (/^(p|blockquote|pre|figcaption|dt|dd)$/.test(tag)) { const t = clean(n.textContent); if (t) cur.text.push(t); for (const img of n.querySelectorAll('img')) media(n, img); }
       else visit(n);
     }
   };

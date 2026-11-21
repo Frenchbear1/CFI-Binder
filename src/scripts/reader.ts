@@ -120,8 +120,22 @@ function textPage(doc: DocData, n: number, q: string): Drawn {
   for (const [s0, e0, c] of rangesFor(doc, n, q)) { html += esc(text.slice(last, s0)) + `<mark class="c${c}">${esc(text.slice(s0, e0))}</mark>`; last = e0; }
   html += esc(text.slice(last));
   const para = (p: string) => {
-    const img = p.replace(/<\/?mark[^>]*>/g, '').match(/^\[\[img (\S+)\|(.*)\]\]$/);
-    if (img) return `<figure class="rd-fig"><img src="${img[1]}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()">${img[2] ? `<figcaption>${img[2]}</figcaption>` : ''}</figure>`;
+    const m = p.replace(/<\/?mark[^>]*>/g, '').match(/^\[\[(img|embed|video|audio) (\S+)\|(.*)\]\]$/s);
+    if (m) {
+      const [, kind, url, cap] = m;
+      const fc = cap ? `<figcaption>${cap}</figcaption>` : '';
+      if (!/^(https:|data:image\/)/.test(url)) return '';
+      if (kind === 'img') return `<figure class="rd-fig"><img src="${url}" alt="${cap}" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentNode.remove()">${fc}</figure>`;
+      if (kind === 'embed') return `<figure class="rd-fig rd-embed"><div class="rd-player"><iframe src="${url}" title="${cap || 'Video'}" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>${fc}</figure>`;
+      if (kind === 'video') return `<figure class="rd-fig"><video src="${url}" controls playsinline preload="metadata" onerror="this.parentNode.remove()"></video>${fc}</figure>`;
+      return `<figure class="rd-fig"><audio src="${url}" controls preload="none"></audio>${fc}</figure>`;
+    }
+    if (p.startsWith('[[table]]\n')) {
+      const rows = p.slice(10).split('\n').map((r) => r.split('\t'));
+      const [head, ...body] = rows;
+      const tr = (r: string[], t: string) => `<tr>${r.map((c) => `<${t}>${c}</${t}>`).join('')}</tr>`;
+      return `<div class="rd-table"><table><thead>${tr(head, 'th')}</thead><tbody>${body.map((r) => tr(r, 'td')).join('')}</tbody></table></div>`;
+    }
     return `<p>${p.replace(/\n/g, '<br>')}</p>`;
   };
   const frame = document.createElement('div');
@@ -173,6 +187,8 @@ let zoomDrawn: Drawn | null = null;
 function setZoomLayout() {
   if (zoom <= 1.01) { host.style.width = ''; host.style.maxWidth = ''; }
   else { host.style.maxWidth = 'none'; host.style.width = `${pageWidth() * zoom}px`; }
+  // the paper grain and web-page text grow with the page, so zooming looks like a closer look, not a reflow
+  host.style.setProperty('--pz', String(zoom > 1.01 ? zoom : 1));
   stage.classList.toggle('zoomed', zoom > 1.01);
 }
 function resetZoom() { zoom = 1; setZoomLayout(); zoomDrawn?.cleanup(); zoomDrawn = null; }
