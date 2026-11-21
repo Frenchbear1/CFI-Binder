@@ -119,7 +119,7 @@ const REFS={
   ac91_92:{lab:'AC 91-92',t:'AC 91-92: Pilot\'s Guide to a Preflight Briefing (self-briefing)',u:'https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_91-92.pdf',faa:1},
   p91_103:{lab:'§91.103',t:'14 CFR 91.103: Preflight action (all available information, weather reports and forecasts, alternatives)',u:CFR('91.103'),faa:1},
   p91_151:{lab:'§91.151',t:'14 CFR 91.151: Fuel requirements for flight in VFR conditions',u:CFR('91.151'),faa:1},
-  awc:{lab:'AviationWeather.gov',t:'NOAA Aviation Weather Center: live METAR, TAF, PIREP, SIGMET, G-AIRMET and decoding help',u:'https://aviationweather.gov/'},
+  awc:{lab:'AIM 7-1-1',t:'AIM 7-1-1: National Weather Service aviation weather products (AviationWeather.gov: METAR, TAF, PIREP, SIGMET, G-AIRMET)',u:'https://www.faa.gov/air_traffic/publications/atpubs/aim_html/chap7_section_1.html',faa:1},
   spc:{lab:'SPC outlooks',t:'NOAA Storm Prediction Center: convective outlooks and risk categories',u:'https://www.spc.noaa.gov/products/outlook/'},
   phak11:{lab:'PHAK 11',t:'PHAK Ch 11: Aircraft Performance (density altitude, takeoff and landing charts, runway surface and slope, wind)',u:'https://www.faa.gov/sites/faa.gov/files/13_phak_ch11.pdf',faa:1},
   wbh2:{lab:'W&B HB 2',t:'Aircraft Weight and Balance Handbook (FAA-H-8083-1B) Ch 2: Weight and Balance Theory and Documentation (datum, arm, moment)',u:'https://www.faa.gov/regulations_policies/handbooks_manuals/aviation',faa:1},
