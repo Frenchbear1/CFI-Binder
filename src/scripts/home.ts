@@ -143,8 +143,6 @@ levels: [${o.levels.join(', ')}]
 order: 0
 updated: ${new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
 ---
-
-Start writing here. Tap the pencil to edit, and type / to add any block.
 `;
 
 async function create() {

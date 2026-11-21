@@ -20,7 +20,7 @@ if (article && bar) {
   const saveBtn = head.querySelector<HTMLButtonElement>('[data-cmd="save"]')!;
   const doneBtn = head.querySelector<HTMLButtonElement>('[data-cmd="done"]')!;
   const moreMenu = head.querySelector<HTMLElement>('[data-more-menu]')!;
-  const panel = document.querySelector<HTMLElement>('[data-panel]')!;
+  const panel = document.querySelector<HTMLElement>('.blk-panel')!;
   const pop = document.querySelector<HTMLFormElement>('[data-eb-pop]')!;
   const popInput = pop.querySelector<HTMLInputElement>('[data-eb-input]')!;
   const srcDlg = document.getElementById('sheet-source') as HTMLDialogElement;
@@ -33,7 +33,7 @@ if (article && bar) {
 
   // Text you can type into: tagged markdown blocks (not component wrappers), title/summary, and fields of new blocks.
   const blocks = () => [...article.querySelectorAll<HTMLElement>('[data-src]:not([data-comp]):not([data-kind]), [data-fm], [data-ed]')];
-  const pending = () => dirty.size + article.querySelectorAll('[data-deleted]').length + article.querySelectorAll('[data-new]').length;
+  const pending = () => dirty.size + article.querySelectorAll('[data-deleted]').length + [...article.querySelectorAll<HTMLElement>('[data-new]')].filter((x) => !(x.tagName === 'P' && !(x.textContent || '').trim())).length;
   const say = (t: string, kind = '') => { status.textContent = t; status.dataset.kind = kind; };
   const refresh = () => {
     const n = pending();
@@ -64,6 +64,12 @@ if (article && bar) {
     article.querySelectorAll<HTMLElement>('.r, .video, svg, .pagelink, .bookmark').forEach((x) => (on ? (x.contentEditable = 'false') : x.removeAttribute('contenteditable')));
     article.querySelectorAll<HTMLInputElement>('li > input[type="checkbox"]').forEach((c) => (c.disabled = !on));
     if (on) say(pending() ? '' : 'Tap any text to edit');
+    // An empty page starts with one empty line to type into, like a new Notion page.
+    if (on && !article.querySelector(':scope > [data-src], :scope > [data-new]')) {
+      const anchor = article.querySelector<HTMLElement>('.meta-line') || article.lastElementChild as HTMLElement;
+      const p0 = insertAfterReady(anchor, 'p', {}, undefined, false);
+      if (p0) { p0.classList.remove('blk-new'); refresh(); }
+    }
     else { pop.hidden = true; say(''); tools.hidden = true; closePanel(); showView('main'); }
   }
   document.querySelectorAll<HTMLElement>('[data-edit-toggle]').forEach((b) => b.addEventListener('click', () => {
@@ -155,6 +161,10 @@ if (article && bar) {
     const leaf = target.querySelector('li:last-child') || target;
     const r = document.createRange(); r.selectNodeContents(leaf); r.collapse(false);
     target.focus(); sel()!.removeAllRanges(); sel()!.addRange(r);
+  });
+  // A space typed into a toggle's title would open/close the toggle instead of typing.
+  article.addEventListener('keydown', (e) => {
+    if (on && e.key === ' ' && (e.target as HTMLElement).closest?.('summary')) { e.preventDefault(); document.execCommand('insertText', false, ' '); }
   });
   // Paste as plain text so formatting from other sites doesn't come along.
   article.addEventListener('paste', (e) => {
@@ -338,7 +348,7 @@ if (article && bar) {
     if (panelMode === mode) { closePanel(); return; }
     keepSel();
     if (!current) current = selEl()?.closest<HTMLElement>('[data-new], [data-src]') || null;
-    if (mode === 'turn' && !turnable(current)) { say('Tap a text block first'); return; }
+    if (mode === 'turn' && !current) { say('Tap a block first'); return; }
     if (!current) current = lastTop();
     panelMode = mode;
     bar.querySelectorAll('[data-cmd]').forEach((b) => b.classList.toggle('on', (b as HTMLElement).dataset.cmd === (mode === 'add' ? 'add' : mode)));
@@ -350,10 +360,13 @@ if (article && bar) {
       panelH.textContent = 'Link to page';
       panelBody.innerHTML = outline.map((a) => `<p class="panel-g">${esc(a.title)}</p><div class="panel-list">${a.topics.filter((t) => t.slug).map((t) => `<button type="button" data-page="${t.slug}">${SV('<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/>')}<span><b>${esc(t.title)}</b></span></button>`).join('') || '<p class="muted small">No pages yet</p>'}</div>`).join('');
     } else {
-      const list = mode === 'turn' ? CATALOG.filter((i) => i.turn) : CATALOG;
-      panelH.textContent = mode === 'turn' ? 'Turn into' : '';
+      const canTurn = mode !== 'turn' || turnable(current);
+      const list = mode === 'turn' ? (canTurn ? CATALOG.filter((i) => i.turn) : []) : CATALOG;
+      panelH.textContent = mode === 'turn' ? (canTurn ? 'Turn into' : 'This block') : '';
       const groups = [...new Set(list.map((i) => i.group))];
-      panelBody.innerHTML = groups.map((g) => `${mode === 'turn' && g === 'Basic blocks' ? '' : `<p class="panel-g">${g}</p>`}<div class="panel-grid">${list.filter((i) => i.group === g).map((i) => `<button type="button" data-item="${i.id}"><span class="pi">${i.icon}</span>${i.label}</button>`).join('')}</div>`).join('');
+      // The block's own actions sit at the top of Turn into (phones have no hover handles).
+      const acts = mode === 'turn' ? `<div class="panel-acts"><button type="button" data-act="up">${SV('<path d="M12 19V5M6 11l6-6 6 6"/>')}Move up</button><button type="button" data-act="down">${SV('<path d="M12 5v14M6 13l6 6 6-6"/>')}Move down</button><button type="button" data-act="del" class="danger">${SV('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>')}Delete</button></div>` : '';
+      panelBody.innerHTML = acts + groups.map((g) => `${mode === 'turn' && g === 'Basic blocks' ? '' : `<p class="panel-g">${g}</p>`}<div class="panel-grid">${list.filter((i) => i.group === g).map((i) => `<button type="button" data-item="${i.id}"><span class="pi">${i.icon}</span>${i.label}</button>`).join('')}</div>`).join('');
     }
     panel.hidden = false; panel.scrollTop = 0;
     html.classList.add('panel-open');
@@ -366,6 +379,7 @@ if (article && bar) {
     const mode = panelMode;
     if (b.dataset.page) { closePanel(); if (at) insertAfter(at, 'pagelink', { to: b.dataset.page }); return; }
     if (b.dataset.img) { closePanel(); if (at) addImage(at, b.dataset.img); return; }
+    if (b.dataset.act && at) { closePanel(); if (b.dataset.act === 'del') removeBlock(at); else move(at, b.dataset.act === 'up' ? -1 : 1); return; }
     const it = CATALOG.find((i) => i.id === b.dataset.item);
     if (!it || !at) return;
     if (it.kind === 'pagelink') { panelMode = ''; togglePanel('pages'); return; }
@@ -394,15 +408,19 @@ if (article && bar) {
     const q = m[1].toLowerCase().trim().split(/\s+/).filter(Boolean);
     slashHits = CATALOG.filter((it) => q.every((w) => words(it).split(/[\s·+]+/).some((x) => x.startsWith(w)) || words(it).includes(w)));
     slashSel = 0;
-    slash.innerHTML = slashHits.length
-      ? slashHits.map((it, i) => `<button type="button" role="option" data-i="${i}" class="${i === 0 ? 'on' : ''}"><span class="pi">${it.icon}</span>${it.label}</button>`).join('')
-      : '<p class="muted small">No blocks match</p>';
+    // Like Notion: once nothing matches, the menu goes away and what you typed stays as text.
+    if (!slashHits.length) { slash.hidden = true; return; }
+    slash.innerHTML = slashHits.map((it, i) => `<button type="button" role="option" data-i="${i}" class="${i === 0 ? 'on' : ''}"><span class="pi">${it.icon}</span>${it.label}</button>`).join('');
     slash.hidden = false;
+    // Below the line when there's room above the bar/keyboard, else above it; never over the top bar.
     const r = blk!.getBoundingClientRect();
-    const room = (window.visualViewport?.height || innerHeight) - 120;
-    const below = r.bottom + 260 < room;
+    const bottom = (window.visualViewport?.height || innerHeight) - (bar.offsetHeight || 50) - 8;
+    const spaceBelow = bottom - r.bottom - 6, spaceAbove = r.top - 64;
+    const below = spaceBelow >= 160 || spaceBelow >= spaceAbove;
+    const maxH = Math.max(120, Math.min(300, below ? spaceBelow : spaceAbove));
+    slash.style.maxHeight = `${maxH}px`;
     slash.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 268)) + scrollX}px`;
-    slash.style.top = `${(below ? r.bottom + 6 : r.top - 6 - Math.min(slash.offsetHeight, 260)) + scrollY}px`;
+    slash.style.top = `${(below ? r.bottom + 6 : r.top - 6 - Math.min(slash.offsetHeight, maxH)) + scrollY}px`;
   }
   function slashPick(i: number) {
     const it = slashHits[i];
@@ -698,7 +716,7 @@ if (article && bar) {
   const lastTop = () => [...article.querySelectorAll<HTMLElement>(':scope > [data-src], :scope > [data-new]')].filter((x) => x.dataset.deleted === undefined).pop() || null;
   function place(el: HTMLElement | null) {
     if (el) current = el;
-    if (!on || !el || el.dataset.deleted !== undefined) { tools.hidden = true; return; }
+    if (!on || !el || el.dataset.deleted !== undefined || !matchMedia('(hover: hover) and (pointer: fine)').matches) { tools.hidden = true; return; }
     const r = el.getBoundingClientRect(), a = article.getBoundingClientRect();
     tools.hidden = false;
     const wide = a.left > 70;
@@ -810,6 +828,19 @@ if (article && bar) {
           }
           if (op.ins) text = text.slice(0, e0) + '\n\n' + op.md + text.slice(e0);
           else text = text.slice(0, s0) + op.md + text.slice(e0);
+        }
+        // New blocks above the first saved block (e.g. on a brand-new, empty page) go right after the
+        // frontmatter and imports.
+        const lead: HTMLElement[] = [];
+        for (const c of article.children as unknown as HTMLElement[]) {
+          if (c.matches('[data-src]')) break;
+          if (c.dataset.new !== undefined) lead.push(c);
+        }
+        const leadMd = lead.map(toMdx).filter(Boolean).join('\n\n');
+        if (leadMd) {
+          const head = text.match(/^---\n[\s\S]*?\n---\n(?:[ \t]*import [^\n]*\n|[ \t]*\n)*/);
+          const at = head ? head[0].length : 0;
+          text = text.slice(0, at).replace(/\n*$/, '\n\n') + leadMd + '\n\n' + text.slice(at).replace(/^\n+/, '');
         }
         let newTitle = '';
         for (const el of dirty) {

@@ -10,7 +10,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
     <h1 data-pagefind-meta="title" data-fm="title">{title}</h1>
     <p class="lede" data-fm="summary" data-ph="Add a one-line summary">{summary}</p>
     <p class="meta-line" data-pagefind-ignore>
-      {acs.length > 0 && <>ACS: {acs.join(', ')}</>}{updated && <> · Updated {updated}</>}
+      {[acs.length > 0 ? `ACS: ${acs.join(', ')}` : '', updated ? `Updated ${updated}` : ''].filter(Boolean).join(' · ')}
     </p>
     <slot />
   </article>
