@@ -1,6 +1,7 @@
 // Network first, cache fallback: always fresh when online, still works with no signal.
-const C = 'cfi-binder-v1';
-self.addEventListener('install', () => self.skipWaiting());
+const C = 'cfi-binder-v2';
+// Keep the home page and icons so the installed app opens even with no signal.
+self.addEventListener('install', (e) => { self.skipWaiting(); e.waitUntil(caches.open(C).then((c) => c.addAll(['./', 'manifest.webmanifest', 'favicon.svg', 'icon-192.png', 'icon-512.png']).catch(() => {}))); });
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', (e) => {
   const r = e.request;

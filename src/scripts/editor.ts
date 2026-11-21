@@ -58,7 +58,7 @@ if (article && bar) {
     const t = e.target as HTMLElement;
     // Typing "/" into an empty text block opens the block menu, like Notion.
     const blk = t.closest<HTMLElement>('[data-new], [data-src]:not([data-comp])');
-    if (blk && /^(P|DIV)$/.test(blk.tagName) && (blk.textContent || '').trim() === '/') { slashFrom = blk; openMenu(blk); }
+    slashCheck(blk);
     const el = t.closest<HTMLElement>('[data-new], [data-src], [data-fm]');
     if (!el || el.dataset.new !== undefined || el.dataset.comp) { refresh(); return; }
     dirty.add(el); refresh(); say('');
@@ -68,6 +68,13 @@ if (article && bar) {
     if (!on || e.key !== 'Enter' || e.shiftKey) return;
     const t = e.target as HTMLElement;
     if (t.closest('[data-fm], summary, .callout-title, figcaption, [data-f="title"], [data-f="channel"]')) { e.preventDefault(); return; }
+    // Enter on an empty last bullet leaves the list and starts a paragraph, like Notion.
+    const sel = getSelection();
+    const li = (sel?.anchorNode?.nodeType === 1 ? sel.anchorNode as HTMLElement : sel?.anchorNode?.parentElement)?.closest('li');
+    const lst = li?.parentElement as HTMLElement | undefined;
+    if (li && lst && !li.nextElementSibling && !(li.textContent || '').trim() && (lst.dataset.src || lst.dataset.new !== undefined)) {
+      e.preventDefault(); li.remove(); if (lst.dataset.src) dirty.add(lst); insertAfter(lst, 'p'); return;
+    }
     const h = t.closest<HTMLElement>('h2, h3, h4');
     if (h && (h.dataset.src || h.dataset.new !== undefined)) { e.preventDefault(); insertAfter(h, 'p'); }
   });
@@ -190,8 +197,9 @@ if (article && bar) {
         if (n.nodeType === 1 && /^(UL|OL)$/.test((n as HTMLElement).tagName)) subs.push(list(n as HTMLElement, depth + 1));
         else own.append(n.cloneNode(true));
       });
-      return `${pad}${ordered ? `${i + 1}.` : '-'} ${oneLine(inline(own))}${subs.length ? '\n' + subs.join('\n') : ''}`;
-    }).join('\n');
+      const t = oneLine(inline(own));
+      return t || subs.length ? `${pad}${ordered ? `${i + 1}.` : '-'} ${t}${subs.length ? '\n' + subs.join('\n') : ''}` : '';
+    }).filter(Boolean).map((l, i) => (ordered ? l.replace(/^(\s*)\d+\./, `$1${i + 1}.`) : l)).join('\n');
   }
   function table(el: HTMLElement): string {
     const rows = [...el.querySelectorAll('tr')].map((tr) => `| ${[...tr.children].map((c) => oneLine(inline(c)).replace(/\|/g, '\\|')).join(' | ')} |`);
@@ -354,6 +362,57 @@ if (article && bar) {
   let current: HTMLElement | null = null;
   let menuAt: HTMLElement | null = null;
   let slashFrom: HTMLElement | null = null;
+
+  /* ---------- "/" quick add: type /bul, /c172, /warn… and Enter ---------- */
+  const slash = document.createElement('div');
+  slash.className = 'slash-menu'; slash.hidden = true; slash.setAttribute('role', 'listbox');
+  document.body.append(slash);
+  const KEYS: Record<string, string> = {
+    p: 'text paragraph', h2: 'section heading h2 title', h3: 'sub-heading subheading h3', ul: 'bullets bulleted list', ol: 'numbered list ordered steps',
+    table: 'table grid', toggle: 'toggle collapse dropdown details', hr: 'divider line separator',
+    teach: 'teaching tip callout teach', fleet: 'our airplanes fleet aircraft callout', warn: 'warning caution callout', acs: 'acs standard callout', note: 'note callout info',
+    compare: 'c172 pa28 pa-28 cessna piper compare cards aircraft', level: 'level only', video: 'video youtube', image: 'picture image photo',
+  };
+  const items = [...menu.querySelectorAll<HTMLButtonElement>('[data-kind]')].map((b) => ({
+    b, label: b.textContent!.replace(b.querySelector('b')!.textContent!, '').trim(), icon: b.querySelector('b')!.textContent!,
+    words: `${b.textContent} ${KEYS[b.dataset.k || b.dataset.kind!] || ''} ${b.dataset.lv ? b.dataset.lv.split(' ').map((k) => ({ pa: 'pvt private', ir: 'ir instrument', ca: 'ca commercial' } as any)[k]).join(' ') : ''}`.toLowerCase(),
+  }));
+  let slashHits: typeof items = [];
+  let slashSel = 0;
+  function slashCheck(blk: HTMLElement | null) {
+    const m = blk && /^(P|DIV)$/.test(blk.tagName) ? (blk.textContent || '').match(/^\/([^/\n]{0,24})$/) : null;
+    if (!m) { slash.hidden = true; return; }
+    slashFrom = blk;
+    const q = m[1].toLowerCase().trim().split(/\s+/).filter(Boolean);
+    slashHits = items.filter((it) => q.every((w) => it.words.split(/[\s·+]+/).some((x) => x.startsWith(w)) || it.words.includes(w)));
+    slashSel = 0;
+    if (!slashHits.length) { slash.innerHTML = '<p class="muted small">No blocks match</p>'; }
+    else slash.innerHTML = slashHits.map((it, i) => `<button type="button" role="option" data-i="${i}" class="${i === 0 ? 'on' : ''}"><b>${it.icon}</b>${it.label}</button>`).join('');
+    slash.hidden = false;
+    const r = blk!.getBoundingClientRect();
+    const below = r.bottom + 260 < innerHeight - 80;
+    slash.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 268)) + scrollX}px`;
+    slash.style.top = `${(below ? r.bottom + 6 : r.top - 6 - Math.min(slash.offsetHeight, 260)) + scrollY}px`;
+  }
+  function slashPick(i: number) {
+    const it = slashHits[i];
+    slash.hidden = true;
+    if (it && slashFrom) { menuAt = slashFrom; it.b.click(); }
+  }
+  slash.addEventListener('pointerdown', (e) => e.preventDefault());
+  slash.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest<HTMLElement>('[data-i]'); if (b) slashPick(Number(b.dataset.i)); });
+  article.addEventListener('keydown', (e) => {
+    if (slash.hidden) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      slashSel = (slashSel + (e.key === 'ArrowDown' ? 1 : -1) + slashHits.length) % Math.max(1, slashHits.length);
+      slash.querySelectorAll('[data-i]').forEach((b, i) => b.classList.toggle('on', i === slashSel));
+      slash.querySelector('.on')?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter' || e.key === 'Tab') { if (slashHits.length) { e.preventDefault(); e.stopImmediatePropagation(); slashPick(slashSel); } }
+    else if (e.key === 'Escape') { slash.hidden = true; }
+  }, true);
+  article.addEventListener('focusout', () => setTimeout(() => { if (!article.contains(document.activeElement)) slash.hidden = true; }, 150));
+
   const target = (n: EventTarget | null) => (n instanceof Element ? n.closest<HTMLElement>('[data-new], [data-src]') : null);
   const lastTop = () => [...article.querySelectorAll<HTMLElement>(':scope > [data-src], :scope > [data-new]')].pop() || null;
   function place(el: HTMLElement | null) {

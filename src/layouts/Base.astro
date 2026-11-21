@@ -19,6 +19,12 @@ const href = (slug: string) => base + slug + '/';
   <meta name="theme-color" content="#191919" media="(prefers-color-scheme: dark)" />
   <link rel="icon" href={base + 'favicon.svg'} type="image/svg+xml" />
   <link rel="manifest" href={base + 'manifest.webmanifest'} />
+  <link rel="icon" href={base + 'icon-32.png'} type="image/png" sizes="32x32" />
+  <link rel="apple-touch-icon" href={base + 'icon-180.png'} />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="CFI Binder" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <script is:inline>
     // Apply saved level + aircraft before first paint so nothing flickers.
     try {
