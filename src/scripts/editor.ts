@@ -947,8 +947,26 @@ if (article && bar) {
   // Keep the bar (and the sheet) sitting on top of the on-screen keyboard.
   const vv = window.visualViewport;
   if (vv) {
-    const fit = () => { const gap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop); html.style.setProperty('--kb', `${gap}px`); html.classList.toggle('kb-up', gap > 60); };
-    vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit);
+    // iOS doesn't shrink the page for the keyboard: fixed bars stay put behind it. So pin the top bar to
+    // the top of what you can see and the editor bar to its bottom, measured from the visual viewport.
+    let raf = 0;
+    const fit = () => {
+      raf = 0;
+      const layoutH = document.documentElement.clientHeight;
+      const up = on && vv.height < layoutH - 80;
+      html.classList.toggle('kb-up', up);
+      html.style.setProperty('--kb', '0px');
+      if (!up) { bar.style.top = bar.style.bottom = head.style.top = pop.style.top = pop.style.bottom = ''; return; }
+      const barTop = vv.offsetTop + vv.height - bar.offsetHeight;
+      bar.style.bottom = 'auto'; bar.style.top = `${barTop}px`;
+      head.style.top = `${vv.offsetTop}px`;
+      pop.style.bottom = 'auto'; pop.style.top = `${barTop - (pop.offsetHeight || 52) - 8}px`;
+    };
+    const ask = () => { if (!raf) raf = requestAnimationFrame(fit); };
+    vv.addEventListener('resize', ask); vv.addEventListener('scroll', ask);
+    addEventListener('scroll', ask, { passive: true });
+    document.addEventListener('focusin', () => { ask(); setTimeout(ask, 350); });
+    document.addEventListener('focusout', () => setTimeout(ask, 350));
   }
   window.addEventListener('beforeunload', (e) => { if (pending()) e.preventDefault(); });
 }
