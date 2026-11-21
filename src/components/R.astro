@@ -1,0 +1,7 @@
+---
+// Inline short references after a paragraph: <R to="PHAK 5-15; 14 CFR 91.9" />
+import { resolveRef } from '../data/sources';
+const { to } = Astro.props as { to: string };
+const refs = to.split(';').map(resolveRef);
+---
+<span class="r">{refs.map((r, i) => <>{i > 0 && <span class="r-sep"> · </span>}{r.href ? <a href={r.href}>{r.label}</a> : <span>{r.label}</span>}</>)}</span>

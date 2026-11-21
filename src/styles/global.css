@@ -291,3 +291,9 @@ html, body { overflow-x: clip; }
 
 .video-frame a.video-link { position: absolute; inset: 0; display: grid; place-items: center; background: #111 center / cover no-repeat; }
 .video-frame a.video-link:hover .play { transform: scale(1.06); background: #e62117; }
+/* Inline short references */
+.r { font-size: .78em; color: var(--ink-3); white-space: nowrap; margin-left: .35em; }
+.r a { color: var(--ink-3); text-decoration-color: color-mix(in srgb, var(--ink-3) 50%, transparent); }
+.r a:hover { color: var(--accent); }
+.r-sep { color: var(--line); }
+p > .r:only-child, li > .r:only-child { margin-left: 0; }
