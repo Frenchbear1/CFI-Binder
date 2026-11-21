@@ -16,5 +16,8 @@
     "pagefind": "^1.6.0"
   },
   "private": true,
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "pdfjs-dist": "^3.11.174"
+  }
 }

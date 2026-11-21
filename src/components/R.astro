@@ -1,7 +1,9 @@
 ---
-// Inline short references after a paragraph: <R to="PHAK 5-15; 14 CFR 91.9" />
+// Inline short references after a paragraph: <R to="PHAK 5-15; 14 CFR 91.9" q="dihedral" />
+// Refs to a document in the binder's library open the in-page reader (highlighting `q`, or the
+// paragraph's bold terms when q is left out). Every link still points at the original source.
 import { resolveRef } from '../data/sources';
-const { to } = Astro.props as { to: string };
+const { to, q } = Astro.props as { to: string; q?: string };
 const refs = to.split(';').map(resolveRef);
 ---
-<span class="r">{refs.map((r, i) => <>{i > 0 && <span class="r-sep"> · </span>}{r.href ? <a href={r.href}>{r.label}</a> : <span>{r.label}</span>}</>)}</span>
+<span class="r">{refs.map((r, i) => <>{i > 0 && <span class="r-sep"> · </span>}{r.href ? <a href={r.href} data-doc={r.doc} data-page={r.page} data-q={q}>{r.label}</a> : <span>{r.label}</span>}</>)}</span>

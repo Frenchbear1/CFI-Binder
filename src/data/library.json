@@ -1,0 +1,7 @@
+{
+  "_about": "Documents the in-lesson reader can open. scripts/fetch-sources.mjs downloads each one (only if it changed) and pulls out the text of every page. Page labels: 'chapter' gives 5-1, 5-2… for PHAK-style chapter PDFs.",
+  "docs": [
+    { "id": "phak-5", "short": "PHAK", "title": "PHAK Chapter 5: Aerodynamics of Flight", "url": "https://www.faa.gov/sites/faa.gov/files/07_phak_ch5.pdf", "type": "pdf", "labels": { "chapter": 5 } },
+    { "id": "phak-6", "short": "PHAK", "title": "PHAK Chapter 6: Flight Controls", "url": "https://www.faa.gov/sites/faa.gov/files/08_phak_ch6.pdf", "type": "pdf", "labels": { "chapter": 6 } }
+  ]
+}

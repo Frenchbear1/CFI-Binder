@@ -65,6 +65,10 @@ Object.values(sheets).forEach((s) => {
   s.addEventListener('touchstart', (e) => { y0 = s.scrollTop <= 0 ? e.touches[0].clientY : -1; }, { passive: true });
   s.addEventListener('touchend', (e) => { if (y0 >= 0 && e.changedTouches[0].clientY - y0 > 90) s.close(); }, { passive: true });
 });
+document.querySelectorAll<HTMLDialogElement>('#sheet-reader').forEach((d) => {
+  d.addEventListener('click', (e) => { if (e.target === d) d.close(); });
+  d.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => d.close()));
+});
 document.addEventListener('keydown', (e) => {
   const t = e.target as HTMLElement;
   const typing = t.matches('input, textarea, [contenteditable]');
