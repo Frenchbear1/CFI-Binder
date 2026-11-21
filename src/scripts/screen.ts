@@ -42,7 +42,7 @@ function init() {
   const icon = (it: Item) => it.kind === 'sim' ? '◎' : it.kind === 'video' ? '▶' : '▣';
   function render() {
     document.documentElement.classList.toggle('scr-paired', !!code);
-    document.querySelectorAll<HTMLElement>('.screen-btn').forEach((b) => (b.hidden = !code));
+    document.querySelectorAll<HTMLElement>('.screen-btn').forEach((b) => b.classList.toggle('on', !!code));
     document.querySelectorAll<HTMLElement>('[data-scr-row]').forEach((e) => (e.textContent = code ? `Connected · ${code} ›` : 'Connect an iPad ›'));
     if (!sheet) return;
     q('[data-scr-off]')!.hidden = !!code;

@@ -852,7 +852,8 @@ body.guest main { padding-bottom: 24px; }
 .cast-btn.sent { background: var(--accent); border-color: var(--accent); color: #fff; }
 .cast-row { display: flex; justify-content: flex-end; margin-top: 6px; }
 html:not(.scr-paired) .cast-btn, html:not(.scr-paired) .cast-row, html.editing .cast-btn, html.editing .cast-row { display: none; }
-.screen-btn { color: var(--accent); }
+.screen-btn { color: var(--ink-2); }
+.screen-btn.on { color: var(--accent); }
 .topbar .screen-btn { margin-left: auto; }
 .topbar .screen-btn + .prefs-inline { margin-left: 10px; }
 .scr-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #34c759; vertical-align: middle; box-shadow: 0 0 0 3px color-mix(in srgb, #34c759 25%, transparent); }

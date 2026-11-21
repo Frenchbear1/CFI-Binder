@@ -68,7 +68,7 @@ const href = (slug: string) => base + slug + '/';
       <button class="icon-btn" type="button" data-open="prefs" aria-label="Settings and theme" title="Settings and theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg></button>
       {!signin && <a class="signin-pill" href={base + 'login/'}>Sign in</a>}
     </div>}
-    {!guest && <button class="icon-btn screen-btn" type="button" data-open="screen" aria-label="Student screen" title="Student screen" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></button>}
+    {!guest && <button class="icon-btn screen-btn" type="button" data-open="screen" aria-label="Student screen" title="Student screen"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></button>}
     <div class="prefs-inline" aria-label="View settings">
       {isLesson && <button class="theme-btn" type="button" data-edit-toggle aria-label="Edit this lesson" title="Edit this lesson"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg></button>}
       <button class="theme-btn" type="button" data-open="theme" aria-label="Reading theme" title="Reading theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.8 1.3-1.7-.3-.9.2-1.8 1.2-1.8H17a4 4 0 0 0 4-4c0-5-4-10.5-9-10.5z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7" r="1.2"/><circle cx="15" cy="7.5" r="1.2"/></svg></button>
