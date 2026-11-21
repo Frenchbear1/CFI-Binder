@@ -8,6 +8,15 @@ const fixUrl = (u: string) => {
   if (portable && abs.pathname.endsWith('/')) abs.pathname += 'index.html';
   return abs.href;
 };
+import { applyReadingTheme, openThemeBar, THEME_DEFAULTS } from '../lib/is/themes.js';
+
+/* ---------- Reading themes (Instant Search's) ---------- */
+let themePrefs: any = { ...THEME_DEFAULTS };
+try { Object.assign(themePrefs, JSON.parse(localStorage.getItem('cfi.themePrefs') || '{}')); } catch {}
+const saveTheme = () => { try { localStorage.setItem('cfi.themePrefs', JSON.stringify(themePrefs)); } catch {} };
+applyReadingTheme(themePrefs);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if ((themePrefs.rtheme || 'auto') === 'auto') applyReadingTheme(themePrefs); });
+
 const LEVEL_SHORT: Record<string, string> = { pa: 'PVT', ir: 'IFR', ca: 'COM' };
 const AC_SHORT: Record<string, string> = { both: 'Both', c172: 'C172', pa28: 'PA-28' };
 
@@ -42,6 +51,7 @@ const sheets: Record<string, HTMLDialogElement | null> = {
 };
 function openSheet(name: string) {
   Object.values(sheets).forEach((s) => s?.open && s.close());
+  if (name === 'theme') { openThemeBar(themePrefs, { save: saveTheme }); return; }
   const s = sheets[name];
   if (!s) return;
   s.showModal();
