@@ -244,3 +244,13 @@ document.addEventListener('click', (e) => {
     } catch {}
   }
 }
+
+/* ---------- No ring on the first button when a sheet opens (the browser focuses it for you) ---------- */
+{
+  const open = HTMLDialogElement.prototype.showModal;
+  HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
+    open.call(this);
+    const a = document.activeElement as HTMLElement | null;
+    if (a && this.contains(a) && !a.matches('input, textarea, select, [contenteditable="true"]')) a.blur();
+  };
+}

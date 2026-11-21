@@ -223,7 +223,7 @@ function textLayer(items, styles, base) {
   return layer;
 }
 
-export async function renderPdfPage(pdf, n, host, ranges, width, { trim = false, columns = false } = {}) {
+export async function renderPdfPage(pdf, n, host, ranges, width, { trim = false, columns = false, dpr: dprMax = 0, cropY = false } = {}) {
   const page = await pdf.getPage(n + 1);
   const base = page.getViewport({ scale: 1 });
   const content = await page.getTextContent();
@@ -233,8 +233,8 @@ export async function renderPdfPage(pdf, n, host, ranges, width, { trim = false,
   const ts = span ? 1 / (span[1] - span[0]) : 1;
   // in column view a column fills the width, so draw sharper (columns are found around each hit by the app)
   const tsDraw = columns ? Math.max(ts, 2.1) : ts;
-  const cssWidth = Math.max(width || 0, host.clientWidth || 700) * tsDraw;
-  const dpr = Math.min(window.devicePixelRatio || 1, columns ? 2 : 2.5);
+  const cssWidth = (width || host?.clientWidth || 700) * tsDraw;
+  const dpr = Math.min(window.devicePixelRatio || 1, dprMax || (columns ? 2 : 2.5));
   const scale = Math.min(cssWidth * dpr, 4096) / base.width;
   const vp = page.getViewport({ scale });
 
@@ -246,6 +246,12 @@ export async function renderPdfPage(pdf, n, host, ranges, width, { trim = false,
   sheet.style.aspectRatio = `${base.width} / ${base.height}`;
   if (span) { frame.style.setProperty('--ts', ts.toFixed(4)); frame.style.setProperty('--tx0', span[0].toFixed(4)); frame.dataset.tx = span.join(','); }
   if (box.y) frame.dataset.ty = box.y.join(','); // where the text starts and ends down the page
+  // cropY: also cut the blank top and bottom (margin-top % is a share of the frame's width)
+  if (cropY && box.y) {
+    const [y0, y1] = box.y;
+    frame.style.aspectRatio = `${base.width} / ${(y1 - y0) * ts * base.height}`;
+    sheet.style.marginTop = `${-(y0 * ts * base.height / base.width) * 100}%`;
+  }
   frame._lines = textLines(content.items, base); // where each piece of text sits, for finding columns
   const canvas = document.createElement('canvas');
   canvas.width = Math.floor(vp.width);
@@ -305,5 +311,5 @@ export async function renderPdfPage(pdf, n, host, ranges, width, { trim = false,
   try { await task.promise; } catch (e) { if (e?.name !== 'RenderingCancelledException') throw e; cancelled = true; }
   page.cleanup();
   const cleanup = () => { task.cancel(); sizer.disconnect(); canvas.width = canvas.height = 0; frame.remove(); };
-  return { cleanup, trimmed: !!span, show: () => { if (!cancelled) host.replaceChildren(frame); } };
+  return { cleanup, frame, cancelled, trimmed: !!span, show: () => { if (!cancelled) host.replaceChildren(frame); } };
 }

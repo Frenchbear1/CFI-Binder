@@ -1,24 +1,29 @@
 // In-lesson source reader, built on Instant Search's PDF rendering and search engine.
 // Tap a reference (e.g. "PHAK 5-19") and the real page slides up with the lesson's key terms highlighted.
-// Swipe sideways to move through every source cited in that section; expand for full-screen reading and
-// a search across the whole library.
+// Pages are cropped to their text like Instant Search. Swipe sideways for the next or previous page (the
+// page follows your finger), pinch to zoom and drag with one finger to look around. ‹ › at the bottom step
+// through every source cited in that section.
+// Speed: the PDF library, the sources and the cited pages are fetched and drawn ahead of time, so a tap
+// shows a page that's already drawn.
 import { compile } from '../lib/is/search.js';
 import { renderPdfPage } from '../lib/is/pdf.js';
 
 type Ref = { doc: string; page: number; at?: string; label: string; href: string; q: string };
 type DocData = { id: string; title: string; short: string; url: string; kind?: 'text'; labels: string[]; pages: string[] };
+type Drawn = { frame: HTMLElement; cleanup: () => void };
 
 const base = new URL(document.body.dataset.base || '/', document.baseURI).href;
 const dlg = document.getElementById('sheet-reader') as HTMLDialogElement | null;
 const $ = <T extends HTMLElement>(sel: string) => dlg?.querySelector<T>(sel) as T;
+const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 
 let refs: Ref[] = [];
 let idx = 0;
 let page = 0; // page currently shown (can move away from the cited page)
+let curDoc: DocData | null = null;
 let library: { id: string; title: string; short: string; pages: number; updated?: string }[] | null = null;
 const docs = new Map<string, Promise<DocData>>();
 const pdfs = new Map<string, Promise<any>>();
-let cleanupPrev: (() => void) | null = null;
 let renderSeq = 0;
 
 /* ---------- loading ---------- */
@@ -41,16 +46,16 @@ const getDoc = (id: string) => {
   if (!docs.has(id)) docs.set(id, fetch(new URL(`library/${id}.json`, base)).then((r) => { if (!r.ok) throw new Error('missing'); return r.json(); }));
   return docs.get(id)!;
 };
+// Whole-file fetch (no range requests) so the browser and the app's offline cache can keep it.
 const getPdf = (id: string) => {
-  if (!pdfs.has(id)) pdfs.set(id, loadPdfLib().then((lib) => lib.getDocument({ url: new URL(`library/${id}.pdf`, base).href, isEvalSupported: false }).promise));
+  if (!pdfs.has(id)) pdfs.set(id, loadPdfLib().then((lib) => lib.getDocument({ url: new URL(`library/${id}.pdf`, base).href, isEvalSupported: false, disableRange: true, disableStream: true }).promise));
   return pdfs.get(id)!;
 };
 // url -> doc id for every page the build snapshotted, so plain links (Boldmethod, CFI Notebook…) open here too.
 let links: Record<string, string> = {};
-const loadLinks = () => fetch(new URL('library/links.json', base)).then((r) => (r.ok ? r.json() : {})).then((j) => (links = j)).catch(() => {});
+const linksReady = fetch(new URL('library/links.json', base)).then((r) => (r.ok ? r.json() : {})).then((j) => (links = j)).catch(() => {});
 const norm = (u: string) => { try { const x = new URL(u, location.href); x.hash = ''; return x.href; } catch { return ''; } };
 const isPdfUrl = (u: string) => /\.pdf($|[?#])/i.test(u);
-// The doc a link opens in the reader, if any.
 function docFor(a: HTMLAnchorElement): string | undefined {
   if (a.dataset.doc) return a.dataset.doc;
   if (!/^https?:/.test(a.href) || a.closest('.video, [data-noreader]')) return;
@@ -60,14 +65,16 @@ const READABLE = '[data-article] a[href]';
 const getLibrary = async () => (library ??= await fetch(new URL('library/index.json', base)).then((r) => r.json()).catch(() => []));
 
 /* ---------- which words to highlight ---------- */
-// The ref's own q, else the bold words in the paragraph it ends (minus the reference itself).
 function queryFor(a: HTMLAnchorElement) {
   if (a.dataset.q) return a.dataset.q;
   const block = a.closest('p, li, td, .callout-body') || a.parentElement;
   const words = [...(block?.querySelectorAll('strong') || [])].map((s) => s.textContent || '').join(' ');
   return words.replace(/[^\p{L}\p{N}\s-]/gu, ' ').split(/\s+/).filter((w) => w.length > 3 && !/^(the|and|with|that|your|more|both)$/i.test(w)).join(' ');
 }
-
+function refOf(x: HTMLAnchorElement): Ref {
+  const pdfPage = !x.dataset.doc && isPdfUrl(x.href) ? Number((x.href.match(/#page=(\d+)/) || [])[1] || 1) - 1 : -1;
+  return { doc: docFor(x)!, page: x.dataset.page ? Number(x.dataset.page) : pdfPage, at: x.dataset.at, label: x.textContent || '', href: x.href, q: queryFor(x) };
+}
 // All library refs in the same section (between the h2s around the tapped one), in reading order.
 function sectionRefs(a: HTMLAnchorElement): { list: Ref[]; at: number } {
   const article = a.closest('[data-article]');
@@ -75,12 +82,10 @@ function sectionRefs(a: HTMLAnchorElement): { list: Ref[]; at: number } {
   const h2s = [...(article?.querySelectorAll('h2') || [])];
   const sectionOf = (el: Element) => h2s.filter((h) => h.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).length;
   const sec = sectionOf(a);
-  const mine = all.filter((x) => sectionOf(x) === sec);
   const list: Ref[] = [];
   let at = 0;
-  for (const x of mine) {
-    const pdfPage = !x.dataset.doc && isPdfUrl(x.href) ? Number((x.href.match(/#page=(\d+)/) || [])[1] || 1) - 1 : -1;
-    const r = { doc: docFor(x)!, page: x.dataset.page ? Number(x.dataset.page) : pdfPage, at: x.dataset.at, label: x.textContent || '', href: x.href, q: queryFor(x) };
+  for (const x of all.filter((y) => sectionOf(y) === sec)) {
+    const r = refOf(x);
     const dup = list.findIndex((y) => y.doc === r.doc && y.page === r.page && y.at === r.at);
     if (dup >= 0) { if (x === a) at = dup; if (!list[dup].q.includes(r.q)) list[dup].q = `${list[dup].q} ${r.q}`.trim(); continue; }
     if (x === a) at = list.length;
@@ -89,70 +94,146 @@ function sectionRefs(a: HTMLAnchorElement): { list: Ref[]; at: number } {
   return { list, at };
 }
 
-/* ---------- rendering ---------- */
+/* ---------- drawing pages (kept in a small cache so going back and forth is instant) ---------- */
+const stage = $('[data-rd-stage]');
+const host = $('[data-rd-page]');
+const pageWidth = () => Math.min(900, (stage?.clientWidth || innerWidth) - 20);
+const pageIndex = (doc: DocData, ref: Ref) => Math.max(0, Math.min(ref.at ? Math.max(0, doc.labels.indexOf(ref.at)) : ref.page, doc.pages.length - 1));
+const CACHE_MAX = 10;
+const drawn = new Map<string, Promise<Drawn | null>>();
+const keyOf = (doc: string, n: number, q: string, w: number, sharp: boolean) => `${doc}|${n}|${q}|${Math.round(w)}|${sharp ? 2 : 1}`;
+function trimCache() {
+  while (drawn.size > CACHE_MAX) {
+    const [k, p] = drawn.entries().next().value!;
+    drawn.delete(k);
+    p.then((d) => { if (d && !d.frame.isConnected) d.cleanup(); });
+  }
+}
+function rangesFor(doc: DocData, n: number, q: string) {
+  const m = q ? compile(q, { mode: 'any', wholeWord: false }) : null;
+  return m && !('error' in m) ? m.soft(doc.pages[n]).map(([s, e, c]: number[]) => [s, e, c, null]) : [];
+}
+function textPage(doc: DocData, n: number, q: string): Drawn {
+  const web = doc.id.startsWith('web-');
+  const text = doc.pages[n];
+  let html = '', last = 0;
+  for (const [s0, e0, c] of rangesFor(doc, n, q)) { html += esc(text.slice(last, s0)) + `<mark class="c${c}">${esc(text.slice(s0, e0))}</mark>`; last = e0; }
+  html += esc(text.slice(last));
+  const para = (p: string) => {
+    const img = p.replace(/<\/?mark[^>]*>/g, '').match(/^\[\[img (\S+)\|(.*)\]\]$/);
+    if (img) return `<figure class="rd-fig"><img src="${img[1]}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()">${img[2] ? `<figcaption>${img[2]}</figcaption>` : ''}</figure>`;
+    return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+  };
+  const frame = document.createElement('div');
+  frame.className = `rd-text${web ? ' rd-web' : ''}`;
+  frame.innerHTML = `${web ? `<p class="rd-src">From ${esc(doc.short)}. Saved copy, refreshed weekly.</p>` : ''}${html.split(/\n{2,}/).map(para).join('')}`;
+  return { frame, cleanup: () => frame.remove() };
+}
+// sharp = full resolution; otherwise a quick 1x draw that shows sooner.
+function draw(docId: string, n: number, q: string, sharp = true, width = pageWidth()): Promise<Drawn | null> {
+  const k = keyOf(docId, n, q, width, sharp);
+  let p = drawn.get(k);
+  if (p) { drawn.delete(k); drawn.set(k, p); return p; } // most recently used goes last
+  p = (async () => {
+    const doc = await getDoc(docId);
+    if (doc.kind === 'text') return textPage(doc, n, q);
+    const pdf = await getPdf(docId);
+    const res = await renderPdfPage(pdf, n, null, rangesFor(doc, n, q), width, { trim: true, cropY: true, dpr: sharp ? 2 : 1 });
+    if (res.cancelled) return null;
+    return { frame: res.frame, cleanup: res.cleanup };
+  })().catch(() => null);
+  drawn.set(k, p);
+  trimCache();
+  return p;
+}
+const isDone = async (p: Promise<unknown>) => Promise.race([p.then(() => true), new Promise<boolean>((r) => setTimeout(() => r(false), 0))]);
+
+// Quietly draw what you're likely to open next, one page at a time.
+const queue: (() => Promise<unknown>)[] = [];
+let busy = false;
+function later(job: () => Promise<unknown>) {
+  queue.push(job);
+  if (busy) return;
+  busy = true;
+  const next = () => {
+    const j = queue.shift();
+    if (!j) { busy = false; return; }
+    const idle = (window as any).requestIdleCallback || ((f: () => void) => setTimeout(f, 60));
+    idle(() => j().finally(next));
+  };
+  next();
+}
+async function warmRef(r: Ref) {
+  try { const doc = await getDoc(r.doc); await draw(r.doc, pageIndex(doc, r), r.q); } catch {}
+}
+
+/* ---------- showing a page ---------- */
+let zoom = 1;
+let zoomDrawn: Drawn | null = null;
+function setZoomLayout() {
+  if (zoom <= 1.01) { host.style.width = ''; host.style.maxWidth = ''; }
+  else { host.style.maxWidth = 'none'; host.style.width = `${pageWidth() * zoom}px`; }
+  stage.classList.toggle('zoomed', zoom > 1.01);
+}
+function resetZoom() { zoom = 1; setZoomLayout(); zoomDrawn?.cleanup(); zoomDrawn = null; }
+function put(d: Drawn) {
+  if (host.firstElementChild === d.frame && host.childElementCount === 1) return;
+  host.replaceChildren(d.frame);
+}
+
 async function show(i: number, pageOverride?: number) {
   if (!dlg || !refs.length) return;
   idx = (i + refs.length) % refs.length;
   const ref = refs[idx];
-  page = pageOverride ?? ref.page;
   const my = ++renderSeq;
-  const stage = $('[data-rd-stage]');
+  resetZoom();
   $('[data-rd-label]').textContent = ref.label;
   $('[data-rd-count]').textContent = refs.length > 1 ? `${idx + 1} of ${refs.length}` : '';
   $<HTMLAnchorElement>('[data-rd-orig]').href = ref.href;
   dlg.querySelectorAll('[data-rd-step]').forEach((b) => ((b as HTMLElement).hidden = refs.length < 2));
-  stage.setAttribute('aria-busy', 'true');
   try {
     const doc = await getDoc(ref.doc);
     if (my !== renderSeq) return;
-    if (pageOverride === undefined && ref.at) page = Math.max(0, doc.labels.indexOf(ref.at));
-    page = Math.max(0, Math.min(page, doc.pages.length - 1));
+    curDoc = doc;
+    page = Math.max(0, Math.min(pageOverride ?? pageIndex(doc, ref), doc.pages.length - 1));
     const web = doc.id.startsWith('web-');
     $('[data-rd-doc]').textContent = web ? `${doc.short} · ${doc.title}` : `${doc.title} · ${doc.kind === 'text' ? '' : 'page '}${doc.labels[page]}`;
-    const m = ref.q ? compile(ref.q, { mode: 'any', wholeWord: false }) : null;
-    const ranges = m && !('error' in m) ? m.soft(doc.pages[page]).map(([s, e, c]: number[]) => [s, e, c, null]) : [];
-    const host = $('[data-rd-page]');
-    if (doc.kind === 'text') {
-      // AIM paragraphs and FAR sections: clean text with the same highlights.
-      const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]!));
-      const text = doc.pages[page];
-      let html = '', last = 0;
-      for (const [s0, e0, c] of ranges) { html += esc(text.slice(last, s0)) + `<mark class="c${c}">${esc(text.slice(s0, e0))}</mark>`; last = e0; }
-      html += esc(text.slice(last));
-      cleanupPrev?.(); cleanupPrev = null;
-      const para = (p: string) => {
-        const img = p.replace(/<\/?mark[^>]*>/g, '').match(/^\[\[img (\S+)\|(.*)\]\]$/);
-        if (img) return `<figure class="rd-fig"><img src="${img[1]}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()">${img[2] ? `<figcaption>${img[2]}</figcaption>` : ''}</figure>`;
-        return `<p>${p.replace(/\n/g, '<br>')}</p>`;
-      };
-      host.innerHTML = `<div class="rd-text${web ? ' rd-web' : ''}">${web ? `<p class="rd-src">From ${esc(doc.short)}. Saved copy, refreshed weekly.</p>` : ''}${html.split(/\n{2,}/).map(para).join('')}</div>`;
-    } else {
-      const pdf = await getPdf(ref.doc);
-      if (my !== renderSeq) return;
-      const res = await renderPdfPage(pdf, page, host, ranges, host.clientWidth || stage.clientWidth);
-      if (my !== renderSeq) return res.cleanup();
-      cleanupPrev?.();
-      res.show();
-      cleanupPrev = res.cleanup;
-    }
+    const unit = web ? '' : doc.kind === 'text' ? (doc.short === 'AIM' ? 'AIM ' : '§ ') : 'Page ';
     const prev = $<HTMLButtonElement>('[data-rd-prevpage]'), next = $<HTMLButtonElement>('[data-rd-nextpage]');
     prev.hidden = page === 0; next.hidden = page >= doc.pages.length - 1;
-    const unit = web ? '' : doc.kind === 'text' ? (doc.short === 'AIM' ? 'AIM ' : '§ ') : 'Page ';
-    prev.textContent = page > 0 ? `↑ ${unit}${doc.labels[page - 1]}` : '';
-    next.textContent = page < doc.pages.length - 1 ? `${unit}${doc.labels[page + 1]} ↓` : '';
-    // Bring the first highlight into view.
-    stage.scrollTop = 0;
-    requestAnimationFrame(() => {
-      const hit = host.querySelector<HTMLElement>('.box, mark');
-      if (hit) stage.scrollTop = Math.max(0, hit.getBoundingClientRect().top - stage.getBoundingClientRect().top - stage.clientHeight * 0.3);
-    });
+    prev.textContent = page > 0 ? `‹ ${unit}${doc.labels[page - 1]}` : '';
+    next.textContent = page < doc.pages.length - 1 ? `${unit}${doc.labels[page + 1]} ›` : '';
+    const sharp = draw(ref.doc, page, ref.q, true);
+    let early = false;
+    if (!(await isDone(sharp)) && doc.kind !== 'text') {
+      // Not drawn yet: show a quick 1x draw first, then swap in the sharp one.
+      stage.setAttribute('aria-busy', 'true');
+      const quick = await Promise.race([draw(ref.doc, page, ref.q, false), sharp]);
+      if (my !== renderSeq) return;
+      if (quick) { put(quick); scrollToHit(); early = true; }
+    }
+    const d = await sharp;
+    if (my !== renderSeq) return;
+    if (!d) throw new Error('draw');
+    put(d);
+    if (!early) scrollToHit();
+    // Next likely stops: the pages either side, then the other sources in this section.
+    for (const n of [page + 1, page - 1]) if (n >= 0 && n < doc.pages.length) later(() => draw(ref.doc, n, ref.q));
+    for (const r of [refs[idx + 1], refs[idx - 1]]) if (r) later(() => warmRef(r));
   } catch {
     if (my !== renderSeq) return;
-    $('[data-rd-page]').innerHTML = `<p class="rd-missing">This source isn’t in the binder’s library yet. <a href="${ref.href}" target="_blank" rel="noopener">Open it on the original site</a>.</p>`;
+    host.innerHTML = `<p class="rd-missing">This source isn’t in the binder’s library yet. <a href="${ref.href}" target="_blank" rel="noopener">Open it on the original site</a>.</p>`;
     $('[data-rd-doc]').textContent = '';
   } finally {
     if (my === renderSeq) stage.removeAttribute('aria-busy');
   }
+}
+function scrollToHit() {
+  stage.scrollTop = 0; stage.scrollLeft = 0;
+  requestAnimationFrame(() => {
+    const hit = host.querySelector<HTMLElement>('.box, mark');
+    if (hit) stage.scrollTop = Math.max(0, hit.getBoundingClientRect().top - stage.getBoundingClientRect().top - stage.clientHeight * 0.3);
+  });
 }
 
 export function openReader(list: Ref[], at: number) {
@@ -169,27 +250,29 @@ let searchSeq = 0;
 async function runSearch(q: string) {
   const out = $('[data-rd-results]');
   const my = ++searchSeq;
-  const m = compile(q, { mode: 'all', wholeWord: false });
+  if (!q.trim()) { out.innerHTML = ''; return; }
+  // Keywords: a page matching more of them ranks higher, then more hits.
+  const m = compile(q, { mode: 'any', wholeWord: false });
   if (!m || 'error' in m) { out.innerHTML = m && 'error' in m ? `<p class="muted">${m.error}</p>` : ''; return; }
   const lib = await getLibrary();
-  const hits: { doc: DocData; p: number; n: number; ex: string }[] = [];
+  const hits: { doc: DocData; p: number; n: number; terms: number; ex: string }[] = [];
   for (const d of lib) {
     const doc = await getDoc(d.id).catch(() => null);
     if (!doc) continue;
     doc.pages.forEach((text, p) => {
       const r = m.match(text);
       if (!r || !r.length) return;
+      const terms = new Set(r.map((x: number[]) => x[2])).size;
       const [s] = r[0];
       const a = Math.max(0, s - 70);
-      const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]!));
       let ex = '', last = a;
       for (const [rs, re] of r.filter(([rs]: number[]) => rs < a + 180)) { ex += esc(text.slice(last, rs)) + '<mark>' + esc(text.slice(rs, re)) + '</mark>'; last = re; }
       ex += esc(text.slice(last, a + 180));
-      hits.push({ doc, p, n: r.length, ex: (a > 0 ? '…' : '') + ex.replace(/\s+/g, ' ') + '…' });
+      hits.push({ doc, p, n: r.length, terms, ex: (a > 0 ? '…' : '') + ex.replace(/\s+/g, ' ') + '…' });
     });
   }
   if (my !== searchSeq) return;
-  hits.sort((x, y) => y.n - x.n);
+  hits.sort((x, y) => y.terms - x.terms || y.n - x.n);
   out.innerHTML = hits.length
     ? hits.slice(0, 40).map((h, i) => `<button type="button" class="rd-hit" data-i="${i}"><span class="rd-hit-t">${h.doc.short} ${h.doc.labels[h.p]} <span class="muted">· ${h.n} hit${h.n > 1 ? 's' : ''}</span></span><span class="rd-hit-x">${h.ex}</span></button>`).join('')
     : `<p class="muted">No pages match.</p>`;
@@ -201,9 +284,167 @@ async function runSearch(q: string) {
   }));
 }
 
+// One row of keyword chips: the reference's own words, then the bold terms and headings of the lesson.
+function chipWords(): string[] {
+  const seen = new Set<string>(), out: string[] = [];
+  const add = (w: string) => {
+    w = w.replace(/[^\p{L}\p{N}\s'-]/gu, ' ').replace(/\s+/g, ' ').trim().replace(/^(the|a|an|our|both)\s+/i, '');
+    const k = w.toLowerCase();
+    if (w.length < 3 || w.length > 28 || seen.has(k) || /^(the|and|with|that|your|more|both|what|this|from)$/i.test(w)) return;
+    seen.add(k); out.push(w);
+  };
+  (refs[idx]?.q || '').split(/\s+/).forEach(add);
+  const art = document.querySelector('[data-article]');
+  art?.querySelectorAll('strong').forEach((s) => add(s.textContent || ''));
+  art?.querySelectorAll('h2, h3').forEach((h) => add((h.textContent || '').replace(/#$/, '')));
+  return out.slice(0, 24);
+}
+
+/* ---------- gestures: swipe for pages, pinch to zoom, one finger to pan, double-tap to zoom ---------- */
+const SWIPE_GAP = 24, SWIPE_AT = 72;
+function bindGestures() {
+  let peek: HTMLElement | null = null;
+  let s: null | { x: number; y: number; t: number; on: boolean; dir: number; w: number; next: number; ready: Drawn | null } = null;
+  let pinch: null | { d0: number; z0: number; fx: number; fy: number } = null;
+  let lastTap = 0, lastX = 0, lastY = 0, moved = false;
+  const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  const zoomAt = (z: number, mx: number, my: number, fx?: number, fy?: number) => {
+    const r0 = host.getBoundingClientRect();
+    fx ??= (mx - r0.left) / r0.width; fy ??= (my - r0.top) / r0.height;
+    zoom = Math.max(1, Math.min(5, z));
+    setZoomLayout();
+    const r1 = host.getBoundingClientRect();
+    stage.scrollLeft += r1.left + fx * r1.width - mx;
+    stage.scrollTop += r1.top + fy * r1.height - my;
+  };
+  let sharpT: number | undefined;
+  const sharpen = () => {
+    clearTimeout(sharpT);
+    sharpT = window.setTimeout(async () => {
+      const ref = refs[idx], my = renderSeq, z = zoom;
+      if (!curDoc || curDoc.kind === 'text' || z < 1.3) return;
+      const pdf = await getPdf(ref.doc);
+      const res = await renderPdfPage(pdf, page, null, rangesFor(curDoc, page, ref.q), pageWidth() * z, { trim: true, cropY: true, dpr: 2 });
+      if (my !== renderSeq || z !== zoom || res.cancelled) { res.cleanup(); return; }
+      const old = zoomDrawn; zoomDrawn = { frame: res.frame, cleanup: res.cleanup };
+      host.replaceChildren(res.frame);
+      old?.cleanup();
+    }, 280);
+  };
+  const clearPeek = () => { peek?.remove(); peek = null; };
+  stage.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      s = null; clearPeek(); host.style.transform = ''; host.style.opacity = '';
+      const t = e.touches, r = host.getBoundingClientRect();
+      const mx = (t[0].clientX + t[1].clientX) / 2, my = (t[0].clientY + t[1].clientY) / 2;
+      pinch = { d0: dist(t), z0: zoom, fx: (mx - r.left) / r.width, fy: (my - r.top) / r.height };
+      return;
+    }
+    if (e.touches.length !== 1) return;
+    moved = false;
+    const t = e.touches[0];
+    s = zoom <= 1.01 && curDoc ? { x: t.clientX, y: t.clientY, t: performance.now(), on: false, dir: 0, w: host.offsetWidth, next: -1, ready: null } : null;
+  }, { passive: true });
+  stage.addEventListener('touchmove', (e) => {
+    if (pinch && e.touches.length === 2) {
+      e.preventDefault();
+      const t = e.touches;
+      zoomAt(pinch.z0 * (dist(t) / pinch.d0), (t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2, pinch.fx, pinch.fy);
+      return;
+    }
+    const t = e.touches[0];
+    if (t && (Math.abs(t.clientX - lastX) > 8 || Math.abs(t.clientY - lastY) > 8)) moved = true;
+    if (!s || !t || !curDoc) return;
+    const dx = t.clientX - s.x, dy = t.clientY - s.y;
+    if (!s.on) {
+      if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx) * 1.3) { s = null; return; } // scrolling
+      if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 0.7) return;
+      s.on = true;
+    }
+    e.preventDefault();
+    const dir = dx < 0 ? 1 : -1;
+    const n = page + dir;
+    const edge = n < 0 || n >= curDoc.pages.length;
+    if (dir !== s.dir) {
+      s.dir = dir; clearPeek(); s.ready = null; s.next = n;
+      if (!edge) {
+        peek = document.createElement('div');
+        peek.className = 'rd-page rd-peek';
+        Object.assign(peek.style, { top: host.offsetTop + 'px', left: host.offsetLeft + 'px', width: s.w + 'px' });
+        peek.innerHTML = `<p class="rd-peek-l">${esc(curDoc.labels[n] || '')}</p>`;
+        stage.append(peek);
+        const want = n, ref = refs[idx], pk = peek;
+        draw(ref.doc, want, ref.q).then((d) => { if (d && s && s.next === want && peek === pk) { s.ready = d; pk.replaceChildren(d.frame); } });
+      }
+    }
+    const move = edge ? Math.sign(dx) * Math.min(60, Math.abs(dx) * 0.3) : dx;
+    host.style.transform = `translateX(${move}px)`;
+    host.style.opacity = String(edge ? 1 : 1 - Math.min(0.6, Math.abs(dx) / (s.w * 0.6) * 0.6));
+    if (peek) peek.style.transform = `translateX(${dir * (s.w + SWIPE_GAP) + move}px)`;
+  }, { passive: false });
+  const end = (e: TouchEvent) => {
+    if (pinch) {
+      if (e.touches.length < 2) { pinch = null; if (zoom < 1.05) resetZoom(); else sharpen(); }
+      return;
+    }
+    // Double-tap: zoom in where you tapped, or back out.
+    const t = e.changedTouches[0];
+    if (!s?.on && !moved && t) {
+      const now = performance.now();
+      if (now - lastTap < 300 && Math.hypot(t.clientX - lastX, t.clientY - lastY) < 30) {
+        lastTap = 0;
+        if (zoom > 1.01) resetZoom(); else { zoomAt(2.5, t.clientX, t.clientY); sharpen(); }
+        s = null; return;
+      }
+      lastTap = now; lastX = t.clientX; lastY = t.clientY;
+    }
+    if (!s || !s.on || !t) { s = null; return; }
+    const { dir, w, next } = s;
+    const dx = t.clientX - s.x;
+    const v = Math.abs(dx) / Math.max(1, performance.now() - s.t);
+    s = null;
+    const from = host.style.transform, fromO = host.style.opacity || '1';
+    const ok = curDoc && next >= 0 && next < curDoc.pages.length && (dx < 0 ? 1 : -1) === dir && (Math.abs(dx) >= SWIPE_AT || v > 0.45);
+    const ease = 'cubic-bezier(0.2, 0.9, 0.3, 1)';
+    if (!ok) {
+      host.style.transform = ''; host.style.opacity = '';
+      host.animate([{ transform: from, opacity: fromO }, { transform: 'none', opacity: 1 }], { duration: 240, easing: ease });
+      const pk = peek; peek = null;
+      if (pk) pk.animate([{ transform: pk.style.transform }, { transform: `translateX(${dir * (w + SWIPE_GAP)}px)` }], { duration: 240, easing: ease }).onfinish = () => pk.remove();
+      return;
+    }
+    const pk = peek; peek = null;
+    host.animate([{ transform: from, opacity: fromO }, { transform: `translateX(${-dir * (w + SWIPE_GAP)}px)`, opacity: 0 }], { duration: 220, easing: ease, fill: 'forwards' });
+    const go = () => {
+      host.getAnimations().forEach((a) => a.cancel());
+      host.style.transform = ''; host.style.opacity = '';
+      if (pk?.firstElementChild?.classList.contains('pdf-frame') || pk?.firstElementChild?.classList.contains('rd-text')) host.replaceChildren(pk.firstElementChild!);
+      pk?.remove();
+      stage.scrollTop = 0;
+      show(idx, next);
+    };
+    if (pk) pk.animate([{ transform: pk.style.transform }, { transform: 'translateX(0)' }], { duration: 220, easing: ease, fill: 'forwards' }).onfinish = go;
+    else go();
+  };
+  stage.addEventListener('touchend', end, { passive: true });
+  stage.addEventListener('touchcancel', end, { passive: true });
+  // iOS Safari's own page zoom would fight ours.
+  dlg!.addEventListener('gesturestart', (e) => e.preventDefault());
+  dlg!.addEventListener('gesturechange', (e) => e.preventDefault());
+  // Laptop: ctrl + scroll (and trackpad pinch) zooms, a sideways trackpad swipe turns the page.
+  let acc = 0, quiet = 0, accT: number | undefined;
+  stage.addEventListener('wheel', (e) => {
+    if (e.ctrlKey) { e.preventDefault(); zoomAt(zoom * Math.exp(-e.deltaY / 200), e.clientX, e.clientY); if (zoom < 1.03) resetZoom(); else sharpen(); return; }
+    if (zoom > 1.01 || Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+    e.preventDefault();
+    if (performance.now() < quiet) return;
+    acc += e.deltaX; clearTimeout(accT); accT = window.setTimeout(() => (acc = 0), 220);
+    if (Math.abs(acc) > 120 && curDoc) { const n = page + (acc > 0 ? 1 : -1); acc = 0; quiet = performance.now() + 600; if (n >= 0 && n < curDoc.pages.length) show(idx, n); }
+  }, { passive: false });
+}
+
 /* ---------- wiring ---------- */
 if (dlg) {
-  loadLinks();
   document.addEventListener('click', (e) => {
     const a = (e.target as HTMLElement).closest<HTMLAnchorElement>(READABLE);
     if (!a || !docFor(a) || e.metaKey || e.ctrlKey || e.shiftKey) return; // modifier-click still opens the original
@@ -212,29 +453,67 @@ if (dlg) {
     const { list, at } = sectionRefs(a);
     openReader(list, at);
   });
+  // Start drawing the moment a finger lands on a reference, before the tap even finishes.
+  document.addEventListener('pointerdown', (e) => {
+    const a = (e.target as HTMLElement).closest?.<HTMLAnchorElement>(READABLE);
+    if (a && docFor(a) && !document.documentElement.classList.contains('editing')) warmRef(refOf(a));
+  }, { passive: true });
+  // Get the reader ready while the lesson is being read: the PDF library, the sources, and the cited
+  // pages of references as they scroll into view.
+  const article = document.querySelector('[data-article]');
+  if (article) {
+    const start = () => linksReady.then(() => {
+      const anchors = [...article.querySelectorAll<HTMLAnchorElement>(READABLE)].filter((a) => docFor(a));
+      if (!anchors.length) return;
+      loadPdfLib().catch(() => {});
+      for (const id of new Set(anchors.map((a) => docFor(a)!))) getDoc(id).then((d) => { if (d.kind !== 'text') getPdf(id); }).catch(() => {});
+      const io = new IntersectionObserver((es) => es.forEach((en) => {
+        if (!en.isIntersecting) return;
+        io.unobserve(en.target);
+        later(() => warmRef(refOf(en.target as HTMLAnchorElement)));
+      }), { rootMargin: '200px 0px' });
+      anchors.forEach((a) => io.observe(a));
+    });
+    if (document.readyState === 'complete') setTimeout(start, 400); else addEventListener('load', () => setTimeout(start, 400));
+  }
+
   $('[data-rd-prev]').addEventListener('click', () => show(idx - 1));
   $('[data-rd-next]').addEventListener('click', () => show(idx + 1));
   $('[data-rd-prevpage]').addEventListener('click', () => show(idx, page - 1));
   $('[data-rd-nextpage]').addEventListener('click', () => show(idx, page + 1));
   $('[data-rd-expand]').addEventListener('click', () => { dlg.classList.toggle('expanded'); show(idx, page); });
+
+  const inp = $<HTMLInputElement>('[data-rd-q]');
+  const chips = $('[data-rd-chips]');
+  let filledFor = '';
   $('[data-rd-search]').addEventListener('click', () => {
     dlg.classList.toggle('searching');
-    if (dlg.classList.contains('searching')) { const inp = $<HTMLInputElement>('[data-rd-q]'); inp.value ||= refs[idx]?.q || ''; inp.focus(); inp.select(); runSearch(inp.value); }
+    if (!dlg.classList.contains('searching')) return;
+    // Prefill with the words of the reference you're looking at now (kept if you typed for this same one).
+    const key = `${refs[idx]?.doc}|${refs[idx]?.page}|${refs[idx]?.q}`;
+    if (key !== filledFor || !inp.value.trim()) { inp.value = refs[idx]?.q || ''; filledFor = key; }
+    chips.innerHTML = chipWords().map((w) => `<button type="button" data-w="${esc(w)}">${esc(w)}</button>`).join('');
+    chips.scrollLeft = 0;
+    inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
+    runSearch(inp.value);
+  });
+  chips.addEventListener('pointerdown', (e) => e.preventDefault()); // keep the keyboard up
+  chips.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-w]');
+    if (!b) return;
+    const w = b.dataset.w!;
+    const have = inp.value.toLowerCase().split(/\s+/);
+    if (!w.toLowerCase().split(/\s+/).every((x) => have.includes(x))) inp.value = `${inp.value.trim()} ${w}`.trim();
+    b.classList.add('on');
+    runSearch(inp.value);
   });
   let t: number | undefined;
-  $<HTMLInputElement>('[data-rd-q]').addEventListener('input', (e) => { clearTimeout(t); t = window.setTimeout(() => runSearch((e.target as HTMLInputElement).value), 150); });
+  inp.addEventListener('input', () => { clearTimeout(t); t = window.setTimeout(() => runSearch(inp.value), 150); });
   dlg.addEventListener('keydown', (e) => {
     if ((e.target as HTMLElement).matches('input')) return;
-    if (e.key === 'ArrowRight') show(idx + 1);
-    if (e.key === 'ArrowLeft') show(idx - 1);
+    if (e.key === 'ArrowRight' && curDoc && page < curDoc.pages.length - 1) show(idx, page + 1);
+    if (e.key === 'ArrowLeft' && page > 0) show(idx, page - 1);
   });
-  dlg.addEventListener('close', () => { cleanupPrev?.(); cleanupPrev = null; dlg.classList.remove('expanded', 'searching'); });
-  // Swipe left/right on the page to change source.
-  const stage = $('[data-rd-stage]');
-  let x0 = 0, y0 = 0;
-  stage.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
-  stage.addEventListener('touchend', (e) => {
-    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
-    if (refs.length > 1 && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) show(idx + (dx < 0 ? 1 : -1));
-  }, { passive: true });
+  dlg.addEventListener('close', () => { resetZoom(); dlg.classList.remove('expanded', 'searching'); });
+  bindGestures();
 }

@@ -177,13 +177,13 @@ const href = (slug: string) => base + slug + '/';
       <button type="button" class="rd-icon" data-close aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </header>
     <div class="rd-searchbox">
-      <input type="search" placeholder="Search every handbook in the binder…" aria-label="Search all sources" data-rd-q enterkeyhint="search" />
+      <input type="search" placeholder="Search every handbook in the binder…" aria-label="Search all sources" data-rd-q enterkeyhint="search" autocomplete="off" autocorrect="off" />
+      <div class="rd-chips" data-rd-chips></div>
       <div class="rd-results" data-rd-results></div>
     </div>
     <div class="rd-stage" data-rd-stage>
-      <button type="button" class="rd-pagebtn" data-rd-prevpage hidden></button>
       <div class="rd-page" data-rd-page></div>
-      <button type="button" class="rd-pagebtn" data-rd-nextpage hidden></button>
+      <div class="rd-pagenav"><button type="button" class="rd-pagebtn" data-rd-prevpage hidden></button><span class="rd-swipe">Swipe for pages</span><button type="button" class="rd-pagebtn" data-rd-nextpage hidden></button></div>
     </div>
     <footer class="rd-foot">
       <button type="button" class="rd-step" data-rd-step data-rd-prev aria-label="Previous source">‹</button>
