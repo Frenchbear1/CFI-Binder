@@ -34,7 +34,7 @@ const href = (slug: string) => base + slug + '/';
     } catch (e) {}
   </script>
 </head>
-<body data-base={base}>
+<body data-base={base} data-repo={import.meta.env.GITHUB_REPOSITORY || process.env.GITHUB_REPOSITORY || 'Frenchbear1/CFI-Binder'}>
   <a class="skip" href="#main">Skip to content</a>
 
   <header class="topbar">
@@ -47,6 +47,7 @@ const href = (slug: string) => base + slug + '/';
       <span>Search</span><kbd>/</kbd>
     </button>
     <div class="prefs-inline" aria-label="View settings">
+      {isLesson && <button class="theme-btn" type="button" data-edit-toggle aria-label="Edit this lesson" title="Edit this lesson"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg></button>}
       <button class="theme-btn" type="button" data-open="theme" aria-label="Reading theme" title="Reading theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.8 1.3-1.7-.3-.9.2-1.8 1.2-1.8H17a4 4 0 0 0 4-4c0-5-4-10.5-9-10.5z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7" r="1.2"/><circle cx="15" cy="7.5" r="1.2"/></svg></button>
       <div class="seg" role="radiogroup" aria-label="Student level" data-pref="level">
         <button role="radio" data-v="pa" title="Private">Private</button>
@@ -155,6 +156,7 @@ const href = (slug: string) => base + slug + '/';
       <button role="radio" data-v="c172">C172</button>
       <button role="radio" data-v="pa28">PA-28-181</button>
     </div>
+    {isLesson && <button type="button" class="sheet-row" data-edit-toggle><span>Edit this lesson</span><span>Change anything ›</span></button>}
     <button type="button" class="sheet-row" data-open="theme"><span>Reading theme</span><span>Colours, paper ›</span></button>
     <p class="muted small">Private shows the core lesson. Instrument and Commercial add the how and why, plus their tighter standards.</p>
   </dialog>
@@ -183,9 +185,49 @@ const href = (slug: string) => base + slug + '/';
     </footer>
   </dialog>
 
+  {isLesson && (<>
+  <!-- Editor: tap the pencil and every paragraph, heading, list and table becomes editable. -->
+  <div class="editbar" role="toolbar" aria-label="Editor" hidden>
+    <button type="button" data-cmd="bold" aria-label="Bold" title="Bold"><b>B</b></button>
+    <button type="button" data-cmd="italic" aria-label="Italic" title="Italic"><i>I</i></button>
+    <button type="button" data-cmd="link" aria-label="Make a link" title="Make a link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7L11.5 6.8"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.5-1.5"/></svg></button>
+    <button type="button" data-cmd="ref" aria-label="Add a reference" title="Add a reference (PHAK 5-15, AIM 1-2-3, 14 CFR 91.3…)">§</button>
+    <button type="button" data-cmd="source" aria-label="Edit the whole lesson's source" title="Edit source (videos, figures, callouts…)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg></button>
+    <span class="eb-status" data-eb-status aria-live="polite"></span>
+    <button type="button" class="eb-save" data-cmd="save" disabled>Save</button>
+    <button type="button" class="eb-done" data-cmd="done">Done</button>
+  </div>
+  <form class="eb-pop" data-eb-pop hidden>
+    <label data-eb-label>Link to</label>
+    <input data-eb-input autocomplete="off" />
+    <button type="submit" class="eb-save">Add</button>
+  </form>
+
+  <dialog class="sheet source-sheet" id="sheet-source" aria-label="Edit lesson source">
+    <header class="src-head"><strong>Lesson source</strong><span class="muted small" data-src-note></span>
+      <button type="button" class="eb-save" data-src-save>Save</button><button type="button" class="link-btn" data-close>Close</button></header>
+    <textarea data-src-text spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+  </dialog>
+
+  <dialog class="sheet" id="sheet-token" aria-label="Connect GitHub">
+    <div class="grab" aria-hidden="true"></div>
+    <p class="sheet-h">Connect your binder once</p>
+    <p class="small">Saving writes your change to the binder's GitHub repo, and the site updates about 2 minutes later. This needs a GitHub key that can only edit this one repo:</p>
+    <ol class="small">
+      <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub › New fine-grained token</a>.</li>
+      <li>Repository access: <b>Only select repositories</b> › <b>CFI-Binder</b>.</li>
+      <li>Permissions › Repository › <b>Contents: Read and write</b>.</li>
+      <li>Generate, copy it, and paste it here.</li>
+    </ol>
+    <form data-token-form class="token-form"><input type="password" placeholder="github_pat_…" data-token-input autocomplete="off" /><button type="submit" class="eb-save">Save key</button></form>
+    <p class="muted small">The key stays on this device only.</p>
+  </dialog>
+  </>)}
+
   <script>
     import '../scripts/app.ts';
     import '../scripts/reader.ts';
+    import '../scripts/editor.ts';
   </script>
 </body>
 </html>
