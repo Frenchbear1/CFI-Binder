@@ -1,0 +1,147 @@
+---
+// The student screen: open this on the iPad (no sign-in). It shows a code; the instructor's phone pairs with it
+// and sends pictures, videos and interactives, which appear here full screen as slides. Nothing of the lessons
+// is on this page: it only shows what's sent. The relay is api/screen.js.
+import Base from '../../layouts/Base.astro';
+import Interactive from '../../components/Interactive.astro';
+import data from '../../data/interactives.json';
+---
+<Base title="Student screen" guest screen>
+  <div class="scr" data-scr>
+    <section class="scr-pair" data-pair>
+      <div class="scr-qr" data-qr aria-label="Pairing code"></div>
+      <div class="scr-pair-text">
+        <p class="scr-eyebrow">Student screen</p>
+        <h1>Scan with your phone</h1>
+        <p class="muted">Or open <b>Student screen</b> in the binder's settings and type</p>
+        <p class="scr-code" data-code>······</p>
+      </div>
+    </section>
+    <section class="scr-wait" data-wait hidden>
+      <div class="scr-ready"><span class="scr-dot"></span> Connected</div>
+      <p class="muted">Tap <b>Show</b> on a picture, video or interactive on your phone.</p>
+    </section>
+    <section class="scr-stage" data-stage hidden></section>
+    <div class="scr-blank" data-blank hidden></div>
+    <nav class="scr-nav" data-nav hidden>
+      <button type="button" data-step="-1" aria-label="Previous slide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+      <span data-count></span>
+      <button type="button" data-step="1" aria-label="Next slide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+      <button type="button" data-full aria-label="Full screen" title="Full screen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    </nav>
+    <p class="scr-offline" data-offline hidden>Reconnecting…</p>
+  </div>
+  <div class="scr-stash" data-stash hidden>
+    {data.items.map((s) => <Interactive id={s.id} full />)}
+  </div>
+</Base>
+
+<script>
+  import qrcode from 'qrcode-generator';
+  const base = document.body.dataset.base || '/';
+  const API = base + 'api/screen';
+  const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
+  const pairEl = $('[data-pair]'), waitEl = $('[data-wait]'), stage = $('[data-stage]'), blank = $('[data-blank]'), nav = $('[data-nav]'), stash = $('[data-stash]'), offline = $('[data-offline]');
+  type Item = { kind: string; [k: string]: any };
+  let me: { c: string; k: string } | null = null;
+  let state: { v: number; paired: boolean; at: number; blank: boolean; deck: Item[] } | null = null;
+  let view = -1;            // the slide shown here (follows the phone; arrows here change it locally)
+  let shown = '';           // what's in the stage now, so a poll that changes nothing leaves it alone
+  let fails = 0;
+
+  try { me = JSON.parse(sessionStorage.getItem('cfi.scr') || 'null'); } catch {}
+
+  async function fresh() {
+    const r = await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'new' }) });
+    me = await r.json();
+    if (!me?.c) throw new Error('new');
+    try { sessionStorage.setItem('cfi.scr', JSON.stringify(me)); } catch {}
+    state = null; showPair();
+  }
+  function showPair() {
+    const url = `${location.origin}${base}screen/pair/?c=${me!.c}`;
+    const qr = qrcode(0, 'M'); qr.addData(url); qr.make();
+    $('[data-qr]').innerHTML = qr.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+    $('[data-code]').textContent = me!.c.replace(/(...)(...)/, '$1 $2');
+  }
+
+  async function poll() {
+    if (document.hidden) return later(1500);
+    try {
+      if (!me) await fresh();
+      const r = await fetch(`${API}?op=poll&c=${me!.c}&k=${me!.k}&v=${state?.v ?? ''}`, { cache: 'no-store' });
+      const j = await r.json();
+      if (j.gone || j.error === 'key') { me = null; await fresh(); }
+      else if (!j.same && !j.error) { const moved = !state || j.at !== state.at || j.v !== state.v; state = j; if (moved) view = j.at; render(); }
+      fails = 0; offline.hidden = true;
+    } catch { if (++fails > 3) offline.hidden = false; }
+    later(state?.paired ? 1000 : 2500);
+  }
+  let t = 0; const later = (ms: number) => { clearTimeout(t); t = window.setTimeout(poll, ms); };
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) later(50); });
+
+  // Keep the iPad awake while it's showing.
+  let lock: any = null;
+  async function awake() { try { if (!lock && 'wakeLock' in navigator && !document.hidden) { lock = await (navigator as any).wakeLock.request('screen'); lock.addEventListener('release', () => (lock = null)); } } catch {} }
+  document.addEventListener('visibilitychange', awake);
+
+  function render() {
+    const paired = !!state?.paired, deck = state?.deck || [];
+    pairEl.hidden = paired;
+    if (!paired && me) showPair();
+    if (paired) awake();
+    const has = paired && deck.length > 0 && view >= 0;
+    waitEl.hidden = !paired || has;
+    stage.hidden = !has; nav.hidden = !has;
+    blank.hidden = !(paired && state?.blank);
+    if (!has) { clear(); return; }
+    view = Math.max(0, Math.min(deck.length - 1, view));
+    $('[data-count]').textContent = `${view + 1} / ${deck.length}`;
+    const it = deck[view], sig = JSON.stringify(it);
+    if (sig === shown) return;
+    clear(); shown = sig;
+    if (it.kind === 'sim') {
+      const fig = stash.querySelector(`[data-sim-box="${CSS.escape(it.id)}"]`) || stage.querySelector(`[data-sim-box="${CSS.escape(it.id)}"]`);
+      if (fig) stage.append(fig);
+    } else if (it.kind === 'video') {
+      const box = document.createElement('div'); box.className = 'scr-video';
+      if (it.provider === 'file') { const v = document.createElement('video'); v.controls = true; v.playsInline = true; v.src = it.src; if (it.poster) v.poster = it.poster; box.append(v); }
+      else {
+        const f = document.createElement('iframe');
+        f.src = it.provider === 'vimeo' ? `https://player.vimeo.com/video/${encodeURIComponent(it.vid)}` : `https://www.youtube-nocookie.com/embed/${encodeURIComponent(it.vid)}?playsinline=1&rel=0${it.start ? `&start=${Number(it.start) | 0}` : ''}`;
+        f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen'; f.allowFullscreen = true; f.title = it.title || 'Video';
+        box.append(f);
+      }
+      stage.append(box);
+    } else {
+      const box = document.createElement('figure'); box.className = 'scr-fig';
+      const art = document.createElement('div'); art.className = 'figure-art'; art.append(safe(String(it.html || '')));
+      box.append(art);
+      if (it.caption) { const c = document.createElement('figcaption'); c.textContent = it.caption; box.append(c); }
+      stage.append(box);
+    }
+    if (it.kind !== 'sim' && it.title) { /* titles stay off the screen: the picture is the slide */ }
+  }
+  // Put a sim back in the stash (it keeps running state for next time); drop anything else (stops videos).
+  function clear() {
+    shown = '';
+    [...stage.children].forEach((n) => (n.matches('[data-sim-box]') ? stash.append(n) : n.remove()));
+  }
+  // Only the instructor can send, but render what arrives as plain pictures anyway: no scripts, no handlers.
+  function safe(html: string) {
+    const t = document.createElement('template'); t.innerHTML = html;
+    t.content.querySelectorAll('script, iframe, object, embed, link, meta, style:not(svg style), form, input, button').forEach((n) => n.remove());
+    t.content.querySelectorAll('*').forEach((n) => [...n.attributes].forEach((a) => {
+      if (/^on/i.test(a.name) || (/(href|src)$/i.test(a.name) && /^\s*javascript:/i.test(a.value))) n.removeAttribute(a.name);
+    }));
+    return t.content;
+  }
+
+  nav.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('button'); if (!b) return;
+    if (b.dataset.full !== undefined) { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.().catch(() => {}); return; }
+    view += Number(b.dataset.step); render();
+  });
+  if (!document.documentElement.requestFullscreen) $('[data-full]').hidden = true;
+  poll();
+</script>

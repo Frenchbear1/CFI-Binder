@@ -1,15 +1,22 @@
 ---
 // The interactives on their own: what someone sees when they open the binder without signing in.
+// Laid out like David's Aviation Interactives launcher: a grid of tiles with small moving previews.
 import Base from '../../layouts/Base.astro';
 import data from '../../data/interactives.json';
+import { THUMBS } from '../../data/thumbs';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
 ---
 <Base title="Interactives" description="Interactive flight training aids" guest>
   <div class="sim-page">
     <h1 class="sim-h">Interactives</h1>
-    <ul class="sim-list">
-      {data.items.map((s) => <li><a href={`${base}interactives/${s.id}/`}><b>{s.name}</b><small>{s.tag}</small></a></li>)}
-    </ul>
-    <p class="guest-foot">Instructor? <a href={`${base}login/`}>Sign in</a> to open the binder.</p>
+    <div class="sim-grid">
+      {data.items.map((s) => (
+        <a class="sim-tile" href={`${base}interactives/${s.id}/`}>
+          <div class="sim-thumb" set:html={THUMBS[s.id] || ''} />
+          <div class="sim-tag">{s.tag}</div>
+          <div class="sim-name">{s.name}</div>
+        </a>
+      ))}
+    </div>
   </div>
 </Base>

@@ -61,6 +61,7 @@ if (article && bar) {
     const c = article.cloneNode(true) as HTMLElement;
     c.querySelectorAll('[contenteditable]').forEach((x) => { x.removeAttribute('contenteditable'); x.removeAttribute('spellcheck'); });
     // A running interactive is saved as it was before it started; it starts afresh when the page is shown again.
+    c.querySelectorAll('.cast-btn, .cast-row').forEach((x) => x.remove());
     c.querySelectorAll('.sim-root[data-mounted]').forEach((r) => { r.replaceChildren(); r.removeAttribute('data-mounted'); r.removeAttribute('style'); });
     return c.innerHTML;
   };

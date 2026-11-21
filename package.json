@@ -14,7 +14,8 @@
     "@astrojs/mdx": "^4.3.14",
     "@vercel/functions": "^3.11.3",
     "astro": "^5.18.2",
-    "pagefind": "^1.6.0"
+    "pagefind": "^1.6.0",
+    "qrcode-generator": "^2.0.4"
   },
   "private": true,
   "type": "module",

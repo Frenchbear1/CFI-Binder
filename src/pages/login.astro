@@ -3,21 +3,41 @@
 import Base from '../layouts/Base.astro';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
 ---
-<Base title="Sign in" guest>
+<Base title="Sign in" guest signin>
   <div class="signin">
-    <h1>Sign in</h1>
-    <p class="muted small">The binder's lessons are for the instructor. Students can use the <a href={`${base}interactives/`}>Interactives</a> without signing in.</p>
-    <form method="post" action={`${base}api/login`}>
-      <input name="user" autocomplete="username" placeholder="Username" required />
-      <input name="pass" type="password" autocomplete="current-password" placeholder="Password" required />
-      <input type="hidden" name="next" data-next />
-      <button type="submit">Sign in</button>
-      <p class="err small" data-err hidden>That username and password don't match.</p>
-    </form>
+    <div class="signin-card">
+      <div class="signin-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" fill="currentColor"/></svg>
+      </div>
+      <h1>Welcome back</h1>
+      <p class="signin-sub">Sign in to open your binder.</p>
+      <form method="post" action={`${base}api/login`} data-signin>
+        <label class="field">
+          <span>Username</span>
+          <input name="user" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <span class="pw">
+            <input name="pass" type="password" autocomplete="current-password" required />
+            <button type="button" class="pw-eye" data-eye aria-label="Show password" title="Show password">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </span>
+        </label>
+        <input type="hidden" name="next" data-next />
+        <p class="err" data-err hidden>That username and password don't match.</p>
+        <button type="submit" class="signin-go">Sign in</button>
+      </form>
+    </div>
+    <a class="signin-alt" href={`${base}interactives/`}>Student? Open the Interactives <span aria-hidden="true">→</span></a>
   </div>
   <script is:inline>
     var q = new URLSearchParams(location.search);
     document.querySelector('[data-next]').value = q.get('next') || '/';
     if (q.get('e')) document.querySelector('[data-err]').hidden = false;
+    var eye = document.querySelector('[data-eye]'), pw = document.querySelector('input[name=pass]');
+    eye.addEventListener('click', function () { var s = pw.type === 'password'; pw.type = s ? 'text' : 'password'; eye.classList.toggle('on', s); eye.setAttribute('aria-label', s ? 'Hide password' : 'Show password'); });
+    document.querySelector('[data-signin]').addEventListener('submit', function (e) { var b = e.target.querySelector('.signin-go'); b.disabled = true; b.textContent = 'Signing in…'; });
   </script>
 </Base>

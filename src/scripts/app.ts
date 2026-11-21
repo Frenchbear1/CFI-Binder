@@ -51,6 +51,7 @@ const sheets: Record<string, HTMLDialogElement | null> = {
   nav: document.getElementById('sheet-nav') as HTMLDialogElement,
   search: document.getElementById('sheet-search') as HTMLDialogElement,
   prefs: document.getElementById('sheet-prefs') as HTMLDialogElement,
+  screen: document.getElementById('sheet-screen') as HTMLDialogElement,
 };
 function openSheet(name: string) {
   Object.values(sheets).forEach((s) => s?.open && s.close());
