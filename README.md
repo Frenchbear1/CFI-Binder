@@ -5,7 +5,8 @@ Static site (Astro + MDX) for teaching Private, Instrument and Commercial studen
 - `npm install`, then `npm run dev` to write, `npm run build` for the production site in `dist/` (includes the Pagefind search index).
 - Lessons live in `src/content/lessons/**.mdx`. Add the slug to `src/data/outline.ts` to mark it ready.
 - Components for lessons: `<Level pa|ir|ca>`, `<Compare>` (C172 vs PA-28 cards), `<Specs>`, `<Callout kind="teach|fleet|warn|acs">`, `<Figure>`, `<Video youtube="…">` (click-to-load), `<Toggle>`, `<Refs>`, `<AC c172|pa28>`.
-- Deploy: Vercel (framework preset Astro) or GitHub Pages (set `BASE=/repo-name/` and `SITE`).
+- Deploy: Vercel project `cfi-binder` (builds on every push to main, see `vercel.json`).
+- Sign-in: `middleware.js` + `api/login.js`. Signed out you only get the Interactives; the lessons need the instructor's sign-in. Vercel environment variables: `CFI_USER`, `CFI_PASS` (the sign-in) and `CFI_SECRET` (signs the cookie; changing it signs everyone out). Sign out at `/api/login?out=1`.
 - `node scripts/portable.mjs` makes `dist-portable/`, a relative-link copy for sandboxed previews.
 
 ## Source reader
