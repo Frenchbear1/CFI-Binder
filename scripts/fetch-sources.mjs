@@ -86,6 +86,8 @@ async function textDoc(doc) {
 // A web article becomes one "page" per heading. Everything visual is kept as a marker line the reader draws:
 // [[img url|caption]] for photos, figures and diagrams, [[embed url|caption]] for YouTube/Vimeo players,
 // [[video url|caption]] and [[audio url|caption]] for media files, and [[table]] blocks (one row per line, cells split by tabs).
+const FILL = ' Picture or player kept from the original page so the binder reader can show it here.';
+const TOKEN = /⟦media (\d+)⟧(?: Picture or player kept from the original page so the binder reader can show it here\.)?/g;
 const VIDEO_HOST = /(youtube(-nocookie)?\.com|youtu\.be|player\.vimeo\.com|vimeo\.com|wistia\.(com|net)|loom\.com|dailymotion\.com|streamable\.com)/i;
 function bestSrc(el) {
   if (!el?.getAttribute) return '';
@@ -117,15 +119,22 @@ const embedUrl = (u) => {
 function prepMedia(document, finalUrl) {
   const abs = (u) => { try { return new URL(u, finalUrl).href; } catch { return ''; } };
   const keep = [];
+  // A stand-in is a plain paragraph of text, because Readability judges blocks by their text: a wrapper holding just a
+  // picture and a credit link looks like clutter to it and gets thrown away (that is how pictures were lost before).
+  const MEDIA = 'img, picture, video, audio, iframe, svg, lite-youtube, lite-vimeo, [data-keep]';
+  const count = (el) => (el.matches?.(MEDIA) ? 1 : 0) + el.querySelectorAll(MEDIA).length;
+  const ownText = (el) => [...el.childNodes].map((c) => (c.nodeType === 3 ? c.textContent : c.tagName === 'A' ? '' : ownText(c))).join('').replace(/\s+/g, ' ').trim();
   const stand = (el, kind, url, cap = '') => {
     if (!url) return;
-    const f = document.createElement('figure');
-    const img = document.createElement('img');
-    img.setAttribute('src', `https://keep.invalid/${keep.length}.png`);
-    img.setAttribute('alt', cap);
-    f.appendChild(img);
-    keep.push({ kind, url, cap });
-    el.replaceWith(f);
+    let target = el;
+    for (let p = el.parentElement; p && !/^(BODY|MAIN|ARTICLE|HTML)$/.test(p.tagName) && count(p) === count(target) && ownText(p).length < 140; p = p.parentElement) target = p;
+    const fc = target.querySelector?.('figcaption') || (target.matches?.('figure') ? null : target.parentElement?.closest('figure')?.querySelector('figcaption'));
+    const caption = (fc?.textContent || cap || '').replace(/\s+/g, ' ').trim();
+    const p = document.createElement('p');
+    p.setAttribute('data-keep', String(keep.length));
+    p.textContent = `⟦media ${keep.length}⟧${FILL}`;
+    keep.push({ kind, url, cap: caption });
+    target.replaceWith(p);
   };
   for (const ns of [...document.querySelectorAll('noscript')]) {
     const inner = ns.innerHTML.includes('<') ? ns.innerHTML : ns.textContent;
@@ -140,11 +149,26 @@ function prepMedia(document, finalUrl) {
     const src = srcs.map(bestSrc).find(Boolean) || (img && bestSrc(img)); // <source> sets usually carry the big versions
     if (src) { const n = img || document.createElement('img'); n.setAttribute('src', src); n.removeAttribute('srcset'); if (!img) pic.appendChild(n); }
   }
+  const junk = /(icon|logo|avatar|sprite|badge|emoji|spinner|pixel|tracking|gravatar|\/social\/|\/menu\/|\/ads?\/)/i;
+  const chrome = 'nav, header, footer, aside, form, button, [role="navigation"], [class*="share"], [class*="social"], [class*="related"], [class*="author"], [class*="comment"]';
   for (const img of [...document.querySelectorAll('img')]) {
+    if (!img.isConnected) continue;
     const src = bestSrc(img);
-    if (src) { img.setAttribute('src', abs(src)); for (const a of [...img.attributes].map((x) => x.name)) if (/srcset|^data-|^loading$/.test(a)) img.removeAttribute(a); img.removeAttribute('class'); }
-    else if ((img.getAttribute('src') || '').startsWith('data:image/svg') && img.getAttribute('src').length < 150000) { /* inline svg picture: keep as is */ }
-    else img.remove();
+    const svgData = !src && (img.getAttribute('src') || '').startsWith('data:image/svg') && img.getAttribute('src').length < 150000;
+    const url = src ? abs(src) : svgData ? img.getAttribute('src') : '';
+    const w = parseFloat(img.getAttribute('width')) || 0, h = parseFloat(img.getAttribute('height')) || 0;
+    if (!url || junk.test(url) || (w && w < 60) || (h && h < 60) || img.closest(chrome)) { img.remove(); continue; }
+    // a picture that links to another article is a "read next" thumbnail, not part of this one
+    const a = img.closest('a[href]');
+    if (a && !/\.(jpe?g|png|gif|webp|avif|svg)(\?|$)/i.test(a.getAttribute('href')) && abs(a.getAttribute('href')).split('#')[0] !== finalUrl.split('#')[0]) { img.remove(); continue; }
+    stand(img.closest('picture') || img, 'img', url, img.getAttribute('alt') || img.getAttribute('title') || '');
+  }
+  // pictures drawn as CSS backgrounds
+  for (const el of [...document.querySelectorAll('[style*="background-image"], [data-bg], [data-background], [data-background-image], [data-bg-src]')]) {
+    if (!el.isConnected || el.closest(chrome) || ownText(el).length > 20) continue;
+    const raw = el.getAttribute('data-bg') || el.getAttribute('data-background') || el.getAttribute('data-background-image') || el.getAttribute('data-bg-src') || (el.getAttribute('style') || '').match(/background-image\s*:\s*url\(\s*['"]?([^'")]+)/i)?.[1] || '';
+    const u = raw.replace(/^url\(\s*['"]?|['"]?\s*\)$/g, '');
+    if (u && !u.startsWith('data:') && !junk.test(u)) stand(el, 'img', abs(u), el.getAttribute('aria-label') || el.getAttribute('title') || '');
   }
   for (const el of [...document.querySelectorAll('iframe, lite-youtube, lite-vimeo, [data-youtube-id], [data-video-id][data-provider]')]) {
     const tag = el.tagName.toLowerCase();
@@ -190,15 +214,21 @@ function webDoc(doc, html, finalUrl) {
   const clean = (t) => t.replace(/\s+/g, ' ').trim();
   const capOf = (n, img) => clean(n.querySelector?.('figcaption')?.textContent || img?.getAttribute('alt') || img?.getAttribute('title') || '').replace(/[|\]\[]/g, ' ');
   const seen = new Set();
-  const media = (n, img) => {
-    const src = img.getAttribute('src') || '';
-    const k = src.match(/^https:\/\/keep\.invalid\/(\d+)\.png$/);
-    let m = k ? keep[+k[1]] : { kind: 'img', url: src, cap: '' };
-    if (m && !m.url.startsWith('data:')) { try { m = { ...m, url: new URL(m.url, finalUrl).href }; } catch { return; } }
+  const put = (m) => {
     if (!m?.url || seen.has(m.url)) return;
     seen.add(m.url);
-    const cap = capOf(n, img) || clean(m.cap).replace(/[|\]\[]/g, ' ');
-    cur.text.push(`[[${m.kind} ${m.url}|${cap}]]`);
+    cur.text.push(`[[${m.kind} ${m.url}|${clean(m.cap || '').replace(/[|\]\[]/g, ' ')}]]`);
+  };
+  const media = (n, img) => {
+    let url = img.getAttribute('src') || '';
+    if (!url.startsWith('data:')) { try { url = new URL(url, finalUrl).href; } catch { return; } }
+    put({ kind: 'img', url, cap: capOf(n, img) });
+  };
+  // text with stand-ins in it: the words first, then the pictures/players it held
+  const said = (t) => {
+    const ids = [...t.matchAll(TOKEN)].map((x) => +x[1]);
+    const words = clean(t.replace(TOKEN, ' '));
+    return { words, ms: ids.map((i) => keep[i]) };
   };
   const visit = (el) => {
     for (const n of el.children) {
@@ -208,16 +238,18 @@ function webDoc(doc, html, finalUrl) {
       else if (tag === 'figure' || tag === 'picture') {
         const imgs = [...n.querySelectorAll('img')];
         if (imgs.length) for (const img of imgs) media(n, img);
-        else { const t = clean(n.textContent); if (t) cur.text.push(t); }
+        else { const { words, ms } = said(n.textContent); if (words) cur.text.push(words); ms.forEach(put); }
       }
       else if (tag === 'table') {
-        const rows = [...n.querySelectorAll('tr')].map((tr) => [...tr.children].filter((c) => /^t[dh]$/i.test(c.tagName)).map((c) => clean(c.textContent).replace(/\t/g, ' '))).filter((r) => r.some(Boolean));
+        const tms = said(n.textContent).ms;
+        const rows = [...n.querySelectorAll('tr')].map((tr) => [...tr.children].filter((c) => /^t[dh]$/i.test(c.tagName)).map((c) => said(c.textContent).words.replace(/\t/g, ' '))).filter((r) => r.some(Boolean));
         if (rows.length > 1 && rows.some((r) => r.length > 1)) cur.text.push('[[table]]\n' + rows.map((r) => r.join('\t')).join('\n'));
         else for (const r of rows) { const t = r.join(' '); if (t) cur.text.push(t); }
+        tms.forEach(put);
         for (const img of n.querySelectorAll('img')) media(n, img);
       }
-      else if (tag === 'li') { cur.text.push('• ' + clean(n.textContent)); for (const img of n.querySelectorAll('img')) media(n, img); }
-      else if (/^(p|blockquote|pre|figcaption|dt|dd)$/.test(tag)) { const t = clean(n.textContent); if (t) cur.text.push(t); for (const img of n.querySelectorAll('img')) media(n, img); }
+      else if (tag === 'li') { const { words, ms } = said(n.textContent); if (words) cur.text.push('• ' + words); ms.forEach(put); for (const img of n.querySelectorAll('img')) media(n, img); }
+      else if (/^(p|blockquote|pre|figcaption|dt|dd)$/.test(tag)) { const { words, ms } = said(n.textContent); if (words) cur.text.push(words); ms.forEach(put); for (const img of n.querySelectorAll('img')) media(n, img); }
       else visit(n);
     }
   };
