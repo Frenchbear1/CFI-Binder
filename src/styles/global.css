@@ -698,13 +698,11 @@ body.home main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .nh-upload [data-kind="err"] { color: #c0392b; } .nh-upload [data-kind="ok"] { color: #2e7d4f; }
 .pg small.is-local { color: var(--accent); opacity: .9; }
 /* sims */
-.sim .sim-load { gap: 8px; padding: 18px; text-align: center; }
-.sim .sim-load .muted { font-weight: 400; max-width: 34ch; margin: 0 auto; }
-.sim-ico { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 4px; background: var(--accent); color: #fff; }
-.sim-ico svg { width: 22px; height: 22px; margin-left: 3px; }
-.sim-page { display: flex; flex-direction: column; gap: 8px; min-height: calc(100dvh - 120px); }
-.sim-frame { flex: 1; width: 100%; min-height: 70dvh; border: 1px solid var(--line); border-radius: 12px; background: #071014; }
-.sim-alt { text-align: center; }
+.sim { margin: 1.4em 0; }
+.sim-frame { display: block; width: 100%; height: 640px; border: 1px solid var(--line); border-radius: 14px; background: var(--doc-page); color-scheme: normal; }
+.sim figcaption { font-size: .8rem; color: var(--ink-3); margin-top: 6px; }
+.sim-page { max-width: 1240px; margin: 0 auto; padding: 0 4px 40px; }
+.sim-h { margin: 4px 0 14px; }
 .nh-bar { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 55%, transparent); max-width: 46rem; margin: 0 auto; pointer-events: none; }
 .nh-bar > * { pointer-events: auto; }
 .nh-search { flex: 1; display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-3); font: inherit; font-size: .98rem; box-shadow: var(--shadow); }

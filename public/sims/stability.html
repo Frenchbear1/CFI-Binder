@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script src="sim-theme.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html{color-scheme:dark}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}
+.homebar{max-width:1200px;margin:0 auto;padding-top:14px}
+.homebar a{font:500 13px "IBM Plex Mono",ui-monospace,monospace;color:#8ea2a5;text-decoration:none;letter-spacing:.06em}
+.homebar a:hover,.homebar a:focus-visible{color:#e4ece9}</style>
+<meta name="theme-color" content="#0a1014">
+<title>Balance &amp; Stability Lab</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+/* Layout: lesson strip on top, then side view (left) and pitch trace + readouts + controls (right). Single dark avionics look, same as the other sims. */
+:root{
+  --bg:#0a1014; --panel:#0f181c; --panel2:#0c1418; --line:#1f2f36; --ink:#e4ece9; --dim:#8ea2a5;
+  --ref:#5ccfe3; --var:#ffb54a; --tail:#a99bff; --ok:#7fd98a; --warn:#e2574a;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1200px;margin:0 auto;padding-block:20px 40px;display:flex;flex-direction:column;gap:16px}
+
+.lesson{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 20px;align-items:start}
+.lesson-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;grid-column:1/-1}
+#stepNum{font-family:var(--f-mono);font-size:12px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.dots{display:flex;gap:6px;flex-wrap:wrap}
+.dots button{width:22px;height:6px;border-radius:3px;border:0;background:var(--line);padding:0;cursor:pointer}
+.dots button.on{background:var(--ink)} .dots button.done{background:#4d6268}
+.dots button:focus-visible{outline:2px solid var(--ref);outline-offset:3px}
+.lesson-text{min-width:0}
+#stepTitle{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.1;margin:2px 0 4px;text-wrap:balance}
+#stepBody{margin:0;max-width:72ch;min-height:4.5em}
+#stepBody b.r{color:var(--ref);font-weight:600} #stepBody b.v{color:var(--var);font-weight:600} #stepBody b.t{color:var(--tail);font-weight:600} #stepBody b.w{color:var(--warn);font-weight:600} #stepBody b.g{color:var(--ok);font-weight:600}
+.bar{grid-column:1/-1;height:2px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:6px}
+#stepBar{height:100%;width:0;background:var(--dim)}
+.lctl{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+button.b{font:500 13px var(--f-body);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;min-height:34px}
+button.b:hover{border-color:#3d545c} button.b:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+button.b.primary{background:var(--ink);color:#0a1014;border-color:var(--ink);min-width:84px}
+button.b:disabled{opacity:.4;cursor:default}
+.speed{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:12px;color:var(--dim)}
+.speed input{width:120px;accent-color:var(--ink)}
+@media (max-width:760px){.lesson{grid-template-columns:minmax(0,1fr)}.lctl{align-items:stretch}.btns{justify-content:flex-start}}
+
+.stage{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.stage{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.plabel{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.plabel .chip{color:var(--var)}
+canvas{display:block;width:100%}
+#view{aspect-ratio:16/11;border-radius:6px;touch-action:none}
+#trace{height:170px;border-radius:6px}
+@media (max-width:600px){#view{aspect-ratio:1/1}}
+.side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.ro{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px}
+.ro>div{display:flex;flex-direction:column;min-width:0}
+.ro span{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.ro strong{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.05;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ro strong small{font-size:15px;color:var(--dim);font-weight:500;margin-left:3px}
+#roTail{color:var(--tail)}
+.status{font-family:var(--f-mono);font-size:13px;font-weight:500;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:1.9em;line-height:1.9em;border-radius:6px;background:var(--panel2);letter-spacing:.06em}
+.status.ok{color:var(--ok)} .status.amb{color:var(--var)} .status.bad{color:#160806;background:var(--warn)}
+.ctlp{display:flex;flex-direction:column;gap:10px}
+.sl{display:flex;flex-direction:column;gap:2px}
+.sl .h{display:flex;justify-content:space-between;align-items:baseline}
+.lab{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.sl output{font:600 20px var(--f-display);font-variant-numeric:tabular-nums;white-space:nowrap}
+input[type=range]{width:100%;accent-color:var(--ink);margin:0;height:26px}
+input[type=range]:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+.acts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.acts button.b{padding:6px 4px;font-size:12.5px}
+@media (max-width:420px){.ro{grid-template-columns:repeat(2,minmax(0,1fr))}.acts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kit-deep svg{display:block;max-width:420px;width:100%;height:auto;margin:6px 0}
+</style>
+<link rel="stylesheet" href="sim-theme.css">
+</head><body>
+<div class="homebar"><a href="../index.html" id="home">← All simulations</a></div>
+
+<div class="wrap">
+  <section class="lesson" aria-live="polite">
+    <div class="lesson-meta"><span id="stepNum">Step 1</span><div class="dots" id="dots" role="tablist" aria-label="Lesson steps"></div></div>
+    <div class="lesson-text">
+      <h2 id="stepTitle"></h2>
+      <p id="stepBody"></p>
+    </div>
+    <div class="lctl">
+      <div class="btns">
+        <button class="b" id="prev" type="button">◀ Back</button>
+        <button class="b primary" id="play" type="button">Pause</button>
+        <button class="b" id="next" type="button">Next ▶</button>
+        <button class="b" id="explore" type="button">Explore freely</button>
+      </div>
+      <label class="speed" for="speed">Speed <input id="speed" type="range" min="0.25" max="2" step="0.25" value="1"> <span id="speedTxt">1×</span></label>
+    </div>
+    <div class="bar"><div id="stepBar"></div></div>
+  </section>
+
+  <main class="stage">
+    <div class="panel">
+      <div class="plabel"><span>Side view</span><span id="dragHint">drag the CG on the ruler</span></div>
+      <canvas id="view" aria-label="Side view of a light trainer showing lift at the center of pressure, weight at the center of gravity, tail load, and a percent-MAC ruler with the CG envelope and neutral point"></canvas>
+    </div>
+    <div class="side">
+      <div class="panel">
+        <div class="plabel"><span>Departure from trim</span><span class="chip" id="warpTxt"></span></div>
+        <canvas id="trace" aria-label="Time history of pitch attitude and airspeed departures from trim"></canvas>
+        <div class="ro">
+          <div><span>IAS</span><strong id="roV">100<small>kt</small></strong></div>
+          <div><span>Pitch</span><strong id="roTh">2.4°</strong></div>
+          <div><span>AoA</span><strong id="roA">2.4°</strong></div>
+          <div><span>Tail load</span><strong id="roTail">↓ 105<small>lb</small></strong></div>
+          <div><span>Static margin</span><strong id="roSM">15<small>% MAC</small></strong></div>
+          <div><span>Stall speed</span><strong id="roVs">54<small>kt</small></strong></div>
+        </div>
+        <div class="status ok" id="status">TRIMMED · HANDS OFF</div>
+      </div>
+      <div class="panel ctlp">
+        <div class="plabel"><span>Controls</span></div>
+        <label class="sl" for="cg"><span class="h"><span class="lab">CG position</span><output id="cgO">25% MAC</output></span>
+          <input id="cg" type="range" min="0" max="50" step="0.5" value="25"></label>
+        <label class="sl" for="wt"><span class="h"><span class="lab">Weight</span><output id="wtO">2,400 lb</output></span>
+          <input id="wt" type="range" min="1800" max="2550" step="10" value="2400"></label>
+        <label class="sl" for="vt"><span class="h"><span class="lab">Trim speed</span><output id="vtO">100 kt</output></span>
+          <input id="vt" type="range" min="60" max="130" step="1" value="100"></label>
+        <div class="acts">
+          <button class="b" id="nUp" type="button">Nudge ▲</button>
+          <button class="b" id="nDn" type="button">Nudge ▼</button>
+          <button class="b" id="stl" type="button">Stall</button>
+          <button class="b" id="rtr" type="button">Re-trim</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="kit.js"></script>
+<script>
+(()=>{
+/* ================= Flight model =================
+   Longitudinal (pitch-plane) model of a generic PA-28-class trainer, sea level, standard day.
+   Real equations of motion (speed, flight-path angle, pitch, pitch rate) integrated with RK4,
+   so short period, phugoid, stall and divergence all come out of the physics, not a script.
+   x = distance aft of the MAC leading edge (ft). h = CG as a fraction of MAC. */
+const G=32.174,RHO=0.002377,KT=1.68781,D2R=Math.PI/180,R2D=180/Math.PI;
+const P={S:170,c:5.25,AR:7.2,e:0.75,aw:4.9,a0:-3*D2R,as:16*D2R,cmac:-0.06,cmaf:0.2,
+  St:27,lt:16,at:3.8,eta:0.9,deda:0.4,dmin:-18*D2R,dmax:4*D2R,Iyy:1350,cd0:0.030,Tmax:480};
+P.xac=0.25*P.c;P.xt=P.xac+P.lt;
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),lerp=(a,b,t)=>a+(b-a)*t;
+function wing(a){const ar=P.as-4*D2R;let cl;
+  if(a<=ar)cl=P.aw*(a-P.a0);
+  else if(a<=P.as)cl=P.aw*(a-P.a0)-P.aw*(a-ar)**2/(2*(P.as-ar));
+  else{const m=P.aw*(P.as-P.a0)-P.aw*(P.as-ar)/2;cl=Math.max(m-2.6*(a-P.as),0.95*Math.sin(2*a));}
+  if(a<-12*D2R)cl=Math.min(cl,P.aw*(-12*D2R-P.a0)+1.5*(a+12*D2R));
+  return{cl,s:clamp((a-P.as)/(6*D2R),0,1)};}
+const tailCL=at=>0.9*Math.tanh(P.at*at/0.9);
+const epsOf=a=>P.deda*(a-P.a0);
+function aero(V,a,q,dl,eps,h){const qb=.5*RHO*V*V,w=wing(a),xcg=h*P.c,cmac=P.cmac-0.12*w.s;
+  const Lw=qb*P.S*w.cl,at=a-eps+dl+q*(P.xt-xcg)/V,Lt=qb*P.eta*P.St*tailCL(at);
+  const D=qb*P.S*(P.cd0+w.cl*w.cl/(Math.PI*P.e*P.AR)+0.25*w.s)+qb*P.eta*P.St*0.01;
+  const M=-Lw*(P.xac-xcg)+qb*P.S*P.c*(cmac+P.cmaf*a)-Lt*(P.xt-xcg);
+  return{Lw,Lt,L:Lw+Lt,D,M,cl:w.cl,s:w.s,cmac,at};}
+function trim(V,W,h){let a=4*D2R,d=-2*D2R;
+  for(let i=0;i<30;i++){const f=(a,d)=>{const r=aero(V,a,0,d,epsOf(a),h);return[r.L-W,r.M];};
+    const[f1,f2]=f(a,d),e=1e-5,[a1,a2]=f(a+e,d),[b1,b2]=f(a,d+e);
+    const j11=(a1-f1)/e,j21=(a2-f2)/e,j12=(b1-f1)/e,j22=(b2-f2)/e,det=j11*j22-j12*j21;
+    const da=(f1*j22-f2*j12)/det,dd=(j11*f2-j21*f1)/det;a-=clamp(da,-.05,.05);d-=clamp(dd,-.05,.05);
+    if(Math.abs(da)+Math.abs(dd)<1e-9)break;}
+  const r=aero(V,a,0,d,epsOf(a),h);return{a,d,T:r.D,Lt:r.Lt,Lw:r.Lw};}
+function stallSpeed(W,h){const a=P.as,xcg=h*P.c,clw=wing(a).cl;
+  const clt=(-P.S*clw*(P.xac-xcg)+P.S*P.c*(P.cmac+P.cmaf*a))/(P.eta*P.St*(P.xt-xcg));
+  const V=Math.sqrt(2*W/(RHO*(P.S*clw+P.eta*P.St*clt)));
+  const d=0.9*Math.atanh(clamp(clt/0.9,-.999,.999))/P.at-a+epsOf(a);
+  return{V,d,ok:d>=P.dmin};}
+const NP=(()=>{const V=100*KT,a=4*D2R,dM=h=>(aero(V,a+1e-5,0,0,epsOf(a+1e-5),h).M-aero(V,a,0,0,epsOf(a),h).M);
+  let lo=0,hi=1;for(let i=0;i<50;i++){const m=(lo+hi)/2;if(dM(m)<0)lo=m;else hi=m;}return(lo+hi)/2;})();
+function deriv(s,u){const[V,g,th,q,eps]=s,a=th-g,m=u.W/G,r=aero(V,a,q,u.dl,eps,u.h);
+  return[(u.T*Math.cos(a)-r.D-u.W*Math.sin(g))/m,(r.L+u.T*Math.sin(a)-u.W*Math.cos(g))/(m*V),q,r.M/P.Iyy,
+    (epsOf(a)-eps)/((P.xt-P.xac)/V),V*Math.sin(g)];}
+function rk4(s,u,dt){const ad=(a,k,f)=>a.map((x,i)=>x+k[i]*f),k1=deriv(s,u),k2=deriv(ad(s,k1,dt/2),u),k3=deriv(ad(s,k2,dt/2),u),k4=deriv(ad(s,k3,dt),u);
+  return s.map((x,i)=>x+dt/6*(k1[i]+2*k2[i]+2*k3[i]+k4[i]));}
+// Illustrative CG envelope in % MAC: forward limit moves aft above 2,050 lb (as in most trainer POHs).
+const fwdLim=W=>W<=2050?15:lerp(15,20,(W-2050)/500), AFT=30;
+
+/* ================= State ================= */
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const S={playing:!reduce,speed:1,mode:'tour',step:0,t:0,fired:0,
+  h:.25,hT:.25,W:2400,WT:2400,V:100,VT:100,           // CG, weight, trim speed (current + target)
+  tr:null,x:null,dl:0,T:0,pulse:null,stall:null,dep:0,simT:0,warp:1,buf:[],bufT:0,drag:false};
+function retrim(){if(S.stall&&S.mode==='explore')setWarp(1);S.tr=trim(S.V*KT,S.W,S.h);S.x=[S.V*KT,0,S.tr.a,0,epsOf(S.tr.a),0];S.dl=S.tr.d;S.T=S.tr.T;S.pulse=null;S.stall=null;S.dep=0;}
+function nudge(dir){if(!S.x)return;S.stall=null;S.dep=0;S.dl=S.tr.d;S.T=S.tr.T;S.pulse={left:.5,d:-dir*3*D2R};}
+function startStall(){retrim();S.stall={ph:0,tp:0};if(S.mode==='explore')setWarp(2);}
+function setWarp(w){S.warp=w;$('warpTxt').textContent=w>1?w+'× time':'';}
+
+/* ================= Lesson ================= */
+// show: lift, wt, tail, td (thrust/drag), cg, cp, np, aoa, mom (couple arrows), net (net moment arc), ruler
+const ALL={lift:1,wt:1,tail:1,td:0,cg:1,cp:1,np:1,aoa:1,mom:0,net:1,ruler:1};
+const STEPS=[
+{title:'Balanced in two ways',dur:13,set:{h:.25,W:2400,V:100},
+ show:{lift:1,wt:1,td:1,cg:1,ruler:0},
+ body:'In steady flight the forces cancel: <b class="r">lift</b> equals weight and thrust equals drag. They must also cancel in <i>rotation</i>. The airplane pitches about its <b>center of gravity (CG)</b>, so any force that acts ahead of or behind the CG tries to turn the nose.'},
+{title:'Lift acts at the center of pressure',dur:16,set:{h:.25,W:2400,V:110},
+ show:{lift:1,wt:1,cg:1,cp:1,aoa:1,ruler:1},tick:t=>{S.VT=t<8?62:110;},
+ body:'All of the wing\'s lift can be treated as one force at the <b class="r">center of pressure (CP)</b>. On a cambered wing the CP moves <b>forward</b> as angle of attack rises. Slowing down needs more AoA, so watch the CP slide forward on the ruler as the speed falls, then back as it rises.'},
+{title:'Nose-heavy by design',dur:15,set:{h:.20,W:2400,V:100},
+ show:{lift:1,wt:1,tail:1,cg:1,cp:1,mom:1,ruler:1},
+ body:'The CG sits <b>ahead</b> of the CP, so lift and weight make a <b>nose-down</b> twist. The horizontal tail balances it by pushing <b class="t">down</b>. That download acts like extra weight: the wing must lift the airplane\'s weight <i>plus</i> the tail load.'},
+{title:'Trim: one speed for each setting',dur:16,set:{h:.20,W:2400,V:120},
+ show:{lift:1,wt:1,tail:1,cg:1,cp:1,aoa:1,ruler:1},tick:t=>{S.VT=t<8?70:120;},
+ body:'For each stabilator position there is one angle of attack, and so one airspeed, where the pitching moments cancel. The trim wheel sets that position so you can fly hands off. Watch the stabilator and the <b class="t">tail load</b> change as the trim speed goes from 120 to 70 kt and back.'},
+{title:'Static stability: the first tendency',dur:15,set:{h:.25,W:2400,V:100},
+ show:{lift:1,wt:1,tail:1,cg:1,cp:1,aoa:1,net:1,ruler:1},ev:[[2,()=>nudge(1)],[9,()=>nudge(-1)]],
+ body:'A gust pitches the nose up. AoA rises at the wing <i>and</i> at the tail, and the tail\'s change wins, so a <b class="g">nose-down restoring moment</b> appears. Pitch it down and the moment reverses. That initial tendency to return to the trimmed AoA is <b>positive static stability</b>.'},
+{title:'Neutral point and static margin',dur:17,set:{h:.25,W:2400,V:100},
+ show:{lift:1,wt:1,tail:1,cg:1,cp:1,np:1,net:1,ruler:1},tick:t=>{S.hT=t<7?.25:.37;},ev:[[1.5,()=>nudge(1)],[10.5,()=>nudge(1)]],
+ body:'The tail works like the feathers on an arrow. The <b class="w">neutral point (NP)</b> is the CG position where its restoring moment is used up: about 40% MAC here. The distance from CG to NP is the <b>static margin</b>. Move the CG aft and the same nudge gets a weaker, slower answer.'},
+{title:'Dynamic stability: what happens next',dur:20,set:{h:.25,W:2400,V:100},warp:4,
+ show:{lift:1,wt:1,tail:1,cg:1,cp:1,net:1,ruler:1},ev:[[1,()=>nudge(1)]],
+ body:'Static stability only says it <i>starts</i> back. Dynamic stability is what follows. Hands off, the nose overshoots and the airplane trades <b class="v">speed</b> for height in slow swings about half a minute long (the <b>phugoid</b>). Each swing is smaller than the last: <b>positive dynamic stability</b>. Shown at 4× time.'},
+{title:'Forward CG',dur:15,set:{h:.15,W:2050,V:100},
+ show:{lift:1,wt:1,tail:1,cg:1,cp:1,np:1,mom:1,ruler:1},ev:[[8,()=>nudge(1)]],
+ body:'At the <b>forward limit</b> the tail must push down harder, so the wing carries more load: higher <b>stall speed</b>, more drag, slower cruise. It is very stable and heavy in pitch. Ahead of the limit the elevator can run out of authority before you can flare or reach the stall AoA.'},
+{title:'Aft CG',dur:15,set:{h:.30,W:2400,V:100},
+ show:{lift:1,wt:1,tail:1,cg:1,cp:1,np:1,net:1,ruler:1},ev:[[6,()=>nudge(1)]],
+ body:'At the <b>aft limit</b> the tail load is smaller, so stall speed drops a little and cruise is a bit faster. The cost: lighter pitch forces, easy over-control, weaker stability, and slower stall and spin recovery.'},
+{title:'Behind the neutral point',dur:13,set:{h:.45,W:2400,V:100},
+ show:{lift:1,wt:1,tail:1,cg:1,cp:1,np:1,net:1,ruler:1},ev:[[4,()=>nudge(1)]],
+ body:'Load the CG behind the NP and the moment from a disturbance <b class="w">pushes the wrong way</b>. A small nudge grows on its own until the airplane stalls or departs. No pilot technique fixes this. It is why you never fly with the CG behind the aft limit.'},
+{title:'The stall: the nose drops by itself',dur:26,set:{h:.22,W:2400,V:72},warp:1.5,
+ show:{lift:1,wt:1,tail:1,cg:1,cp:1,aoa:1,ruler:1},ev:[[1,()=>startStall()]],
+ body:'Power to idle and hold altitude: speed bleeds off about 1 kt per second while the AoA rises. Past the <b class="w">critical AoA</b> the flow separates, lift falls and the <b class="r">CP moves aft</b>. The nose drops even with the stick held back. Releasing back pressure and adding power completes the recovery.'},
+{title:'Your turn',dur:0,set:null,show:ALL,
+ body:'Drag the CG on the ruler or use the sliders, then <b>Nudge</b> it or <b>Stall</b> it. Try the forward limit at full weight, then the aft limit. Compare stall speeds, tail load and how fast a nudge dies out. Then put the CG past the NP.'},
+];
+const DEEP=[
+{refs:['phak5','phak10','wbh','nasaCg'],more:`<ul>
+<li>The airplane rotates about three axes that all pass through the CG. Pitch is rotation about the <b>lateral</b> axis.</li>
+<li>Equilibrium needs both <span class="k">ΣF = 0</span> and <span class="k">ΣM<sub>CG</sub> = 0</span>. Forces alone can balance while the airplane still pitches.</li>
+<li>This lab models a generic four-seat trainer (PA-28 class): 170 ft² wing, 5.25 ft mean aerodynamic chord (MAC), stabilator 16 ft behind the wing. Thrust and drag are drawn through the CG for clarity. In a real airplane a low thrust line adds a nose-up moment with power, which is one reason power changes need trim changes.</li>
+<li>CG is given as <b>% MAC</b>: 0% is the leading edge of the mean aerodynamic chord, 100% the trailing edge. POHs use inches aft of a datum. The two are related by <span class="k">%MAC = (CG − LEMAC) ÷ MAC × 100</span>.</li></ul>`},
+{refs:['phak4','phak5','nasaCp'],more:`<ul>
+<li>Engineers prefer the <b>aerodynamic center (AC)</b>, about 25% chord, where the pitching moment does not change with AoA. For a cambered airfoil that moment is nose-down: <span class="k">C<sub>m,ac</sub> ≈ −0.06</span> here.</li>
+<li>The CP follows from it: <span class="k">x<sub>cp</sub> = x<sub>ac</sub> − C<sub>m,ac</sub>/C<sub>L</sub></span>. Low C<sub>L</sub> (fast) puts the CP far aft; high C<sub>L</sub> (slow) pulls it toward the AC. After the stall C<sub>m,ac</sub> grows more negative and the CP moves aft again.</li>
+<li>A symmetrical airfoil has C<sub>m,ac</sub> ≈ 0, so its CP barely moves. That is why the PHAK says CP travel matters most for cambered wings.</li></ul>`},
+{refs:['phak5','phak10','afh3'],more:`<ul>
+<li>Most airplanes are designed with the CG ahead of the CP. If the engine quits and speed drops, the nose-down tendency lowers the nose and protects airspeed.</li>
+<li>Required tail load (moments about the CG): <span class="k">L<sub>tail</sub> = (−L<sub>w</sub>·arm<sub>w</sub> + M<sub>ac</sub>) ÷ arm<sub>tail</sub></span>. The tail arm is about 15 ft and the CG-to-AC arm is inches, so a small tail load balances a big wing.</li>
+<li>Total wing lift is <span class="k">W + tail download</span>, about 4–8% more than weight in this model.</li>
+<li>The tail arrow (and thrust and drag) are drawn at 4× scale so you can see them. The numbers in the readout are true values.</li>
+<li>A canard airplane lifts <i>up</i> at both surfaces. A stabilator (PA-28) moves the whole tail surface. Its anti-servo tab adds stick feel.</li></ul>`},
+{refs:['phak5','phak6','afh3','nasaTrim'],more:`<ul>
+<li>A trimmed airplane holds an <b>angle of attack</b>, and so an airspeed at a given weight. That is why the trim wheel is really an AoA (speed) selector, and power controls climb or descent.</li>
+<li>In this model, going from 120 to 70 kt moves the stabilator about 4–5° trailing edge up.</li>
+<li><b>Speed stability</b> (stick-free): pull to fly slower than trim, push to fly faster. Released slowly, the airspeed returns close to trim. Old §23.173 required return within ±10% of trim speed (±7.5% in cruise) and a stable stick-force gradient.</li>
+<li>Trim tab, anti-servo tab and trim spring all do the same job: zero the stick force at the chosen AoA.</li></ul>`},
+{refs:['phak5','p23_173','nasaTrim'],more:`<ul>
+<li><b>Static stability</b> is the initial tendency after a disturbance. Positive: returns. Neutral: stays displaced. Negative: moves farther away.</li>
+<li>Pitch: <span class="k">dC<sub>m</sub>/dα &lt; 0</span>. A nose-up gust raises the AoA everywhere. The wing's extra lift acts near its AC, just behind or ahead of the CG. The tail's extra lift acts 15 ft back, so its nose-down moment wins.</li>
+<li>Downwash reduces the tail's share: the wing bends the flow down, so the tail sees only about <span class="k">1 − dε/dα ≈ 0.6</span> of the AoA change.</li>
+<li>Watch the green arc at the CG: it is the net aerodynamic moment. Green = restoring, red = diverging.</li></ul>`},
+{refs:['phak5','phak10','wbh'],more:`<ul>
+<li>Stick-fixed neutral point: <span class="k">h<sub>n</sub> ≈ h<sub>ac</sub> + V<sub>H</sub>·η·(a<sub>t</sub>/a)(1 − dε/dα) − fuselage</span>. Here V<sub>H</sub> = S<sub>t</sub>l<sub>t</sub>/(Sc) ≈ 0.48, so h<sub>n</sub> ≈ 40% MAC.</li>
+<li><b>Static margin</b> = NP − CG. Light airplanes typically fly with about 5–20% MAC. At the 30% aft limit this model keeps about 10%.</li>
+<li>With the stick free, the elevator floats with the flow, so the <b>stick-free NP</b> is a few percent ahead of the stick-fixed one. Stick force per knot and per g both shrink to zero as the CG reaches it. That is what pilots feel as "light" pitch at aft CG.</li>
+<li>Short-period pitch frequency scales with the square root of static margin.</li></ul>`},
+{refs:['phak5','p23_181','nasaTrim'],more:`<svg viewBox="0 0 420 96" aria-label="Positive, neutral and negative dynamic stability"><g fill="none" stroke-width="2">
+<path d="M8 48 Q22 10 36 48 T64 48 T92 48 T120 48" stroke="#7fd98a" opacity=".2"/><path d="M8 48 C18 14 26 14 36 48 S54 70 64 48 S80 34 92 48 S106 56 120 48" stroke="#7fd98a"/>
+<path d="M150 48 C160 18 168 18 178 48 S196 78 206 48 S224 18 234 48 S252 78 262 48" stroke="#ffb54a"/>
+<path d="M292 48 C298 38 302 38 308 48 S320 64 326 48 S340 22 348 48 S366 92 376 48 S398 4 410 30" stroke="#e2574a"/></g>
+<g font-family="IBM Plex Mono,monospace" font-size="10" fill="#8ea2a5"><text x="8" y="92">POSITIVE · damped</text><text x="150" y="92">NEUTRAL · undamped</text><text x="292" y="92">NEGATIVE · divergent</text></g></svg>
+<ul>
+<li>Two pitch modes. <b>Short period</b>: about 1.5 s here, AoA and pitch rate, heavily damped by the tail. You saw it as the quick first wobble. <b>Phugoid</b>: speed and height trade at nearly constant AoA.</li>
+<li>Phugoid period ≈ <span class="k">π√2·V/g</span> ≈ 0.23 s per knot: about 23 s at 100 kt. Its damping ratio is about <span class="k">1/(√2·L/D)</span>, so clean, efficient airplanes damp it poorly. Most pilots never notice it because they correct it.</li>
+<li>Old §23.181 required short-period oscillations to be heavily damped, controls free and fixed. The phugoid may be lightly damped or even slightly divergent if it is easy to control.</li>
+<li>An airplane can be statically stable and dynamically unstable, but never dynamically stable while statically unstable.</li></ul>`},
+{refs:['phak10','wbh','p23_23','acsI_F'],more:`<ul>
+<li>PHAK Ch 10 lists forward-CG effects: higher stall speed, lower cruise speed, more stable, higher elevator forces, and in extremes not enough elevator to rotate on takeoff or to flare.</li>
+<li>In this model at 2,050 lb, moving the CG from 30% to 15% MAC raises the tail download at 100 kt from about 70 to 170 lb, the 1 g stall speed from 49 to 50 kt, and the drag by about 2%. Small, but real, and it grows at heavy weights.</li>
+<li>The forward limit is often set by <b>elevator authority in the landing flare with flaps down in ground effect</b>, where downwash at the tail drops. Try 5% MAC: the stabilator hits its stop before the stall AoA.</li>
+<li>Forward limits usually move aft at higher weight (here 15% up to 2,050 lb, 20% at 2,550 lb). That is the slanted line on a POH CG envelope.</li></ul>`},
+{refs:['phak10','wbh','afh5','p23_23'],more:`<ul>
+<li>PHAK Ch 10 aft-CG effects: lower stall speed, higher cruise, less stable, and more difficult stall and spin recovery. In a spin the aft CG can make a <b>flat spin</b> more likely and harder to stop.</li>
+<li>The aft limit keeps enough static margin for stable stick-force gradients and enough elevator nose-down power to recover.</li>
+<li>Utility category CG ranges are often narrower and farther forward so that spins can be approved.</li>
+<li>The CG moves in flight: fuel burn (tanks ahead of or behind the CG), passengers moving, cargo shifting. Check both takeoff and landing CG.</li></ul>`},
+{refs:['phak5','phak10','wbh'],more:`<ul>
+<li>Behind the NP, <span class="k">dC<sub>m</sub>/dα &gt; 0</span>: a nose-up gust makes a nose-up moment. The disturbance doubles in a fraction of a second here, far faster than a pilot can correct.</li>
+<li>Fighters like the F-16 fly with relaxed or negative static margin on purpose and use fly-by-wire computers to stabilize them many times a second. Light airplanes have no such system.</li>
+<li>Common real causes: heavy baggage aft, passengers in rear seats with little fuel, an unsecured load sliding back on rotation.</li></ul>`},
+{refs:['acsVII','afh5','phak5'],more:`<ul>
+<li>The airplane stalls whenever the <b>critical AoA</b> is exceeded, at any speed or attitude. Here that is 16°. The stall speed only applies at 1 g at a given weight and CG.</li>
+<li><span class="k">V<sub>S</sub> = √(2(W + L<sub>tail↓</sub>) ÷ (ρ·S·C<sub>L,max</sub>))</span>. Weight and forward CG both raise it.</li>
+<li>Why the nose drops: lift collapses, the CP moves aft, and the tail sees less downwash, so its download shrinks. All three pitch the nose down.</li>
+<li>ACS PA.VII.B/C: recognize the stall, reduce AoA first, level the wings, add power, return to the desired flight path. AFH 5 stresses that reducing AoA is the only way to break a stall.</li>
+<li>With flaps or ice, the tail itself can stall (<b>tailplane stall</b>). Then the nose pitches <i>down</i> hard and the fix is the opposite: raise flaps and pull.</li></ul>`},
+{refs:['phak5','phak10','wbh','acsI_F','acsVII'],more:`<ul>
+<li>Try: 2,550 lb at 20% MAC (heaviest, forward) vs 1,800 lb at 30%. Compare stall speed and tail load.</li>
+<li>Try: CG at 38%, then Nudge. Then 42%. Watch the trace: slower return, then no return.</li>
+<li>Try: Stall at 5% MAC. The stabilator reaches its stop first: <b>elevator limit</b>.</li>
+<li>Readouts are 1 g, power-off, sea level. Illustrative trainer, not any POH: use your POH numbers for flight.</li></ul>`},
+];
+STEPS.forEach((s,i)=>Object.assign(s,DEEP[i]||{}));
+
+/* ================= UI ================= */
+const $=id=>document.getElementById(id);
+function setup(id){const cv=$(id);const o={cv,ctx:cv.getContext('2d'),w:0,h:0};
+  const fit=()=>{const r=cv.getBoundingClientRect();const d=Math.min(2,window.devicePixelRatio||1);o.w=r.width;o.h=r.height;cv.width=Math.max(1,Math.round(r.width*d));cv.height=Math.max(1,Math.round(r.height*d));o.ctx.setTransform(d,0,0,d,0,0);};
+  new ResizeObserver(fit).observe(cv);fit();return o;}
+const VW=setup('view'),TR=setup('trace');
+const L={},LT={};for(const k in ALL){L[k]=0;LT[k]=0;}
+const dots=$('dots');
+STEPS.forEach((s,i)=>{const b=document.createElement('button');b.type='button';b.setAttribute('aria-label','Step '+(i+1)+': '+s.title);b.onclick=()=>goStep(i);dots.appendChild(b);});
+function goStep(i,keep){i=clamp(i,0,STEPS.length-1);S.step=i;S.t=0;S.fired=0;const st=STEPS[i];
+  S.mode=i===STEPS.length-1?'explore':'tour';S.warp=st.warp||1;
+  $('stepNum').textContent='Step '+(i+1)+' of '+STEPS.length;$('stepTitle').textContent=st.title;$('stepBody').innerHTML=st.body;
+  [...dots.children].forEach((b,k)=>{b.className=k===i?'on':(k<i?'done':'');b.setAttribute('aria-current',k===i?'step':'false');});
+  for(const k in LT)LT[k]=st.show[k]?1:0;
+  if(st.set&&!keep){S.hT=st.set.h;S.WT=st.set.W;S.VT=st.set.V;
+    if(Math.abs(S.h-S.hT)>.12){S.h=S.hT;} S.W=S.WT; if(Math.abs(S.V-S.VT)>15)S.V=S.VT; retrim();S.buf=[];}
+  $('explore').hidden=S.mode==='explore';$('next').disabled=i===STEPS.length-1;$('prev').disabled=i===0;
+  $('warpTxt').textContent=S.warp>1?S.warp+'× time':'';
+  Kit.step(st);}
+$('prev').onclick=()=>goStep(S.step-1);$('next').onclick=()=>goStep(S.step+1);
+$('explore').onclick=()=>goStep(STEPS.length-1);
+function toExplore(){if(S.mode==='tour')goStep(STEPS.length-1,true);}
+const playBtn=$('play');function setPlay(v){S.playing=v;playBtn.textContent=v?'Pause':'Play';}
+playBtn.onclick=()=>setPlay(!S.playing);
+Kit.mount({pause:()=>setPlay(false),sources:['phak4','phak5','phak6','phak10','afh3','afh5','wbh','acsI_F','acsVII','p23_23','p23_173','p23_181','nasaCg','nasaCp','nasaTrim']});
+const spd=$('speed');function spdTxt(){S.speed=+spd.value;$('speedTxt').textContent=S.speed+'×';}spd.oninput=spdTxt;spdTxt();
+$('cg').oninput=e=>{toExplore();S.hT=+e.target.value/100;};
+$('wt').oninput=e=>{toExplore();S.WT=+e.target.value;};
+$('vt').oninput=e=>{toExplore();S.VT=+e.target.value;};
+$('nUp').onclick=()=>{toExplore();setPlay(true);nudge(1);};
+$('nDn').onclick=()=>{toExplore();setPlay(true);nudge(-1);};
+$('stl').onclick=()=>{toExplore();setPlay(true);startStall();};
+$('rtr').onclick=()=>{toExplore();retrim();};
+document.addEventListener('keydown',e=>{if(e.target.closest('input,button,dialog'))return;
+  if(e.key===' '){e.preventDefault();setPlay(!S.playing);}else if(e.key==='ArrowRight')goStep(S.step+1);else if(e.key==='ArrowLeft')goStep(S.step-1);});
+
+/* ================= Simulation step ================= */
+function simAdvance(dt){simCore(dt);if(!S.x)return;
+  S.bufT+=dt;if(S.bufT>=.05){S.bufT=0;S.buf.push([(S.x[2]-S.tr.a)*R2D,S.x[0]/KT-S.V,(S.x[2]-S.x[1]-S.tr.a)*R2D]);if(S.buf.length>1200)S.buf.shift();}}
+function simCore(dt){ // dt = sim seconds
+  // CG / weight / trim-speed changes are flown as re-trims (the pilot keeps it trimmed while they change)
+  const moving=Math.abs(S.h-S.hT)>1e-4||Math.abs(S.W-S.WT)>.5||Math.abs(S.V-S.VT)>.05;
+  if(moving&&!S.stall&&!S.dep){const rt=dt/S.warp;
+    S.h+=clamp(S.hT-S.h,-.06*rt,.06*rt);S.W+=clamp(S.WT-S.W,-600*rt,600*rt);S.V+=clamp(S.VT-S.V,-12*rt,12*rt);
+    retrim();return;}
+  if(moving&&S.stall){S.h=S.hT;S.W=S.WT;S.V=S.VT;}
+  if(S.dep){S.dep-=dt/S.warp;if(S.dep<=0){S.dep=0;retrim();}else return;}
+  const n=Math.max(1,Math.ceil(dt/(1/240))),h=dt/n;
+  for(let i=0;i<n;i++){
+    let dl=S.dl,T=S.T;
+    if(S.pulse){dl=S.tr.d+S.pulse.d;S.pulse.left-=h;if(S.pulse.left<=0)S.pulse=null;}
+    else if(S.stall){const st=S.stall,V=S.x[0],a=S.x[2]-S.x[1];st.tp+=h;
+      if(st.ph===0){T=0;const tr=trim(V,S.W,S.h);
+        if(tr.a<P.as-.5*D2R&&a<P.as&&tr.d>P.dmin)S.dl+=clamp(tr.d-S.dl,-.3*h,.3*h)-S.x[1]*.5*h;else{st.ph=1;st.tp=0;}}
+      else if(st.ph===1){T=0;S.dl=Math.max(P.dmin,S.dl-1.5*D2R*h);if(st.tp>3)st.ph=2,st.tp=0;}
+      else{T=P.Tmax;const tr=trim(Math.max(V,S.V*KT),S.W,S.h);S.dl+=(tr.d-S.dl)*Math.min(1,h*2);
+        if(st.tp>8){S.stall=null;S.T=S.tr.T;S.dl=S.tr.d;if(S.mode==='explore')setWarp(1);}}
+      S.dl=clamp(S.dl,P.dmin,P.dmax);dl=S.dl;}
+    const xp=S.x;S.x=rk4(S.x,{W:S.W,h:S.h,T,dl},h);S.T=S.stall?T:S.T;S.simT+=h;
+    const th=S.x[2],V=S.x[0];
+    if(!isFinite(th)||Math.abs(th-S.tr.a)>40*D2R||V<30*KT||V>200*KT){if(!S.x.every(isFinite))S.x=xp;S.dep=2.2;break;}}
+}
+
+/* ================= Drawing ================= */
+const C={screen:'#071014',sky1:'#0b1d26',sky2:'#081419',gnd:'#0d1612',ink:'#e4ece9',dim:'#8ea2a5',ref:'#5ccfe3',var:'#ffb54a',tail:'#a99bff',ok:'#7fd98a',warn:'#e2574a',body:'#1b2a30',edge:'#9fb3b5'};
+const FM='"IBM Plex Mono",ui-monospace,monospace';
+// body outline (x aft of LEMAC, z up, ft)
+const FUS=[[-8.3,1.25],[-7.7,2.0],[-6.8,2.35],[-3.7,2.75],[-1.3,4.15],[3.8,4.3],[6.6,3.6],[12,2.95],[19.3,2.55],[19.3,1.75],[14,1.2],[6,0],[3,-.4],[-2.5,-.4],[-6.2,.15],[-7.8,.75]];
+const WIN=[[-3.3,2.95],[-1.25,3.98],[3.5,4.05],[5.9,3.5],[5.4,2.85],[-2.7,2.8]];
+const FIN=[[14.4,2.75],[17.2,6.7],[19.1,6.85],[19.45,2.55]];
+function foil(x0,z0,ch,t,cam,rot,piv){const up=[],lo=[];for(let i=0;i<=30;i++){const u=(1-Math.cos(Math.PI*i/30))/2;
+  const yt=5*t*(0.2969*Math.sqrt(u)-0.126*u-0.3516*u*u+0.2843*u**3-0.1015*u**4);
+  const yc=cam?(u<.4?cam/.16*(0.8*u-u*u):cam/.36*(0.2+0.8*u-u*u)):0;
+  up.push([u*ch,(yc+yt)*ch]);lo.push([u*ch,(yc-yt)*ch]);}
+  const pts=up.concat(lo.reverse()),c=Math.cos(rot),s=Math.sin(rot);
+  return pts.map(([x,z])=>{const dx=x-piv,dz=z;return[x0+piv+dx*c+dz*s,z0-dx*s+dz*c];});}
+function drawView(){const{ctx,w,h}=VW;if(!w||!S.x)return;const[V,g,th]=S.x,a=th-g;
+  const rulerH=L.ruler>.02?56:0,k=Math.min(w/32,(h-rulerH)/16),cx=w*.62,cy=(h-rulerH)*.5;
+  const xcg=S.h*P.c;
+  const B=(x,z)=>{const bx=-(x-xcg),X=bx*Math.cos(th)-z*Math.sin(th),Z=bx*Math.sin(th)+z*Math.cos(th);return[cx+X*k,cy-Z*k];};
+  // sky + horizon (moves with altitude change)
+  const alt=S.x[5]||0,hy=clamp(cy+h*.38+alt*.25,h*.12,h+40);
+  let gr=ctx.createLinearGradient(0,0,0,h);gr.addColorStop(0,C.sky1);gr.addColorStop(1,C.sky2);ctx.fillStyle=gr;ctx.fillRect(0,0,w,h);
+  if(hy<h){ctx.fillStyle=C.gnd;ctx.fillRect(0,hy,w,h-hy);ctx.strokeStyle='rgba(143,227,181,.25)';ctx.beginPath();ctx.moveTo(0,hy);ctx.lineTo(w,hy);ctx.stroke();
+    ctx.strokeStyle='rgba(143,227,181,.10)';const off=(S.simT*V*k*.25)%60;for(let x=-off;x<w+60;x+=60){ctx.beginPath();ctx.moveTo(x,hy+4);ctx.lineTo(x-40,h);ctx.stroke();}}
+  // relative wind streaks along the flight path
+  ctx.save();ctx.strokeStyle='rgba(207,224,221,.16)';ctx.lineWidth=1.2;const gx=Math.cos(g),gy=-Math.sin(g);
+  const ph=(S.simT*V*.35)%80;
+  for(let j=-4;j<=4;j++){const ox=cx-gy*j*k*2.4,oy=cy+gx*j*k*2.4;
+    for(let m=-6;m<=6;m++){const d=m*80-ph;const x1=ox+gx*d,y1=oy+gy*d;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x1-gx*34,y1-gy*34);ctx.stroke();}}
+  ctx.restore();
+  const poly=(pts,fill,stroke,lw=1.4)=>{ctx.beginPath();pts.forEach((p,i)=>{const[sx,sy]=B(p[0],p[1]);i?ctx.lineTo(sx,sy):ctx.moveTo(sx,sy);});ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke();}};
+  // airplane
+  poly(FIN,C.body,C.edge);poly(FUS,C.body,C.edge);poly(WIN,'#0a1418','rgba(159,179,181,.5)',1);
+  const[px1,py1]=B(-8.4,-2.6),[px2,py2]=B(-8.4,5.1);ctx.strokeStyle='rgba(228,236,233,.25)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(px1,py1);ctx.lineTo(px2,py2);ctx.stroke();
+  // stabilator, rotates by dl about its 25% chord
+  const dl=S.pulse?S.tr.d+S.pulse.d:S.dl;
+  poly(foil(16.6,1.95,2.8,.12,0,dl,.7),'#2a2650',C.tail,1.6);
+  // wing section
+  poly(foil(0,0,P.c,.15,.04,0,0),'#22343b',C.ink,1.6);
+  // chord line
+  ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(228,236,233,.35)';ctx.lineWidth=1;{const[a1,b1]=B(-.4,0),[a2,b2]=B(P.c+.4,0);ctx.beginPath();ctx.moveTo(a1,b1);ctx.lineTo(a2,b2);ctx.stroke();}ctx.setLineDash([]);
+  // forces
+  const r=aero(V,a,S.x[3],dl,S.x[4],S.h);
+  const xcp=clamp(P.c*(.25-r.cmac/Math.max(.15,r.cl)),.03*P.c,.9*P.c);
+  const kF=(h-rulerH)*.28/S.W;
+  const arrow=(x0,y0,vx,vy,len,col,lab,al,sub)=>{if(al<.02||Math.abs(len)<1)return;ctx.save();ctx.globalAlpha=al;
+    const x1=x0+vx*len,y1=y0+vy*len,ang=Math.atan2(y1-y0,x1-x0),hs=Math.min(11,Math.abs(len)*.45);
+    ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1-Math.cos(ang)*hs*.7,y1-Math.sin(ang)*hs*.7);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x1-Math.cos(ang-.42)*hs,y1-Math.sin(ang-.42)*hs);ctx.lineTo(x1-Math.cos(ang+.42)*hs,y1-Math.sin(ang+.42)*hs);ctx.closePath();ctx.fill();
+    if(lab){ctx.font='500 12px '+FM;ctx.textBaseline='middle';const lx=x1+Math.cos(ang)*14,ly=y1+Math.sin(ang)*14;ctx.textAlign=Math.abs(Math.cos(ang))>.5?(Math.cos(ang)>0?'left':'right'):'center';
+      ctx.fillText(lab,lx,ly);if(sub){ctx.fillStyle=C.dim;ctx.font='500 11px '+FM;ctx.fillText(sub,lx,ly+14);}}
+    ctx.restore();};
+  const lvx=-Math.sin(g),lvy=-Math.cos(g); // lift direction (screen)
+  const[cpx,cpy]=B(xcp,.05),[cgx,cgy]=B(xcg,0),[tx,ty]=B(P.xt,1.95);
+  arrow(cpx,cpy,lvx,lvy,r.Lw*kF,C.ref,'Lift',L.lift,fmt(r.Lw)+' lb');
+  arrow(cgx,cgy,0,1,S.W*kF,C.ink,'Weight',L.wt,fmt(S.W)+' lb');
+  arrow(tx,ty,lvx,lvy,r.Lt*kF*4,C.tail,'Tail',L.tail,(r.Lt<0?'↓ ':'↑ ')+fmt(Math.abs(r.Lt))+' lb');
+  if(L.td>.02){const T=S.stall?(S.stall.ph<2?0:P.Tmax):S.T;const[nx,ny]=B(-8.4,1.25);
+    arrow(nx,ny,Math.cos(th),-Math.sin(th),T*kF*4,C.var,'Thrust',L.td);
+    arrow(cgx,cgy,-Math.cos(g),Math.sin(g),r.D*kF*4,C.var,'Drag',L.td);}
+  // couple arrows (step 3): nose-down from lift/weight, nose-up from tail
+  if(L.mom>.02){ctx.save();ctx.globalAlpha=L.mom;ctx.lineWidth=2;ctx.font='500 11px '+FM;ctx.textAlign='center';
+    curl(B(-3.2,-1.2),18,1,C.ref,'nose down');curl(B(P.xt+.3,-2.2),16,-1,C.tail,'nose up');ctx.restore();}
+  // net moment arc at CG
+  if(L.net>.02&&!S.dep){const M=r.M,da=a-S.tr.a;const mag=clamp(Math.abs(M)/900,0,1);
+    if(mag>.04&&Math.abs(da)>.15*D2R){const rest=M*da<0;ctx.save();ctx.globalAlpha=L.net*Math.min(1,mag*3);
+      const col=rest?C.ok:C.warn,R=26,dir=M>0?-1:1,a0=-Math.PI/2-th,a1=a0+dir*(.6+mag*2.2);
+      ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=3;ctx.beginPath();ctx.arc(cgx,cgy,R,a0,a1,dir<0);ctx.stroke();
+      const ex=cgx+R*Math.cos(a1),ey=cgy+R*Math.sin(a1),ta=a1+dir*Math.PI/2;
+      ctx.beginPath();ctx.moveTo(ex+Math.cos(ta)*9,ey+Math.sin(ta)*9);ctx.lineTo(ex+Math.cos(ta+2.5)*8,ey+Math.sin(ta+2.5)*8);ctx.lineTo(ex+Math.cos(ta-2.5)*8,ey+Math.sin(ta-2.5)*8);ctx.closePath();ctx.fill();
+      ctx.font='500 12px '+FM;ctx.textAlign='center';ctx.fillText(rest?'restoring':'diverging',cgx,cgy-R-14);ctx.restore();}}
+  // AoA arc between chord and relative wind
+  if(L.aoa>.02){ctx.save();ctx.globalAlpha=L.aoa;const[lx,ly]=B(-.2,0);const R=k*4.2,ac=-th,aw=-g;
+    ctx.strokeStyle=a>P.as?C.warn:C.var;ctx.lineWidth=1.6;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(lx+Math.cos(aw)*R*1.15,ly+Math.sin(aw)*R*1.15);ctx.stroke();ctx.setLineDash([]);
+    ctx.beginPath();ctx.arc(lx,ly,R,Math.min(ac,aw),Math.max(ac,aw));ctx.stroke();
+    ctx.fillStyle=ctx.strokeStyle;ctx.font='500 12px '+FM;ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText('AoA '+(a*R2D).toFixed(1)+'°',lx+R+8,ly+Math.sin((ac+aw)/2)*R*.6+12);ctx.restore();}
+  // markers on the chord
+  if(L.np>.02){const[nx,ny]=B(NP*P.c,0);ctx.save();ctx.globalAlpha=L.np;ctx.fillStyle=C.warn;ctx.beginPath();ctx.moveTo(nx,ny-7);ctx.lineTo(nx+6,ny+4);ctx.lineTo(nx-6,ny+4);ctx.closePath();ctx.fill();
+    ctx.font='500 11px '+FM;ctx.textAlign='center';ctx.fillText('NP',nx,ny+17);ctx.restore();}
+  if(L.cp>.02){ctx.save();ctx.globalAlpha=L.cp;ctx.strokeStyle=C.ref;ctx.lineWidth=2.5;ctx.fillStyle=C.screen;ctx.beginPath();ctx.arc(cpx,cpy,6,0,7);ctx.fill();ctx.stroke();
+    ctx.fillStyle=C.ref;ctx.font='500 11px '+FM;ctx.textAlign='right';ctx.fillText('CP',cpx-8,cpy+16);ctx.restore();}
+  if(L.cg>.02){ctx.save();ctx.globalAlpha=L.cg;const R=8;ctx.fillStyle=C.ink;ctx.beginPath();ctx.arc(cgx,cgy,R,0,7);ctx.fill();ctx.fillStyle=C.screen;
+    ctx.beginPath();ctx.moveTo(cgx,cgy);ctx.arc(cgx,cgy,R,-th-Math.PI/2,-th);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(cgx,cgy);ctx.arc(cgx,cgy,R,-th+Math.PI/2,-th+Math.PI);ctx.closePath();ctx.fill();
+    ctx.strokeStyle=C.ink;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cgx,cgy,R,0,7);ctx.stroke();
+    ctx.fillStyle=C.ink;ctx.font='500 11px '+FM;ctx.textAlign='left';ctx.fillText('CG',cgx+9,cgy-13);ctx.restore();}
+  if(rulerH)drawRuler(ctx,w,h,rulerH,xcp/P.c);
+  function curl(p,R,dir,col,lab){const[x,y]=p;ctx.strokeStyle=col;ctx.fillStyle=col;const a0=Math.PI*1.1,a1=a0+dir*Math.PI*1.1;
+    ctx.beginPath();ctx.arc(x,y,R,a0,a1,dir<0);ctx.stroke();const ex=x+R*Math.cos(a1),ey=y+R*Math.sin(a1),ta=a1+dir*Math.PI/2;
+    ctx.beginPath();ctx.moveTo(ex+Math.cos(ta)*8,ey+Math.sin(ta)*8);ctx.lineTo(ex+Math.cos(ta+2.5)*7,ey+Math.sin(ta+2.5)*7);ctx.lineTo(ex+Math.cos(ta-2.5)*7,ey+Math.sin(ta-2.5)*7);ctx.closePath();ctx.fill();
+    ctx.fillText(lab,x,y-R-8);}
+}
+let RUL=null;
+function drawRuler(ctx,w,h,rh,cpf){ctx.save();ctx.globalAlpha=L.ruler;const y0=h-rh,x0=34,x1=w-16,max=60,X=p=>x0+(x1-x0)*p/max;RUL={x0,x1,max,y0};
+  ctx.fillStyle='rgba(7,16,20,.92)';ctx.fillRect(0,y0,w,rh);ctx.strokeStyle=C.dim;ctx.globalAlpha*=.9;
+  const yb=y0+30;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(X(0),yb);ctx.lineTo(X(max),yb);ctx.stroke();
+  ctx.font='500 10px '+FM;ctx.fillStyle=C.dim;ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  for(let p=0;p<=max;p+=10){ctx.beginPath();ctx.moveTo(X(p),yb-4);ctx.lineTo(X(p),yb+4);ctx.stroke();ctx.fillText(p+(p?'':'%'),X(p),yb+16);}
+  ctx.textAlign='left';ctx.fillText('MAC',4,yb+16);
+  const fl=fwdLim(S.W);ctx.fillStyle='rgba(127,217,138,.22)';ctx.fillRect(X(fl),yb-7,X(AFT)-X(fl),14);ctx.strokeStyle=C.ok;ctx.lineWidth=1.5;ctx.strokeRect(X(fl),yb-7,X(AFT)-X(fl),14);
+  ctx.fillStyle=C.ok;ctx.textAlign='center';ctx.font='500 10px '+FM;ctx.fillText('CG range',(X(fl)+X(AFT))/2,y0+12);
+  if(L.np>.02){ctx.fillStyle=C.warn;ctx.beginPath();ctx.moveTo(X(NP*100),yb-8);ctx.lineTo(X(NP*100)+5,yb-16);ctx.lineTo(X(NP*100)-5,yb-16);ctx.closePath();ctx.fill();ctx.fillText('NP',X(NP*100)+15,yb-10);}
+  if(L.cp>.02){const xc=X(clamp(cpf*100,0,max));ctx.strokeStyle=C.ref;ctx.lineWidth=2;ctx.beginPath();ctx.arc(xc,yb,5,0,7);ctx.stroke();}
+  const xg=X(S.h*100);ctx.fillStyle=C.ink;ctx.beginPath();ctx.moveTo(xg,yb-9);ctx.lineTo(xg+7,yb);ctx.lineTo(xg,yb+9);ctx.lineTo(xg-7,yb);ctx.closePath();ctx.fill();
+  ctx.restore();}
+function drawTrace(){const{ctx,w,h}=TR;if(!w)return;ctx.fillStyle=C.screen;ctx.fillRect(0,0,w,h);
+  const pad=4,mid=h/2,win=60;ctx.strokeStyle='rgba(150,190,195,.12)';ctx.lineWidth=1;
+  for(let s=0;s<=win;s+=10){const x=w-pad-(w-2*pad)*s/win;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
+  ctx.strokeStyle='rgba(150,190,195,.3)';ctx.beginPath();ctx.moveTo(0,mid);ctx.lineTo(w,mid);ctx.stroke();
+  const n=S.buf.length,dx=(w-2*pad)/(win/.05);
+  const line=(idx,sc,col)=>{ctx.strokeStyle=col;ctx.lineWidth=2;ctx.beginPath();for(let i=0;i<n;i++){const x=w-pad-(n-1-i)*dx,y=mid-clamp(S.buf[i][idx]/sc,-1,1)*(mid-8);i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();};
+  line(1,25,C.var);line(2,10,C.ref);line(0,20,C.ink);
+  ctx.font='500 10.5px '+FM;ctx.textBaseline='top';ctx.textAlign='left';ctx.fillStyle=C.ink;ctx.fillText('PITCH ±20°',8,6);ctx.fillStyle=C.ref;ctx.fillText('AOA ±10°',8,20);ctx.fillStyle=C.var;ctx.fillText('IAS ±25 KT',8,34);
+  ctx.fillStyle=C.dim;ctx.textAlign='right';ctx.fillText('60 s',w-8,6);ctx.textBaseline='bottom';ctx.fillText('trim',w-8,mid-2);}
+const fmt=n=>Math.round(n).toLocaleString('en-US');
+let lastRO='';
+function readouts(){if(!S.x)return;const[V,g,th,q,eps]=S.x,a=th-g,dl=S.pulse?S.tr.d+S.pulse.d:S.dl,r=aero(V,a,q,dl,eps,S.h);
+  const vs=stallSpeed(S.W,S.h),sm=(NP-S.h)*100;
+  let st='TRIMMED · HANDS OFF',cl='ok';
+  const fl=fwdLim(S.W),out=S.h*100<fl-.01||S.h*100>AFT+.01;
+  if(S.dep){st='DEPARTED · RE-TRIMMING';cl='bad';}
+  else if(a>P.as){st='STALLED';cl='bad';}
+  else if(S.stall&&S.stall.ph<2&&S.dl<=P.dmin+1e-4){st='ELEVATOR AT STOP';cl='amb';}
+  else if(a>P.as-3*D2R){st='STALL WARNING';cl='amb';}
+  else if(S.stall&&S.stall.ph===2){st='RECOVERING';cl='amb';}
+  else if(S.stall){st='IDLE · HOLDING ALTITUDE';cl='amb';}
+  else if(sm<0){st='CG BEHIND NEUTRAL POINT';cl='bad';}
+  else if(out){st='CG OUTSIDE ENVELOPE';cl='amb';}
+  else if(S.pulse){st='NUDGE';cl='amb';}
+  const vals=[Math.round(V/KT)+'<small>kt</small>',(th*R2D).toFixed(1)+'°',(a*R2D).toFixed(1)+'°',(r.Lt<0?'↓ ':'↑ ')+fmt(Math.abs(r.Lt))+'<small>lb</small>',
+    sm.toFixed(0)+'<small>% MAC</small>',vs.ok?Math.round(vs.V/KT)+'<small>kt</small>':'<span style="color:var(--var)">elev. limit</span>',st,cl];
+  const key=vals.join('|');if(key===lastRO)return;lastRO=key;
+  ['roV','roTh','roA','roTail','roSM','roVs'].forEach((id,i)=>$(id).innerHTML=vals[i]);
+  $('roA').style.color=a>P.as?'var(--warn)':a>P.as-3*D2R?'var(--var)':'';$('roSM').style.color=sm<0?'var(--warn)':sm<6?'var(--var)':'';
+  const s=$('status');s.textContent=st;s.className='status '+cl;}
+function syncControls(){const a=document.activeElement;
+  if(a!==$('cg'))$('cg').value=(S.hT*100).toFixed(1);if(a!==$('wt'))$('wt').value=S.WT;if(a!==$('vt'))$('vt').value=S.VT;
+  $('cgO').textContent=(S.h*100).toFixed(1).replace(/\.0$/,'')+'% MAC';$('wtO').textContent=fmt(S.W)+' lb';$('vtO').textContent=Math.round(S.V)+' kt';}
+// drag the CG on the ruler
+const cvv=VW.cv;function rulerHit(e){if(!RUL||L.ruler<.5)return null;const r=cvv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+  if(y<RUL.y0-6)return null;return clamp((x-RUL.x0)/(RUL.x1-RUL.x0)*RUL.max,0,50);}
+cvv.addEventListener('pointerdown',e=>{const p=rulerHit(e);if(p===null)return;e.preventDefault();toExplore();S.drag=true;cvv.setPointerCapture(e.pointerId);S.hT=Math.round(p*2)/200;});
+cvv.addEventListener('pointermove',e=>{if(!S.drag){cvv.style.cursor=rulerHit(e)!==null?'ew-resize':'';return;}const p=rulerHit({clientX:e.clientX,clientY:1e6});if(p!==null)S.hT=Math.round(p*2)/200;});
+cvv.addEventListener('pointerup',()=>S.drag=false);cvv.addEventListener('pointercancel',()=>S.drag=false);
+
+/* ================= Loop ================= */
+let prev=performance.now();
+function frame(now){const dt=Math.min(.05,(now-prev)/1000);prev=now;const st=STEPS[S.step];
+  if(S.playing){S.t+=dt*S.speed;if(st.tick)st.tick(S.t);
+    if(st.ev)while(S.fired<st.ev.length&&S.t>=st.ev[S.fired][0]){st.ev[S.fired][1]();S.fired++;}
+    simAdvance(dt*S.speed*S.warp);
+    if(S.mode==='tour'&&st.dur&&S.t>=st.dur)goStep(S.step+1);}
+  const kk=1-Math.exp(-dt*4);for(const n in L)L[n]+=(LT[n]-L[n])*kk;
+  $('stepBar').style.width=(st.dur?clamp(S.t/st.dur,0,1)*100:100)+'%';
+  drawView();drawTrace();readouts();syncControls();
+  requestAnimationFrame(frame);}
+goStep(0);setPlay(S.playing);requestAnimationFrame(frame);
+})();
+</script>
+<script>document.getElementById("home").addEventListener("click",e=>{if(history.length>1&&document.referrer){e.preventDefault();history.back();}});</script>
+</body></html>

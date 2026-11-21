@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script src="sim-theme.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html{color-scheme:dark}body{margin:0;font:14px system-ui,sans-serif}[hidden]{display:none!important}
+.homebar{max-width:1200px;margin:0 auto;padding-top:14px}
+.homebar a{font:500 13px "IBM Plex Mono",ui-monospace,monospace;color:#8ea2a5;text-decoration:none;letter-spacing:.06em}
+.homebar a:hover,.homebar a:focus-visible{color:#e4ece9}</style>
+<meta name="theme-color" content="#0a1014">
+<title>Weight and Performance Lab</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+/* Layout: lesson strip on top; stage = side view + balance beam (or runway) beside the CG envelope (or POH chart); controls + readouts below. Same dark avionics look as the other sims. */
+:root{
+  --bg:#0a1014; --panel:#0f181c; --panel2:#0c1418; --line:#1f2f36; --ink:#e4ece9; --dim:#8ea2a5;
+  --ref:#5ccfe3; --var:#ffb54a; --warn:#e2574a; --ok:#7fd98a; --wht:#cfe0dd; --va:#a99bff;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1200px;margin:0 auto;padding-block:14px 40px;display:flex;flex-direction:column;gap:12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
+
+.lesson{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 20px;align-items:start}
+.lesson-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;grid-column:1/-1}
+#stepNum{font-family:var(--f-mono);font-size:12px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.dots{display:flex;gap:6px;flex-wrap:wrap}
+.dots button{width:22px;height:6px;border-radius:3px;border:0;background:var(--line);padding:0;cursor:pointer}
+.dots button.on{background:var(--ink)} .dots button.done{background:#4d6268}
+.dots button:focus-visible{outline:2px solid var(--ref);outline-offset:3px}
+.lesson-text{min-width:0}
+#stepTitle{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.1;margin:2px 0 4px;text-wrap:balance}
+#stepBody{margin:0;max-width:72ch;min-height:4.5em}
+#stepBody b.l{color:var(--ref);font-weight:600} #stepBody b.t{color:var(--var);font-weight:600} #stepBody b.s{color:var(--warn);font-weight:600} #stepBody b.g{color:var(--ok);font-weight:600} #stepBody b.v{color:var(--va);font-weight:600}
+.bar{grid-column:1/-1;height:2px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:6px}
+#stepBar{height:100%;width:0;background:var(--dim)}
+.lctl{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+button.b{font:500 13px var(--f-body);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;min-height:34px}
+button.b:hover{border-color:#3d545c} button.b:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+button.b.primary{background:var(--ink);color:#0a1014;border-color:var(--ink);min-width:84px}
+button.b:disabled{opacity:.4;cursor:default}
+.speed{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:12px;color:var(--dim)}
+.speed input{width:120px;accent-color:var(--ink);height:auto}
+#speedTxt{min-width:4ch}
+@media (max-width:480px){.dots button{width:12px}}
+@media (max-width:760px){.lesson{grid-template-columns:minmax(0,1fr)}.lctl{align-items:stretch}.btns{justify-content:flex-start}}
+
+.stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media (max-width:820px){.stage{grid-template-columns:minmax(0,1fr)}}
+.view{position:relative;padding:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center}
+.view svg{display:block;width:100%;height:auto}
+.pop{position:absolute;left:50%;transform:translateX(-50%);font:600 13px var(--f-mono);letter-spacing:.14em;padding:4px 12px;border-radius:6px;pointer-events:none;white-space:nowrap;top:10px}
+.pop.r{background:var(--warn);color:#160806} .pop.a{background:var(--var);color:#1a1004} .pop.g{background:var(--ok);color:#06140a}
+svg text{font-family:var(--f-mono)}
+.tk{font-size:10px;fill:var(--dim)}
+.ml{font-size:11px;font-weight:500}
+.hl{filter:drop-shadow(0 0 5px currentColor)}
+@media (max-width:600px){svg .tk{font-size:12.5px}svg .ml{font-size:13px}}
+
+/* POH-style chart */
+.chart{padding:10px 10px 4px;display:flex;flex-direction:column;gap:6px}
+.ch-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);white-space:nowrap;overflow:hidden}
+.ch-h b{color:var(--ink);font-weight:500}
+.blocks{display:flex;gap:4px}
+.blocks span{border:1px solid var(--line);border-radius:4px;padding:0 6px;color:var(--dim)}
+.blocks span.on{border-color:var(--var);color:var(--var)}
+table.pt{border-collapse:collapse;width:100%;table-layout:fixed;font:500 11.5px var(--f-mono);font-variant-numeric:tabular-nums}
+table.pt th{font-weight:500;color:var(--dim);font-size:10.5px;padding:2px 0;text-align:center}
+table.pt th.r{text-align:right;padding-right:6px;width:4.6em}
+table.pt td{text-align:center;padding:2px 0;border:1px solid var(--line);line-height:1.2;color:#9fb3b5}
+table.pt td b{display:block;font-weight:500;color:#9fb3b5}
+table.pt td i{display:block;font-style:normal;color:var(--ink)}
+table.pt td.br{border:1.5px solid var(--var);background:rgba(255,181,74,.1)}
+table.pt td.br i{color:var(--var)}
+.key{display:flex;gap:14px;font:500 10.5px var(--f-mono);color:var(--dim);letter-spacing:.06em}
+.key i{font-style:normal;color:var(--ink)}
+#wf{margin-top:2px}
+
+.deck{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px;align-items:stretch}
+@media (max-width:640px){.deck{grid-template-columns:minmax(0,1fr)}}
+.ctl{display:flex;flex-direction:column;gap:10px}
+.sls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
+@media (max-width:420px){.sls{grid-template-columns:minmax(0,1fr)}}
+.sl{display:flex;flex-direction:column;gap:0}
+.sl .h{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.lab{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.sl output{font:600 19px var(--f-display);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.sl output.warnc{color:var(--warn)}
+input[type=range]{width:100%;accent-color:var(--ink);margin:0;height:26px}
+.tg{display:flex;gap:6px;flex-wrap:wrap}
+.tg button{font:500 13px var(--f-body);color:var(--dim);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:6px 12px;cursor:pointer;min-height:34px}
+.tg button[aria-pressed=true]{color:var(--ink);border-color:#4d6a73;background:#14232a}
+.tg button:focus-visible,input[type=range]:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+.tg .reset{margin-left:auto}
+.tabs button{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.ro{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px;align-content:start}
+@media (max-width:420px){.ro{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ro>div{display:flex;flex-direction:column;min-width:0}
+.ro strong{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.05;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ro strong small{font-size:15px;color:var(--dim);font-weight:500;margin-left:3px}
+.warnc{color:var(--warn)!important} .ambc{color:var(--var)!important} .okc{color:var(--ok)!important}
+
+.ew-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;margin-top:10px}
+@media (max-width:420px){.ew-grid{grid-template-columns:minmax(0,1fr)}}
+.ew-grid label{display:flex;justify-content:space-between;align-items:center;gap:8px;font:500 12px var(--f-mono);color:var(--dim);letter-spacing:.04em}
+.ew-grid input{width:6.5em;font:500 14px var(--f-mono);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 7px;text-align:right}
+.ew-grid input[aria-invalid=true]{border-color:var(--warn);color:var(--warn)}
+.ew-grid input:focus-visible{outline:2px solid var(--ref);outline-offset:1px}
+</style>
+<link rel="stylesheet" href="sim-theme.css">
+</head>
+<body>
+<div class="homebar"><a href="../index.html">← All simulations</a></div>
+<div class="wrap">
+  <section class="lesson" aria-live="polite">
+    <div class="lesson-meta"><span id="stepNum">Step 1</span><div class="dots" id="dots" role="tablist" aria-label="Lesson steps"></div></div>
+    <div class="lesson-text">
+      <h2 id="stepTitle"></h2>
+      <p id="stepBody"></p>
+    </div>
+    <div class="lctl">
+      <div class="btns">
+        <button class="b" id="prev" type="button">◀ Back</button>
+        <button class="b primary" id="play" type="button">Pause</button>
+        <button class="b" id="next" type="button">Next ▶</button>
+        <button class="b" id="explore" type="button">Explore freely</button>
+      </div>
+      <label class="speed" for="speed">Speed <input id="speed" type="range" min="0.25" max="2" step="0.25" value="1"> <span id="speedTxt">1×</span></label>
+    </div>
+    <div class="bar"><div id="stepBar"></div></div>
+  </section>
+
+  <div class="stage">
+    <div class="panel view">
+      <svg id="side" viewBox="0 0 460 300" role="img" aria-label="Side view of the airplane with its loading stations, and a balance beam showing each weight at its arm and the center of gravity"></svg>
+      <svg id="rwy" viewBox="0 0 460 300" role="img" aria-label="Runway profile: ground roll, distance to 50 feet and required distance with margin" hidden></svg>
+      <div class="pop" id="popL" hidden></div>
+    </div>
+    <div class="panel view" id="envP">
+      <svg id="env" viewBox="0 0 460 330" role="img" aria-label="CG envelope: weight against CG or moment, with takeoff and landing points"></svg>
+      <div class="pop" id="popR" hidden></div>
+    </div>
+    <div class="panel chart" id="chartP" hidden>
+      <div class="ch-h"><span id="chTitle">Takeoff distance</span><span class="blocks" id="blocks"></span></div>
+      <table class="pt" id="pt"></table>
+      <div class="key"><span>ground roll</span><i>over 50 ft</i><span id="chNote"></span></div>
+      <svg id="wf" viewBox="0 0 440 150" role="img" aria-label="Corrections from chart value to required distance, against the runway length"></svg>
+    </div>
+  </div>
+
+  <div class="deck">
+    <div class="panel ctl">
+      <div class="tg tabs" id="tabs">
+        <button type="button" data-v="load" aria-pressed="true">Loading</button>
+        <button type="button" data-v="to" aria-pressed="false">Takeoff</button>
+        <button type="button" data-v="ldg" aria-pressed="false">Landing</button>
+      </div>
+      <div id="ctlLoad" class="ctl">
+        <div class="sls">
+          <div class="sl"><div class="h"><label class="lab" for="front">Front seats · 37 in</label><output id="frontO"></output></div><input id="front" type="range" min="0" max="440" step="5"></div>
+          <div class="sl"><div class="h"><label class="lab" for="rear">Rear seats · 73 in</label><output id="rearO"></output></div><input id="rear" type="range" min="0" max="440" step="5"></div>
+          <div class="sl"><div class="h"><label class="lab" for="bagA">Baggage 1 · 95 in</label><output id="bagAO"></output></div><input id="bagA" type="range" min="0" max="150" step="5"></div>
+          <div class="sl"><div class="h"><label class="lab" for="bagB">Baggage 2 · 123 in</label><output id="bagBO"></output></div><input id="bagB" type="range" min="0" max="80" step="5"></div>
+          <div class="sl"><div class="h"><label class="lab" for="fuel">Fuel · 48 in</label><output id="fuelO"></output></div><input id="fuel" type="range" min="0" max="53" step="1"></div>
+          <div class="sl"><div class="h"><label class="lab" for="burn">Fuel burned</label><output id="burnO"></output></div><input id="burn" type="range" min="0" max="53" step="1"></div>
+        </div>
+        <div class="tg">
+          <button type="button" id="tAx" aria-pressed="false">Moment view</button>
+          <button type="button" id="tUt" aria-pressed="false">Utility category</button>
+          <button type="button" id="ewBtn">Empty weight…</button>
+          <button type="button" class="reset" id="resetL">Reset</button>
+        </div>
+      </div>
+      <div id="ctlPerf" class="ctl" hidden>
+        <div class="sls">
+          <div class="sl"><div class="h"><label class="lab" for="pa">Pressure altitude</label><output id="paO"></output></div><input id="pa" type="range" min="0" max="9000" step="100"></div>
+          <div class="sl"><div class="h"><label class="lab" for="oat">Temperature</label><output id="oatO"></output></div><input id="oat" type="range" min="-10" max="45" step="1"></div>
+          <div class="sl"><div class="h"><label class="lab" for="wind">Wind component</label><output id="windO"></output></div><input id="wind" type="range" min="-12" max="25" step="1"></div>
+          <div class="sl"><div class="h"><label class="lab" for="slope">Runway slope</label><output id="slopeO"></output></div><input id="slope" type="range" min="-3" max="3" step="0.5"></div>
+          <div class="sl"><div class="h"><label class="lab" for="rwyL">Runway length</label><output id="rwyLO"></output></div><input id="rwyL" type="range" min="1200" max="6000" step="50"></div>
+        </div>
+        <div class="tg" id="surf">
+          <button type="button" data-s="paved" aria-pressed="true">Paved, dry</button>
+          <button type="button" data-s="dry" aria-pressed="false">Dry grass</button>
+          <button type="button" data-s="wet" aria-pressed="false">Wet grass</button>
+          <button type="button" class="reset" id="resetP">Reset</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel ro" id="roLoad">
+      <div><span class="lab">Takeoff weight</span><strong id="rW"></strong></div>
+      <div><span class="lab">CG</span><strong id="rCg"></strong></div>
+      <div><span class="lab">Moment /1000</span><strong id="rM"></strong></div>
+      <div><span class="lab">Useful load left</span><strong id="rU"></strong></div>
+      <div><span class="lab">Landing weight</span><strong id="rLw"></strong></div>
+      <div><span class="lab">Landing CG</span><strong id="rLc"></strong></div>
+    </div>
+    <div class="panel ro" id="roPerf" hidden>
+      <div><span class="lab">Density altitude</span><strong id="rDa"></strong></div>
+      <div><span class="lab">Ground roll</span><strong id="rGr"></strong></div>
+      <div><span class="lab">Over 50 ft</span><strong id="rTot"></strong></div>
+      <div><span class="lab" id="rReqL">With ×1.33</span><strong id="rReq"></strong></div>
+      <div><span class="lab">Runway</span><strong id="rRw"></strong></div>
+      <div><span class="lab">Margin</span><strong id="rMg"></strong></div>
+    </div>
+  </div>
+</div>
+
+<dialog class="kit-dlg" id="ewDlg" aria-label="Empty weight">
+  <div class="kh"><span>Empty weight</span><button type="button" id="ewClose" aria-label="Close">×</button></div>
+  <div class="kb">
+    <div class="ew-grid">
+      <label for="ewW"><span>Basic empty weight · lb</span><input id="ewW" type="number" inputmode="decimal" step="any"></label>
+      <label for="ewA"><span>Empty CG arm · in</span><input id="ewA" type="number" inputmode="decimal" step="any"></label>
+    </div>
+    <div class="tg" style="margin-top:10px"><button type="button" class="b" id="ewReset">Sample airplane</button></div>
+    <p class="kf">Copy these from your airplane's current weight and balance record (it changes with every installed item). Stations, envelope and charts stay those of the sample C172S-class trainer.</p>
+  </div>
+</dialog>
+
+<script src="kit.js"></script>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const NS='http://www.w3.org/2000/svg';
+const fmt=n=>Math.round(n).toLocaleString('en-US');
+
+/* ================= Airplane data =================
+   Stations, limits and envelope: Cessna 172S POH Section 6 (datum = front face of firewall).
+   Front seats 37 in, rear seats 73 in, baggage area 1 95 in (max 120 lb), area 2 123 in (max 50 lb, 120 lb combined),
+   fuel 48 in, 53 gal usable at 6 lb/gal. Max takeoff/landing 2,550 lb (normal), 2,200 lb (utility).
+   Normal envelope: fwd 35.0 in up to 1,950 lb, straight line to 41.0 in at 2,550 lb; aft 47.3 in.
+   Utility: fwd 35.0 to 1,950 lb, then to 37.5 in at 2,200 lb; aft 40.5 in.
+   The empty weight is a sample (every airplane has its own). */
+const AC={mtow:2550,util:2200,bagA:120,bagB:50,bag:120,fuelMax:53,lbg:6,arm:{front:37,rear:73,bagA:95,bagB:123,fuel:48}};
+const BEW0={w:1680,arm:39.7};
+let BEW={...BEW0};
+try{const s=JSON.parse(localStorage.getItem('wb.bew')||'null');if(s&&bewOk(s))BEW={w:+s.w,arm:+s.arm};}catch(e){}
+function bewOk(b){return Number.isFinite(+b.w)&&Number.isFinite(+b.arm)&&b.w>=1200&&b.w<=2300&&b.arm>=30&&b.arm<=46;}
+const ENV_N=[[35,1500],[35,1950],[41,2550],[47.3,2550],[47.3,1500]];
+const ENV_U=[[35,1500],[35,1950],[37.5,2200],[40.5,2200],[40.5,1500]];
+const fwdN=w=>w<=1950?35:35+(w-1950)*6/600;
+const fwdU=w=>w<=1950?35:35+(w-1950)*2.5/250;
+
+function load(s){
+  const fuelLb=s.fuel*AC.lbg,burnLb=Math.min(s.burn,s.fuel)*AC.lbg,A=AC.arm;
+  const items=[['front',s.front],['rear',s.rear],['bagA',s.bagA],['bagB',s.bagB],['fuel',fuelLb]];
+  let W=BEW.w,M=BEW.w*BEW.arm;for(const[k,w]of items){W+=w;M+=w*A[k];}
+  const Wl=W-burnLb,Ml=M-burnLb*A.fuel,Wz=W-fuelLb,Mz=M-fuelLb*A.fuel;
+  return{W,M,cg:M/W,Wl,Ml,cgl:Ml/Wl,Wz,Mz,cgz:Mz/Wz,fuelLb,burnLb,items};
+}
+function inEnv(cg,w,util){const f=util?fwdU(w):fwdN(w),a=util?40.5:47.3,mx=util?AC.util:AC.mtow;
+  if(w>mx+0.5)return'heavy';if(cg<f-0.005)return'fwd';if(cg>a+0.005)return'aft';return'';}
+function loadStatus(L,s,util){
+  if(s.bagA>AC.bagA||s.bagB>AC.bagB||s.bagA+s.bagB>AC.bag)return['r','BAGGAGE OVER LIMIT'];
+  const t=inEnv(L.cg,L.W,util);
+  if(t==='heavy')return['r','OVER MAX WEIGHT · '+fmt(L.W-(util?AC.util:AC.mtow))+' LB'];
+  if(t==='fwd')return['r','FORWARD OF CG LIMIT'];
+  if(t==='aft')return['r','AFT OF CG LIMIT'];
+  const tl=inEnv(L.cgl,L.Wl,util);
+  if(tl==='fwd')return['r','LANDING CG FORWARD OF LIMIT'];
+  if(tl==='aft')return['r','LANDING CG AFT OF LIMIT'];
+  if(s.fuel<1)return['a','NO FUEL'];
+  if(s.burn>s.fuel-7.5&&s.fuel>0)return['a','LANDING FUEL UNDER 45 MIN'];
+  return['g','WITHIN LIMITS'];
+}
+
+/* ================= Performance model =================
+   Standard atmosphere: δ = (1 − 6.8756e-6·PA)^5.2559, θ = (OAT+273.15)/288.15, σ = δ/θ, DA = 145,442·(1 − σ^0.235).
+   Engine power ∝ (σ − 0.12)/0.88 (Gagg-Ferrar). The sample charts are made from a simple model calibrated to a
+   C172S-class trainer (about 960 / 1,690 ft takeoff and 575 / 1,335 ft landing at sea level, 15 °C, 2,550 lb):
+   ground roll ∝ W² / (σ·φ^1.2). They are not POH data. Corrections follow typical light-airplane POH notes
+   (wind, dry grass) and UK CAA SafetySense 7c (wet grass, slope, ×1.33 / ×1.43). */
+function atm(pa,oat){const d=Math.pow(1-6.8756e-6*pa,5.2559),th=(oat+273.15)/288.15,sg=d/th;
+  return{sg,phi:(sg-0.12)/0.88,da:145442*(1-Math.pow(sg,0.235)),isa:15-1.98*pa/1000};}
+const r5=x=>Math.round(x/5)*5;
+function toRaw(W,pa,oat){const a=atm(pa,oat),f=1/(a.sg*Math.pow(a.phi,1.2)),w2=(W/2550)**2;const gr=960*w2*f;return{gr,tot:gr+730*w2*Math.pow(f,1.25)};}
+function ldRaw(pa,oat){const a=atm(pa,oat),gr=575/Math.pow(a.sg,1.3);return{gr,tot:gr+760/Math.pow(a.sg,0.8)};}
+const PAS=[0,1000,2000,3000,4000,5000,6000,7000,8000],OATS=[0,10,20,30,40],BLOCKS=[2200,2400,2550];
+const TABLES={};
+for(const w of BLOCKS)TABLES['to'+w]=PAS.map(p=>OATS.map(t=>{const r=toRaw(w,p,t);return{gr:r5(r.gr),tot:r5(r.tot)};}));
+TABLES.ld=PAS.map(p=>OATS.map(t=>{const r=ldRaw(p,t);return{gr:r5(r.gr),tot:r5(r.tot)};}));
+function lookup(tb,pa,oat){
+  if(pa<-1||pa>8000.5||oat<-0.5||oat>40.5)return null;
+  const i=Math.min(PAS.length-2,Math.floor(Math.max(0,pa)/1000)),j=Math.min(OATS.length-2,Math.floor(Math.max(0,oat)/10));
+  const u=Math.max(0,Math.min(1,(pa-PAS[i])/1000)),v=Math.max(0,Math.min(1,(oat-OATS[j])/10));
+  const g=k=>(tb[i][j][k]*(1-u)+tb[i+1][j][k]*u)*(1-v)+(tb[i][j+1][k]*(1-u)+tb[i+1][j+1][k]*u)*v;
+  const ii=u<0.001?[i]:u>0.999?[i+1]:[i,i+1],jj=v<0.001?[j]:v>0.999?[j+1]:[j,j+1];
+  return{gr:g('gr'),tot:g('tot'),ii,jj};
+}
+/* One worked case: chart value, then each correction as a multiplier/adder, then margin. */
+function perf(mode,W,p,surf){
+  const ld=mode==='ldg';let blk=null,tb;
+  if(ld){tb=TABLES.ld;blk=2550;}else{blk=BLOCKS.find(b=>W<=b+0.5);if(!blk)return{err:'OVER MAX WEIGHT · NO CHART',blk:null};tb=TABLES['to'+blk];}
+  const c=lookup(tb,p.pa,p.oat);if(!c)return{err:'OFF THE CHART · NO DATA',blk};
+  let gr=c.gr,tot=c.tot;const rows=[{k:'Chart',gr,tot}];
+  const hw=p.wind;let kw=hw>=0?1-0.10*hw/9:1+0.10*(-hw)/2;gr*=kw;tot*=kw;rows.push({k:hw>0?'Headwind':hw<0?'Tailwind':'No wind',gr,tot,d:kw});
+  if(surf==='dry'){const add=(ld?0.45:0.15)*gr;gr+=add;tot+=add;rows.push({k:'Dry grass',gr,tot});}
+  else if(surf==='wet'){const k=ld?1.35:1.30;gr*=k;tot*=k;rows.push({k:'Wet grass',gr,tot});}
+  else rows.push({k:'Paved',gr,tot});
+  const sl=p.slope,bad=ld?-sl:sl;if(bad>0){const k=1+0.05*bad;gr*=k;tot*=k;}
+  rows.push({k:bad>0?(ld?'Downslope':'Upslope'):'Slope · no credit',gr,tot});
+  const fac=ld?1.43:1.33,req=tot*fac;
+  return{blk,c,gr,tot,req,fac,rows,tail10:hw<-10};
+}
+function perfStatus(P,rw){
+  if(P.err)return['r',P.err];
+  if(P.tail10)return['r','TAILWIND OVER 10 KT · NO DATA'];
+  if(P.tot>rw)return['r','WILL NOT FIT · '+fmt(P.tot-rw)+' FT SHORT'];
+  if(P.req>rw)return['a','FITS · MARGIN UNDER ×'+P.fac.toFixed(2)];
+  return['g','FITS WITH ×'+P.fac.toFixed(2)+' MARGIN'];
+}
+
+/* ================= State ================= */
+const BASE_L={front:340,rear:0,bagA:40,bagB:0,fuel:53,burn:0};
+const BASE_P={pa:0,oat:15,wind:0,slope:0,rwy:3000};
+const KEYS=['front','rear','bagA','bagB','fuel','burn','pa','oat','wind','slope','rwy'];
+const S={...BASE_L,...BASE_P,view:'load',surf:'paved',mom:false,util:false,hl:[]};
+const T={...BASE_L,...BASE_P};
+
+/* ================= Side view + balance beam ================= */
+const side=$('side');
+const KA=1.0,XA=a=>58+a*KA,GY=122,YA=h=>GY-h*KA;            // airplane drawing: inches → px
+const XB=a=>34+a*(404/130),BY=222;                          // balance beam: arm 0…130 in
+const P_=(a,h)=>XA(a).toFixed(1)+' '+YA(h).toFixed(1);
+const FUS=[[-42,50],[-38,57],[-24,62],[0,64],[8,68],[30,92],[92,92],[150,72],[240,66],[282,104],[300,104],[304,62],[306,57],[268,55],[150,42],[110,33],[60,28],[10,28],[-10,32],[-30,40],[-40,46]];
+const ARM_LBL={front:'FRONT',rear:'REAR',bagA:'BAG 1',bagB:'BAG 2',fuel:'FUEL'};
+const SEAT_H={front:52,rear:52,bagA:50,bagB:56,fuel:94};
+side.innerHTML=`
+<rect x="0" y="0" width="460" height="300" fill="#0c1418"/>
+<line x1="0" x2="460" y1="${GY}" y2="${GY}" stroke="#2c3f46"/>
+<g id="acft">
+  <path d="M${P_(22,93)} L${P_(80,93)} L${P_(80,97)} L${P_(22,98)} Z" fill="#1b2a30" stroke="#cfe0dd" stroke-width="1.2"/>
+  <path d="M${FUS.map(p=>P_(p[0],p[1])).join(' L')} Z" fill="#1b2a30" stroke="#cfe0dd" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M${P_(8,68)} L${P_(30,90)} L${P_(46,90)} L${P_(46,62)} Z M${P_(52,90)} L${P_(90,90)} L${P_(120,74)} L${P_(52,62)} Z" fill="#22343b" stroke="#4d6a73" stroke-width="1"/>
+  <path d="M${P_(262,62)} L${P_(304,62)} L${P_(304,58)} L${P_(262,60)} Z" fill="#1b2a30" stroke="#cfe0dd" stroke-width="1.1"/>
+  <line x1="${XA(40)}" y1="${YA(33)}" x2="${XA(56)}" y2="${YA(92)}" stroke="#8ea2a5" stroke-width="1.6"/>
+  <path d="M${P_(54,30)} L${P_(62,9)}" stroke="#8ea2a5" stroke-width="2.4"/><circle cx="${XA(62)}" cy="${YA(8)}" r="8" fill="#0a1014" stroke="#8ea2a5" stroke-width="1.6"/>
+  <path d="M${P_(-12,32)} L${P_(-14,8)}" stroke="#8ea2a5" stroke-width="2.4"/><circle cx="${XA(-14)}" cy="${YA(7)}" r="7" fill="#0a1014" stroke="#8ea2a5" stroke-width="1.6"/>
+</g>
+<g id="datumG"><line x1="${XA(0)}" x2="${XA(0)}" y1="4" y2="${GY}" stroke="#a99bff" stroke-dasharray="4 3" stroke-width="1.2"/>
+  <line x1="${XB(0)}" x2="${XB(0)}" y1="${BY-74}" y2="${BY+8}" stroke="#a99bff" stroke-dasharray="4 3" stroke-width="1.2"/>
+  <path d="M${XA(0)} ${GY} L${XB(0)} ${BY-74}" stroke="#a99bff" stroke-opacity=".35" stroke-dasharray="2 3"/>
+  <text x="${XA(0)+4}" y="12" class="ml" fill="#a99bff">DATUM · FIREWALL</text></g>
+<g id="leaders"></g>
+<rect id="limBand" y="${BY-3}" height="6" fill="#7fd98a" fill-opacity=".28"/>
+<line x1="${XB(0)}" x2="${XB(130)}" y1="${BY}" y2="${BY}" stroke="#cfe0dd" stroke-width="2"/>
+<g id="beamTk"></g>
+<g id="loads"></g>
+<path id="fulcL" fill="none" stroke="#e4ece9" stroke-width="1.4" stroke-dasharray="3 2"/>
+<path id="fulc" stroke="#071014" stroke-width="1.5"/>
+<text id="cgT" class="ml" text-anchor="middle"></text>
+<text x="${XB(130)}" y="${BY+48}" class="tk" text-anchor="end">ARM · INCHES AFT OF DATUM</text>`;
+{let t='';for(let a=0;a<=130;a+=10)t+=`<line x1="${XB(a)}" x2="${XB(a)}" y1="${BY}" y2="${BY+(a%50?4:7)}" stroke="#4d6a73"/>`+(a%20===0?`<text x="${XB(a)}" y="${BY+17}" class="tk" text-anchor="middle">${a}</text>`:'');$('beamTk').innerHTML=t;
+ let l='';for(const k of['front','rear','bagA','bagB','fuel'])l+=`<path d="M${XA(AC.arm[k])} ${YA(SEAT_H[k])} L${XB(AC.arm[k])} ${BY-8}" stroke="#4d6a73" stroke-opacity=".5" stroke-dasharray="2 3" fill="none"/><circle cx="${XA(AC.arm[k])}" cy="${YA(SEAT_H[k])}" r="2.6" fill="#ffb54a"/>`;$('leaders').innerHTML=l;}
+const loadEls={};
+for(const k of['bew','front','rear','bagA','bagB','fuel']){const g=document.createElementNS(NS,'g');
+  g.innerHTML=`<line stroke-width="${k==='bew'?3:2.4}" stroke-linecap="round"/><path/><text class="ml" text-anchor="middle"></text><text class="tk" text-anchor="middle"></text>`;$('loads').appendChild(g);loadEls[k]=g;}
+function drawSide(L,stat){
+  const s=S;
+  const lst=[['bew',BEW.w,BEW.arm,'EMPTY'],['front',s.front,37],['fuel',L.fuelLb,48],['rear',s.rear,73],['bagA',s.bagA,95],['bagB',s.bagB,123]];
+  for(const[k,w,a,lb]of lst){const g=loadEls[k],[ln,hd,tx,t2]=g.children;
+    if(w<1){g.style.display='none';continue;}g.style.display='';
+    const len=k==='bew'?86:12+48*Math.min(1,w/400),x=XB(a),y0=BY-4-len,col=k==='bew'?'#8ea2a5':(k==='fuel'?'#5ccfe3':'#ffb54a');
+    const over=(k==='bagA'&&w>AC.bagA)||(k==='bagB'&&w>AC.bagB);const c=over?'#e2574a':col;
+    ln.setAttribute('x1',x);ln.setAttribute('x2',x);ln.setAttribute('y1',y0);ln.setAttribute('y2',BY-10);ln.setAttribute('stroke',c);
+    hd.setAttribute('d',`M${x} ${BY-3} L${x-4} ${BY-11} L${x+4} ${BY-11}Z`);hd.setAttribute('fill',c);
+    const lx=k==='bew'?x-6:k==='front'?x-3:x,anc=k==='bew'||k==='front'?'end':'middle';
+    tx.textContent=fmt(w);tx.setAttribute('x',k==='bew'?lx:x);tx.setAttribute('y',y0-4);tx.setAttribute('fill',c);tx.setAttribute('text-anchor',k==='bew'?'end':'middle');
+    t2.textContent=lb||ARM_LBL[k];t2.setAttribute('x',k==='bew'?lx:x);t2.setAttribute('y',k==='bew'?y0+20:y0-15);if(k==='bew')tx.setAttribute('y',y0+9);t2.setAttribute('text-anchor',k==='bew'?'end':'middle');
+    if(k==='fuel'){tx.setAttribute('x',x+6);tx.setAttribute('text-anchor','start');t2.setAttribute('x',x+6);t2.setAttribute('text-anchor','start');}
+    if(k==='front'){tx.setAttribute('x',x-5);tx.setAttribute('text-anchor','end');t2.setAttribute('x',x-5);t2.setAttribute('text-anchor','end');t2.setAttribute('y',y0+8);tx.setAttribute('y',y0-2);}
+  }
+  // CG range at this weight on the beam
+  const f=s.util?fwdU(L.W):fwdN(L.W),a=s.util?40.5:47.3;$('limBand').setAttribute('x',XB(f));$('limBand').setAttribute('width',Math.max(0,XB(a)-XB(f)));
+  const bad=stat[0]==='r'&&!/LANDING/.test(stat[1]),col=bad?'#e2574a':'#e4ece9',x=XB(L.cg);
+  $('fulc').setAttribute('d',`M${x} ${BY+2} L${x-9} ${BY+20} L${x+9} ${BY+20}Z`);$('fulc').setAttribute('fill',col);
+  const xl=XB(L.cgl);$('fulcL').setAttribute('d',s.burn>0.4?`M${xl} ${BY+2} L${xl-7} ${BY+16} L${xl+7} ${BY+16}Z`:'');
+  const t=$('cgT');t.textContent='CG '+L.cg.toFixed(1);t.setAttribute('x',x);t.setAttribute('y',BY+33);t.setAttribute('fill',col);
+  $('datumG').classList.toggle('hl',S.hl.includes('datum'));
+}
+
+/* ================= CG envelope ================= */
+const env=$('env'),EV={l:52,r:14,t:22,b:40,W:460,H:330,w0:1500,w1:2700};
+let envKey='';
+function ex(cg,w){const m=S.mom;const lo=m?50:33,hi=m?125:49,x=m?cg*w/1000:cg;return EV.l+(x-lo)/(hi-lo)*(EV.W-EV.l-EV.r);}
+function ey(w){return EV.H-EV.b-(w-EV.w0)/(EV.w1-EV.w0)*(EV.H-EV.t-EV.b);}
+function polyPath(P){let d='';for(let i=0;i<P.length;i++){const A=P[i],B=P[(i+1)%P.length];for(let k=0;k<=12;k++){const u=k/12,cg=A[0]+(B[0]-A[0])*u,w=A[1]+(B[1]-A[1])*u;d+=(d?'L':'M')+ex(cg,w).toFixed(1)+' '+ey(w).toFixed(1);}}return d+'Z';}
+function drawEnvStatic(){
+  const m=S.mom;let g='';
+  for(let w=1500;w<=2700;w+=100){const y=ey(w);g+=`<line x1="${EV.l}" x2="${EV.W-EV.r}" y1="${y}" y2="${y}" stroke="#1f2f36"/>`;if(w%200===0)g+=`<text x="${EV.l-6}" y="${y+3}" class="tk" text-anchor="end">${fmt(w)}</text>`;}
+  const ticks=m?[50,60,70,80,90,100,110,120]:[33,35,37,39,41,43,45,47,49];
+  for(const v of ticks){const x=m?ex(v*1000/2000,2000):ex(v,2000);g+=`<line x1="${x}" x2="${x}" y1="${EV.t}" y2="${EV.H-EV.b}" stroke="#1f2f36"/><text x="${x}" y="${EV.H-EV.b+14}" class="tk" text-anchor="middle">${v}</text>`;}
+  g+=`<text x="${(EV.l+EV.W-EV.r)/2}" y="${EV.H-8}" class="tk" text-anchor="middle">${m?'LOADED MOMENT / 1000 · LB-IN':'CG · INCHES AFT OF DATUM'}</text>`;
+  g+=`<text x="12" y="${(EV.t+EV.H-EV.b)/2}" class="tk" transform="rotate(-90 12 ${(EV.t+EV.H-EV.b)/2})" text-anchor="middle">WEIGHT · LB</text>`;
+  g+=`<path id="envN" d="${polyPath(ENV_N)}" fill="#7fd98a" fill-opacity=".1" stroke="#7fd98a" stroke-width="1.8"/>`;
+  g+=`<text x="${ex(46.9,1560)}" y="${ey(1560)}" class="ml" fill="#7fd98a" text-anchor="end">NORMAL</text>`;
+  g+=`<g id="envU" ${S.util?'':'display="none"'}><path d="${polyPath(ENV_U)}" fill="#a99bff" fill-opacity=".1" stroke="#a99bff" stroke-width="1.6" stroke-dasharray="5 3"/><text x="${ex(38,2130)}" y="${ey(2130)+4}" class="ml" fill="#a99bff" text-anchor="middle">UTILITY</text></g>`;
+  g+=`<line x1="${EV.l}" x2="${EV.W-EV.r}" y1="${ey(2550)}" y2="${ey(2550)}" stroke="#e2574a" stroke-dasharray="3 3" stroke-opacity=".7"/><text x="${EV.W-EV.r-2}" y="${ey(2550)-4}" class="tk" text-anchor="end" fill="#e2574a">MAX 2,550</text>`;
+  g+=`<g id="envDyn"><line id="eLine" stroke="#5ccfe3" stroke-width="1.6"/><line id="eBurn" stroke="#e4ece9" stroke-width="2.6"/>
+   <circle id="eZ" r="3.5" fill="#0a1014" stroke="#5ccfe3" stroke-width="1.5"/><circle id="eE" r="4" fill="#8ea2a5"/><text id="eET" class="tk"></text>
+   <circle id="eL" r="5" fill="#0a1014" stroke="#e4ece9" stroke-width="2"/><circle id="eT" r="6.5" stroke="#071014" stroke-width="2"/>
+   <text id="eTT" class="ml"></text><text id="eLT" class="tk"></text><text id="eZT" class="tk" fill="#5ccfe3"></text></g>`;
+  env.innerHTML=g;
+}
+function drawEnv(L,stat){
+  const k=S.mom+'|'+S.util;if(k!==envKey){envKey=k;drawEnvStatic();}
+  const set=(id,a)=>{const e=$(id);for(const n in a)e.setAttribute(n,a[n]);return e;};
+  const xt=ex(L.cg,L.W),yt=ey(Math.min(L.W,2700)),xl=ex(L.cgl,L.Wl),yl=ey(L.Wl),xz=ex(L.cgz,L.Wz),yz=ey(L.Wz);
+  set('eLine',{x1:xt,y1:yt,x2:xz,y2:yz});set('eBurn',{x1:xt,y1:yt,x2:xl,y2:yl});
+  set('eZ',{cx:xz,cy:yz});set('eL',{cx:xl,cy:yl}).style.display=S.burn>0.4?'':'none';
+  const bad=stat[0]==='r'&&!/LANDING/.test(stat[1]);
+  set('eT',{cx:xt,cy:Math.max(EV.t,yt),fill:bad?'#e2574a':'#e4ece9'});
+  const ewx=ex(BEW.arm,BEW.w),ewy=ey(BEW.w);set('eE',{cx:ewx,cy:ewy});const et=set('eET',{x:ewx+8,y:ewy+4});et.textContent='EMPTY';
+  const tt=set('eTT',{x:xt+(xt>EV.W-120?-10:10),y:Math.max(EV.t+8,yt)-8,'text-anchor':xt>EV.W-120?'end':'start',fill:bad?'#e2574a':'#e4ece9'});tt.textContent='TAKEOFF';
+  const lt=set('eLT',{x:xl+(xl>EV.W-120?-9:9),y:yl+14,'text-anchor':xl>EV.W-120?'end':'start'});lt.textContent=S.burn>0.4?'LANDING':'';
+  const zt=set('eZT',{x:xz+(xz>EV.W-120?-8:8),y:yz+12,'text-anchor':xz>EV.W-120?'end':'start'});zt.textContent=L.fuelLb>1?'ZERO FUEL':'';
+  $('envDyn').classList.toggle('hl',S.hl.includes('cg'));
+}
+
+/* ================= Runway profile ================= */
+const rwy=$('rwy'),RG=200,RX0=28,RW=412,H50=70;
+rwy.innerHTML=`<defs><linearGradient id="skyR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#091115"/><stop offset="1" stop-color="#16262d"/></linearGradient></defs>
+<rect width="460" height="${RG}" fill="url(#skyR)"/><rect y="${RG}" width="460" height="${300-RG}" fill="#12160f"/>
+<rect id="rwStrip" y="${RG-3}" height="6" fill="#3a4044"/><g id="rwCl"></g>
+<line id="h50" x1="0" x2="460" y1="${RG-H50}" y2="${RG-H50}" stroke="#8ea2a5" stroke-dasharray="4 4" stroke-opacity=".6"/>
+<text x="6" y="${RG-H50-5}" class="tk">50 FT</text><text x="6" y="${RG-H50+12}" class="tk" font-size="9">HEIGHT NOT TO SCALE</text>
+<path id="path" fill="none" stroke="#5ccfe3" stroke-width="1.8" stroke-opacity=".7"/>
+<path id="obst" fill="#1d3a2a" stroke="#7fd98a" stroke-width="1.2"/>
+<g id="rwTk"></g><g id="marks"></g>
+<g id="mini"><path d="M-22 0 L-18 -3 L-8 -4 L-4 -8 L8 -8 L12 -4 L24 -3 L28 0 L24 2 L-18 3 Z M-20 -2 L-26 -11 L-22 -11 L-14 -3 Z M-6 -9 L14 -9 L14 -8 L-6 -8 Z" fill="#cfe0dd" stroke="#071014" stroke-width=".8"/><circle cx="-14" cy="4" r="2" fill="#8ea2a5"/><circle cx="6" cy="4" r="2.2" fill="#8ea2a5"/></g>`;
+let rwKey='',anim=0;
+function drawRwy(P,stat){
+  const ld=S.view==='ldg',rw=S.rwy;
+  const span=Math.max(rw,(P.req||0))*1.06,kx=RW/span,X=d=>RX0+d*kx;
+  const key=[ld,Math.round(rw),Math.round(P.gr||0),Math.round(P.tot||0),Math.round(P.req||0)].join('|');
+  if(key!==rwKey){rwKey=key;
+    $('rwStrip').setAttribute('x',X(0));$('rwStrip').setAttribute('width',rw*kx);
+    let c='';for(let d=60;d<rw-60;d+=120)c+=`<rect x="${X(d)}" y="${RG-0.6}" width="${60*kx}" height="1.2" fill="#cfe0dd" fill-opacity=".6"/>`;$('rwCl').innerHTML=c;
+    let t='';const st=span>4500?1000:500;for(let d=0;d<=span;d+=st)t+=`<line x1="${X(d)}" x2="${X(d)}" y1="${RG+8}" y2="${RG+12}" stroke="#4d6a73"/><text x="${X(d)}" y="${RG+23}" class="tk" text-anchor="middle">${d?fmt(d):'0'}</text>`;
+    t+=`<text x="${RX0+RW}" y="${RG+36}" class="tk" text-anchor="end">FEET FROM ${ld?'50 FT OVER THE THRESHOLD':'BRAKE RELEASE'}</text>`;$('rwTk').innerHTML=t;
+    const ox=ld?X(0)-4:X(rw);$('obst').setAttribute('d',`M${ox-5} ${RG} L${ox} ${RG-H50} L${ox+5} ${RG}Z`);
+    let m='';
+    if(!P.err){const mk=(d,lab,col,row)=>`<line x1="${X(d)}" x2="${X(d)}" y1="${RG-H50-18}" y2="${RG+6}" stroke="${col}" stroke-width="1.3" stroke-dasharray="3 3"/><text x="${X(d)}" y="${RG-H50-22-row*12}" class="ml" fill="${col}" text-anchor="middle">${lab}</text>`;
+      const air=P.tot-P.gr;
+      if(ld){m+=mk(air,'TOUCHDOWN','#8ea2a5',0);m+=mk(P.tot,'STOP '+fmt(r5(P.tot)),'#e4ece9',1);}
+      else{m+=mk(P.gr,'LIFTOFF '+fmt(r5(P.gr)),'#8ea2a5',0);m+=mk(P.tot,'50 FT '+fmt(r5(P.tot)),'#e4ece9',1);}
+      m+=mk(P.req,'×'+P.fac.toFixed(2)+' '+fmt(r5(P.req)),P.req>rw?'#e2574a':'#7fd98a',2);
+      m+=`<text x="${X(rw)}" y="${RG+48}" class="ml" fill="#ffb54a" text-anchor="end">RUNWAY ${fmt(rw)} FT</text>`;
+      // flight path
+      let d='';for(let k=0;k<=40;k++){const u=k/40;let x,h;
+        if(ld){x=u*P.tot;h=x<air?50*(1-x/air):0;}else{x=u*Math.min(span/kx>0?span:P.tot,P.tot*1.25);h=x<P.gr?0:50*Math.pow((x-P.gr)/(P.tot-P.gr),1.15);}
+        d+=(k?'L':'M')+X(x).toFixed(1)+' '+(RG-Math.min(h,64)*H50/50).toFixed(1);}
+      $('path').setAttribute('d',d);
+    }else $('path').setAttribute('d','');
+    $('marks').innerHTML=m;
+  }
+  // airplane
+  let x=0,h=0,pitch=0;
+  if(!P.err){const air=P.tot-P.gr,cyc=6,t=(anim%cyc);
+    if(ld){if(t<2.2){const u=t/2.2;x=u*air;h=50*(1-u);pitch=-2;}else if(t<4.6){const u=(t-2.2)/2.4;x=air+P.gr*(1-(1-u)*(1-u));h=0;}else{x=P.tot;}}
+    else{if(t<3){const u=t/3;x=P.gr*u*u;}else if(t<4.6){const u=(t-3)/1.6;x=P.gr+(P.tot-P.gr)*u;h=50*Math.pow(u,1.15);pitch=7;}else{const u=Math.min(1,(t-4.6)/1.4);x=P.tot+(P.tot-P.gr)*0.25*u;h=50+12*u;pitch=7;}}}
+  $('mini').setAttribute('transform',`translate(${X(x).toFixed(1)} ${(RG-4-h*H50/50).toFixed(1)}) rotate(${-pitch})`);
+}
+
+/* ================= POH chart panel ================= */
+let ptKey='';
+function drawChart(P){
+  const ld=S.view==='ldg';
+  $('chTitle').textContent=ld?'Landing distance · 2,550 lb':'Takeoff distance';
+  $('blocks').innerHTML=ld?'<span class="on">flaps 30°</span>':BLOCKS.map(b=>`<span class="${P.blk===b?'on':''}">${fmt(b)}</span>`).join('');
+  const tb=ld?TABLES.ld:(P.blk?TABLES['to'+P.blk]:TABLES.to2550);
+  const br=P.c?P.c.ii.flatMap(i=>P.c.jj.map(j=>i+','+j)):[];
+  const key=(ld?'ld':P.blk)+'|'+br.join(';');
+  if(key!==ptKey){ptKey=key;
+    let h='<tr><th class="r">PA · °C</th>'+OATS.map(t=>`<th>${t}°</th>`).join('')+'</tr>';
+    PAS.forEach((p,i)=>{h+=`<tr><th class="r">${p?fmt(p):'S.L.'}</th>`+OATS.map((t,j)=>`<td class="${br.includes(i+','+j)?'br':''}"><b>${fmt(tb[i][j].gr)}</b><i>${fmt(tb[i][j].tot)}</i></td>`).join('')+'</tr>';});
+    $('pt').innerHTML=h;}
+  $('chNote').textContent=P.c?'→ '+fmt(r5(P.c.gr))+' / '+fmt(r5(P.c.tot)):'';
+  // corrections waterfall
+  const wf=$('wf');
+  if(P.err){wf.innerHTML=`<text x="220" y="70" class="ml" fill="#e2574a" text-anchor="middle">${P.err}</text>`;return;}
+  const rows=[...P.rows,{k:'×'+P.fac.toFixed(2)+' margin',gr:null,tot:P.req}];
+  const mx=Math.max(S.rwy,P.req)*1.05,L0=150,Wd=440-L0-50,X=d=>L0+d/mx*Wd;let g='';
+  rows.forEach((r,i)=>{const y=6+i*21,last=i===rows.length-1,col=last?(P.req>S.rwy?'#e2574a':'#7fd98a'):(i===0?'#9fb3b5':'#5ccfe3');
+    g+=`<text x="${L0-8}" y="${y+11}" class="tk" text-anchor="end">${r.k.toUpperCase()}</text>`;
+    g+=`<rect x="${L0}" y="${y+2}" width="${Math.max(1,X(r.tot)-L0)}" height="12" rx="2" fill="${col}" fill-opacity="${last?.3:.22}" stroke="${col}" stroke-opacity=".7"/>`;
+    if(r.gr!=null)g+=`<rect x="${L0}" y="${y+2}" width="${Math.max(1,X(r.gr)-L0)}" height="12" rx="2" fill="${col}" fill-opacity=".35"/>`;
+    g+=`<text x="${X(r.tot)+5}" y="${y+12}" class="ml" fill="${col}">${fmt(r5(r.tot))}</text>`;});
+  const xr=X(S.rwy);g+=`<line x1="${xr}" x2="${xr}" y1="2" y2="${6+rows.length*21}" stroke="#ffb54a" stroke-width="1.6" stroke-dasharray="4 3"/><text x="${xr-4}" y="${6+rows.length*21+10}" class="tk" fill="#ffb54a" text-anchor="end">RUNWAY ${fmt(S.rwy)}</text>`;
+  wf.setAttribute('viewBox',`0 0 440 ${rows.length*21+20}`);wf.innerHTML=g;
+}
+
+/* ================= Readouts ================= */
+const setT=(id,html,cls)=>{const e=$(id);if(e._h!==html){e.innerHTML=html;e._h=html;}e.className=cls||'';};
+const U=(v,u)=>`${v}<small>${u}</small>`;
+function pop(id,st){const p=$(id);if(!st){p.hidden=true;return;}p.hidden=false;p.className='pop '+st[0];p.textContent=st[1];}
+function readouts(L,stat,P,pst){
+  const s=S,ld=s.view==='ldg';
+  setT('rW',U(fmt(L.W),'lb'),L.W>(s.util?AC.util:AC.mtow)+0.5?'warnc':'');
+  setT('rCg',U(L.cg.toFixed(1),'in'),/CG LIMIT/.test(stat[1])&&!/LANDING/.test(stat[1])?'warnc':'');
+  setT('rM',U((L.M/1000).toFixed(1),''));
+  const ul=(s.util?AC.util:AC.mtow)-L.W;setT('rU',U((ul<0?'−':'')+fmt(Math.abs(ul)),'lb'),ul<0?'warnc':'');
+  setT('rLw',U(fmt(L.Wl),'lb'));setT('rLc',U(L.cgl.toFixed(1),'in'),/LANDING CG/.test(stat[1])?'warnc':'');
+  const a=atm(s.pa,s.oat);setT('rDa',U(fmt(Math.round(a.da/10)*10),'ft'),a.da>5000?'ambc':'');
+  if(P.err){for(const id of['rGr','rTot','rReq','rMg'])setT(id,'—');}
+  else{setT('rGr',U(fmt(r5(P.gr)),'ft'));setT('rTot',U(fmt(r5(P.tot)),'ft'),P.tot>s.rwy?'warnc':'');setT('rReq',U(fmt(r5(P.req)),'ft'),P.req>s.rwy?(P.tot>s.rwy?'warnc':'ambc'):'');
+    const mg=s.rwy/P.tot;setT('rMg',U('×'+mg.toFixed(2),''),mg<1?'warnc':mg<P.fac?'ambc':'okc');}
+  $('rReqL').textContent='With ×'+(ld?'1.43':'1.33');setT('rRw',U(fmt(s.rwy),'ft'));
+  // slider outputs
+  const o=(id,t,w)=>{const e=$(id);if(e.textContent!==t)e.textContent=t;e.classList.toggle('warnc',!!w);};
+  o('frontO',fmt(s.front)+' lb');o('rearO',fmt(s.rear)+' lb');o('bagAO',fmt(s.bagA)+' lb',s.bagA>AC.bagA||s.bagA+s.bagB>AC.bag);o('bagBO',fmt(s.bagB)+' lb',s.bagB>AC.bagB||s.bagA+s.bagB>AC.bag);
+  o('fuelO',Math.round(s.fuel)+' gal · '+fmt(s.fuel*6)+' lb');o('burnO',Math.round(Math.min(s.burn,s.fuel))+' gal');
+  o('paO',fmt(Math.round(s.pa/10)*10)+' ft',s.pa>8000);o('oatO',Math.round(s.oat)+' °C',s.oat<0||s.oat>40);
+  const w=Math.round(s.wind);o('windO',w===0?'calm':w>0?w+' kt head':(-w)+' kt tail',w<-10);
+  const sl=Math.round(s.slope*2)/2;o('slopeO',sl===0?'level':(sl>0?'+':'−')+Math.abs(sl).toFixed(1)+'% '+(sl>0?'up':'down'));o('rwyLO',fmt(s.rwy)+' ft');
+}
+
+/* ================= Lesson ================= */
+const HV={pa:0,oat:15};
+const STEPS=[
+{title:'Datum and arm',dur:11,view:'load',set:{front:0,rear:0,bagA:0,bagB:0,fuel:0},hl:['datum'],
+ body:'Every weight sits at an <b>arm</b>: its distance in inches from the <b class="v">datum</b>, a reference line the manufacturer picks. Here it is the front face of the firewall. This empty airplane weighs <b>1,680 lb</b> with its CG <b>39.7 in</b> aft of it.'},
+{title:'Moment = weight × arm',dur:11,view:'load',set:{front:[0,340,1,6],rear:0,bagA:0,bagB:0,fuel:0},
+ body:'A weight\'s turning effect is its <b>moment</b>: weight × arm, in lb-in. Two 170 lb people in the front seats at 37 in add 340 × 37 = <b class="t">12,580 lb-in</b>. The balance point slides toward them.'},
+{title:'Fuel and baggage',dur:12,view:'load',set:{front:340,rear:0,bagA:[0,40,6,9],bagB:0,fuel:[0,53,1,5]},
+ body:'53 gal of usable fuel weighs <b class="l">318 lb</b> (6 lb/gal) at 48 in, in the wings. 40 lb of bags go in baggage area 1 at 95 in. A long arm makes a big moment: the bag moves the CG more than its weight suggests.'},
+{title:'Find the CG',dur:12,view:'load',set:{},hl:['cg'],
+ body:'<b>CG = total moment ÷ total weight</b>: 98,340 ÷ 2,378 = <b>41.4 in</b>. Plot it on the envelope. The point must sit inside the green area at this weight, and the weight must be at or under <b>2,550 lb</b>.'},
+{title:'The moment envelope',dur:10,view:'load',set:{},mom:1,hl:['cg'],
+ body:'Many POHs plot weight against <b>moment / 1000</b> instead, so there is no division to do. The same limits become slanted lines. Both charts give the same answer.'},
+{title:'Too far aft',dur:13,view:'load',set:{front:[340,170,1,5],rear:[0,340,1,5],bagA:[40,70,3,6],bagB:[0,50,3,6],fuel:[53,20,3,7]},
+ body:'Pilot alone up front, two in the back, full baggage: the CG moves to <b class="s">47.9 in</b>, past the <b>47.3 in</b> aft limit, even though the weight is legal. Aft CG means less stability, light pitch forces and a stall or spin that may not recover.'},
+{title:'Fix it: shift weight',dur:12,view:'load',set:{front:[170,340,2,7],rear:[340,170,2,7],bagA:70,bagB:50,fuel:20},
+ body:'Move one rear passenger to the front seat. <b>ΔCG = weight moved × distance ÷ total weight</b> = 170 × 36 ÷ 2,430 = <b class="g">2.5 in</b> forward. The CG is now 45.4 in: inside.'},
+{title:'Too heavy',dur:13,view:'load',set:{front:340,rear:340,bagA:0,bagB:0,fuel:[53,31,6,10]},
+ body:'Four adults and full fuel: 2,678 lb, <b class="s">128 lb over</b> max takeoff weight, with the CG still in range. Balance is legal, weight is not. Leave fuel behind: 31 gal fits, so plan a shorter leg or a fuel stop.'},
+{title:'Fuel burn moves the CG',dur:12,view:'load',set:{burn:[0,40,1,8]},
+ body:'Fuel at 48 in sits aft of this CG, so burning it moves the CG <b>forward</b> along the line toward zero fuel. Check <b>both ends</b>: takeoff and landing. With a different load the landing point is the one that falls outside.'},
+{title:'Density altitude',dur:12,view:'to',set:{pa:[0,5000,1,6],oat:[15,30,3,8]},
+ body:'Performance depends on air <b>density</b>. Thin air means less lift, less power and a higher true airspeed for the same indicated liftoff speed. <b>Density altitude</b> is the standard-atmosphere altitude with that density: 5,000 ft at 30 °C performs like <b class="t">7,800 ft</b>.'},
+{title:'Read the chart',dur:12,view:'to',set:{pa:[5000,2500,1,5],oat:[30,25,1,5]},hl:['cells'],
+ body:'The POH table gives distances at set altitudes and temperatures, for each weight. Between rows and columns, <b>interpolate</b>: the four outlined cells bracket 2,500 ft and 25 °C. Outside the table there is no data. Never extrapolate.'},
+{title:'Weight',dur:12,view:'to',set:{pa:2500,oat:25,front:340,rear:[0,170,2,8]},
+ body:'Weight hurts twice: more mass to accelerate and a higher liftoff speed. Ground roll grows with about <b>weight²</b>: 10% heavier is about 20% longer. Use the chart for your weight or the next one up.'},
+{title:'Wind',dur:13,view:'to',set:{pa:2500,oat:25,wind:{kf:[[0,0],[1.5,0],[4.5,18],[7,18],[10,-5]]}},
+ body:'Headwind shortens the run: <b class="g">−10% for each 9 kt</b>. Tailwind costs far more: <b class="s">+10% for each 2 kt</b>, so 5 kt of tailwind adds 25%. Charts give no data above 10 kt of tailwind.'},
+{title:'Surface and slope',dur:13,view:'to',set:{pa:2500,oat:25,slope:[0,2,9,11]},surf:{kf:[[0,'paved'],[3,'dry'],[6,'wet'],[9,'paved']]},
+ body:'Grass drags on the wheels. Dry grass adds <b>15% of the ground roll</b>; wet grass about <b>30%</b> of the total. A 2% upslope adds about <b>10%</b>. Take no credit for a downslope on takeoff.'},
+{title:'Landing distance',dur:12,view:'ldg',set:{pa:2500,oat:25,wind:{kf:[[0,0],[5,0],[8,-4]]}},
+ body:'Landing has its own chart, often at max weight only. It is less sensitive to weight and altitude, but tailwind, wet grass and a downslope still bite. Most of the real-world spread is <b>technique</b>: 10% fast on final adds about 20%.'},
+{title:'Leave a margin',dur:14,view:'to',set:{pa:[2500,5000,1,5],oat:[25,32,1,5],front:340,rear:170,bagA:40,fuel:53,rwy:4000},surf:'dry',
+ body:'Hot afternoon, 5,000 ft, full load, dry grass, 4,000 ft strip. The chart says about <b>3,500 ft</b> to 50 ft. It "fits", but the recommended <b class="t">×1.33</b> margin needs 4,600 ft. Wait for cooler air, take less, or go elsewhere.'},
+{title:'Your turn',dur:0,
+ body:'Load the airplane with the sliders, then switch to <b>Takeoff</b> and <b>Landing</b> to check your runway on today\'s weather. Open <b>Empty weight</b> to enter your own airplane\'s numbers from its weight and balance record.'},
+];
+
+const DEEP=[
+{refs:['phak10','wbh2','acsI_F'],more:`<ul>
+<li><b>Datum</b>: any reference the manufacturer chooses (firewall, wing leading edge, nose). Arms aft of it are <b>positive</b>, forward of it <b>negative</b>. The datum is in the Type Certificate Data Sheet and the POH.</li>
+<li><b>Basic empty weight</b> = airframe, engine, fixed equipment, <b>unusable fuel</b> and <b>full oil</b> (current GAMA usage). Older "licensed empty weight" excluded oil: check which your records use.</li>
+<li>The empty weight and CG come from the airplane's own <b>weight and balance record</b>, updated after every change of equipment. Never use the POH sample numbers.</li></ul>`},
+{refs:['phak10','wbh2'],more:`<ul>
+<li><span class="k">Moment = weight × arm</span>. POHs often divide by 1,000 (moment index) to keep numbers short: 12,580 lb-in = 12.6.</li>
+<li>Seat arms are for the occupant's CG with the seat in a typical position. A seat slid full forward or aft changes the arm by several inches (34 to 46 in here).</li>
+<li>Use real weights. Standard 170 lb adults (190 in winter clothing in airline practice) are rarely accurate for a light airplane.</li></ul>`},
+{refs:['phak10','wbh4'],more:`<ul>
+<li>Fuel: avgas <b>6.0 lb/gal</b> (actually 5.8 to 6.0 by temperature), Jet A 6.7, oil 7.5. Usable fuel only: unusable fuel is already in the empty weight.</li>
+<li>Baggage limits here: area 1 <b>120 lb</b>, area 2 <b>50 lb</b>, <b>120 lb combined</b>. These are floor-strength limits; they apply even when weight and CG are fine.</li>
+<li><b>Ramp weight</b> 2,558 lb allows 8 lb of fuel for start, taxi and runup. You must be at or under 2,550 lb at brake release.</li></ul>`},
+{refs:['phak10','wbh4','p91_9'],more:`<table><tr><th>Item</th><th>Weight</th><th>Arm</th><th>Moment</th></tr>
+<tr><td>Empty</td><td>1,680</td><td>39.7</td><td>66,696</td></tr><tr><td>Front seats</td><td>340</td><td>37</td><td>12,580</td></tr>
+<tr><td>Fuel 53 gal</td><td>318</td><td>48</td><td>15,264</td></tr><tr><td>Baggage 1</td><td>40</td><td>95</td><td>3,800</td></tr>
+<tr><td><b>Total</b></td><td><b>2,378</b></td><td><b>41.4</b></td><td><b>98,340</b></td></tr></table>
+<ul><li>Forward limit at 2,378 lb: <span class="k">35 + (2,378 − 1,950) × 6 / 600 = 39.3 in</span>. Aft limit 47.3 in.</li>
+<li>Operating outside these limits violates the airplane's operating limitations (<b>14 CFR 91.9</b>).</li></ul>`},
+{refs:['wbh4','phak10'],more:`<ul>
+<li>In moment space a fixed CG is a straight line through the origin, so a constant-CG limit becomes a slanted line. A CG limit that changes with weight becomes slightly curved.</li>
+<li>The POH loading graph gives each item's moment from its weight; add them and plot total weight against total moment.</li>
+<li>Commercial check: CG limits are often also quoted in <b>% MAC</b>: <span class="k">%MAC = (CG − LEMAC) / MAC × 100</span>.</li></ul>`},
+{refs:['phak10','p23_23','afh5'],more:`<ul>
+<li><b>Aft CG</b>: shorter tail arm, so less stability and lighter stick forces. Easy to over-rotate or over-stress; at the extreme the airplane can be <b>unstable</b> in pitch and a stall can become a flat spin.</li>
+<li>Aft CG does give a bit less tail download, so slightly <b>less drag</b> and a slightly lower stall speed. That small gain never justifies flying outside the limits.</li>
+<li>The CG range is narrow: here 12.3 in on a 27-ft airplane. Small changes at long arms matter.</li></ul>`},
+{refs:['phak10','wbh4'],more:`<ul>
+<li>Weight shift: <span class="k">ΔCG = w × d / W</span>. Weight to move for a given shift: <span class="k">w = ΔCG × W / d</span>. Total weight does not change.</li>
+<li>Weight added or removed: <span class="k">ΔCG = w × (arm − old CG) / new W</span>.</li>
+<li>Here, to just reach 47.3 in, move <span class="k">0.6 × 2,430 / 36 ≈ 40 lb</span> from the rear seat to the front, or 17 lb of bags from area 2 (123 in) to the front seat (86 in shift).</li></ul>`},
+{refs:['phak10','p91_9','p91_151'],more:`<ul>
+<li>Overweight: higher stall speed, longer takeoff and landing, slower climb, higher structural loads in gusts and turns. The airplane may still fly; that is what makes it dangerous.</li>
+<li>Few four-seat trainers can carry full fuel, four adults and bags. Trade fuel for payload, but keep the VFR reserve (<b>14 CFR 91.151</b>: 30 min day, 45 min night).</li>
+<li>31 gal at about 9 gal/h is roughly 3.4 h; minus 45 min reserve and climb fuel leaves about 2.5 h of planning.</li></ul>`},
+{refs:['phak10','wbh4'],more:`<ul>
+<li>The fuel line runs from takeoff toward the <b>zero fuel</b> point. Its direction depends on where the tanks are relative to the CG.</li>
+<li>Check takeoff, landing (planned fuel burn) and, if the line crosses a limit, the worst point in between.</li>
+<li>In airplanes with tanks aft of the CG range, burning fuel moves the CG <b>forward</b>; with tip or nose tanks it can do the opposite.</li></ul>`},
+{refs:['phak11','phak8','acsI_F','nwsDa'],more:`<ul>
+<li>Pressure altitude: set 29.92 in the Kollsman window, or <span class="k">PA = elevation + (29.92 − altimeter) × 1,000</span>.</li>
+<li>Rule of thumb: <span class="k">DA ≈ PA + 120 × (OAT − ISA)</span>, ISA = 15 °C − 2 °C per 1,000 ft. Exact (dry air): <span class="k">σ = δ/θ</span>, <span class="k">DA = 145,442 × (1 − σ^0.235)</span>.</li>
+<li>Humidity raises density altitude a little more (water vapor is lighter than air). Charts ignore it, so on humid days add margin.</li>
+<li>A normally aspirated engine loses power roughly with <span class="k">(σ − 0.12)/0.88</span>; the propeller loses thrust too.</li></ul>`},
+{refs:['phak11','acsI_F'],more:`<ul>
+<li>Interpolate between two altitudes, then between two temperatures (or the other way round). The result is the same.</li>
+<li>2,500 ft is halfway between 2,000 and 3,000; 25 °C is halfway between 20 and 30, so the answer is the average of the four cells.</li>
+<li>This chart is the sample airplane's (short-field technique, flaps 10°, full power before brake release). Its numbers come from a simple model, <b>not a POH</b>. A POH chart assumes a new airplane and engine and a skilled test pilot: real results are usually longer.</li></ul>`},
+{refs:['phak11','afh6'],more:`<ul>
+<li>Ground roll <span class="k">s ≈ V<sub>LOF</sub>² / (2a)</span>. Liftoff speed grows with √W, so V² ∝ W; acceleration falls with 1/W: so <span class="k">s ∝ W²</span>.</li>
+<li>Use the next heavier chart weight, or interpolate between weight blocks if the POH allows it. Never use a lighter block.</li>
+<li>Many POHs use lower liftoff and 50 ft speeds at lower weights. Use the speeds printed with the chart.</li></ul>`},
+{refs:['phak11','afh6','caaSS7'],more:`<ul>
+<li>Wind rules here are typical POH notes. Use only the <b>component along the runway</b>; many pilots use half the reported headwind and 150% of any tailwind.</li>
+<li>UK CAA: a tailwind of 10% of liftoff speed adds about <b>20%</b>.</li>
+<li>Gusty winds: add half the gust factor to the approach speed, which lengthens landing distance.</li></ul>`},
+{refs:['phak11','afh6','caaSS7'],more:`<ul>
+<li>Dry grass here follows a typical POH note: add 15% of the <b>ground roll</b> to both distances. UK CAA SafetySense 7c factors: dry grass ×1.20, wet grass <b>×1.30</b>, soft ground or snow ×1.25 or more, 2% upslope ×1.10.</li>
+<li>Factors <b>multiply</b>: grass and slope and heat compound.</li>
+<li>Soft-field technique (AFH 6) keeps weight off the wheels, but plan the distance first. Long wet grass can be far worse than any factor.</li></ul>`},
+{refs:['phak11','afh9','caaSS7'],more:`<ul>
+<li>Landing distance is measured from <b>50 ft</b> over the threshold at the chart approach speed, with maximum braking. Typical POH notes: −10% per 9 kt headwind, +10% per 2 kt tailwind, dry grass +45% of ground roll.</li>
+<li>CAA factors: wet paved ×1.15, wet grass <b>×1.35</b>, 2% downslope ×1.10. Very short wet grass can be ×1.6.</li>
+<li>Lighter airplane: shorter landing, but take no credit unless the POH gives data.</li>
+<li>ACS: compute both distances and compare them with the runway available before flight (<b>14 CFR 91.103</b>).</li></ul>`},
+{refs:['phak11','p91_103','caaSS7','acsI_F'],more:`<ul>
+<li>UK CAA recommends <b>×1.33</b> on takeoff and <b>×1.43</b> on landing, on top of the condition factors, because charts are flown by test pilots in new airplanes.</li>
+<li>Set a personal rule too: many instructors use "abort if not at 70% of liftoff speed by 50% of the runway".</li>
+<li><b>14 CFR 91.103</b>: before every flight, become familiar with runway lengths and the takeoff and landing distance data for your airplane at the expected conditions.</li></ul>`},
+{refs:['phak10','phak11','wbh4','afh6','afh9','acsI_F','caaSS7'],more:`<ul>
+<li>Try: four adults, legal weight, at 6,000 ft and 35 °C. Which runway lengths still give ×1.33?</li>
+<li>Find a loading that is legal at takeoff but aft of the limit at landing.</li>
+<li>Turn on Utility category: what loading allows intentional spins in this airplane?</li>
+<li>Model: sample C172S-class stations and envelope; charts from a calibrated model, not POH data.</li></ul>`},
+];
+STEPS.forEach((s,i)=>Object.assign(s,DEEP[i]||{}));
+
+const L_={step:0,t:0,mode:'tour',playing:true,speed:1};
+const dotsEl=$('dots');
+STEPS.forEach((st,i)=>{const b=document.createElement('button');b.type='button';b.setAttribute('aria-label','Step '+(i+1)+': '+st.title);b.onclick=()=>goStep(i,true);dotsEl.appendChild(b);});
+function sm(k){return k*k*(3-2*k);}
+function rv(x,t){
+  if(Array.isArray(x)){const[a,b,t0,t1]=x,k=Math.max(0,Math.min(1,(t-t0)/(t1-t0)));return a+(b-a)*sm(k);}
+  if(x&&x.kf){const K=x.kf;if(typeof K[0][1]==='string'){let v=K[0][1];for(const[tt,vv]of K)if(t>=tt)v=vv;return v;}
+    if(t<=K[0][0])return K[0][1];for(let i=1;i<K.length;i++)if(t<K[i][0]){const k=(t-K[i-1][0])/(K[i][0]-K[i-1][0]);return K[i-1][1]+(K[i][1]-K[i-1][1])*sm(k);}return K[K.length-1][1];}
+  return x;}
+let userL={...BASE_L},userP={...BASE_P},userSurf='paved';
+function tourTargets(st,t){
+  // each step starts from the base case, then applies its own settings (steps 1-3 build up the load)
+  Object.assign(T,BASE_L,BASE_P);
+  for(const k in st.set)T[k]=rv(st.set[k],t);
+  if(st.surf)S.surf=rv(st.surf,t);
+}
+function setView(v){S.view=v;const ld=v==='load';
+  $('side').toggleAttribute('hidden',!ld);$('rwy').toggleAttribute('hidden',ld);$('envP').hidden=!ld;$('chartP').hidden=ld;
+  $('ctlLoad').hidden=!ld;$('ctlPerf').hidden=ld;$('roLoad').hidden=!ld;$('roPerf').hidden=ld;
+  for(const b of $('tabs').children)b.setAttribute('aria-pressed',b.dataset.v===v);rwKey='';ptKey='';}
+function setTog(id,key,v){S[key]=!!v;$(id).setAttribute('aria-pressed',!!v);}
+function syncSurf(){for(const b of $('surf').querySelectorAll('[data-s]'))b.setAttribute('aria-pressed',b.dataset.s===S.surf);}
+function goStep(i,manual,keep){
+  i=Math.max(0,Math.min(STEPS.length-1,i));L_.step=i;L_.t=0;const st=STEPS[i];
+  L_.mode=i===STEPS.length-1?'explore':'tour';
+  $('stepNum').textContent='Step '+(i+1)+' of '+STEPS.length;$('stepTitle').textContent=st.title;$('stepBody').innerHTML=st.body;
+  [...dotsEl.children].forEach((b,k)=>{b.className=k===i?'on':(k<i?'done':'');b.setAttribute('aria-current',k===i?'step':'false');});
+  $('explore').hidden=L_.mode==='explore';Kit.step(st);$('next').disabled=i===STEPS.length-1;$('prev').disabled=i===0;
+  if(L_.mode==='explore'){S.hl=[];
+    if(!keep){Object.assign(T,userL,userP);S.surf=userSurf;setTog('tAx','mom',false);setTog('tUt','util',false);setView('load');}
+    else{userL=pick(T,BASE_L);userP=pick(T,BASE_P);userSurf=S.surf;}
+    syncSurf();syncInputs();return;}
+  S.hl=st.hl||[];setTog('tAx','mom',st.mom);setTog('tUt','util',st.util);S.surf='paved';setView(st.view||'load');
+  tourTargets(st,0);syncSurf();syncInputs();anim=0;
+}
+const pick=(o,ref)=>{const r={};for(const k in ref)r[k]=o[k];return r;};
+function lessonTick(dt){const st=STEPS[L_.step];
+  if(L_.mode==='tour'&&L_.playing){L_.t+=dt*L_.speed;tourTargets(st,L_.t);syncSurf();syncInputs();if(st.dur&&L_.t>=st.dur)goStep(L_.step+1);}
+  $('stepBar').style.width=(st.dur?Math.min(1,L_.t/st.dur)*100:100)+'%';}
+const INP={front:'front',rear:'rear',bagA:'bagA',bagB:'bagB',fuel:'fuel',burn:'burn',pa:'pa',oat:'oat',wind:'wind',slope:'slope',rwy:'rwyL'};
+function syncInputs(){for(const k in INP){const e=$(INP[k]);if(document.activeElement!==e||L_.mode==='tour')e.value=T[k];}$('burn').max=Math.max(1,Math.round(T.fuel));}
+function toExplore(){if(L_.mode==='tour')goStep(STEPS.length-1,true,true);}
+$('prev').onclick=()=>goStep(L_.step-1,true);$('next').onclick=()=>goStep(L_.step+1,true);
+$('explore').onclick=()=>goStep(STEPS.length-1,true);
+function setPlay(v){L_.playing=v;$('play').textContent=v?'Pause':'Play';}
+$('play').onclick=()=>setPlay(!L_.playing);
+$('speed').addEventListener('input',e=>{L_.speed=+e.target.value;$('speedTxt').textContent=L_.speed+'×';});
+document.addEventListener('keydown',e=>{if(e.target.closest('input,select,textarea,dialog'))return;
+  if(e.key==='ArrowRight')goStep(L_.step+1,true);else if(e.key==='ArrowLeft')goStep(L_.step-1,true);});
+Kit.mount({pause:()=>setPlay(false),sources:['acsI_F','phak10','phak11','wbh2','wbh4','afh6','afh9','afh5','phak8','p91_9','p91_103','p91_151','p23_23','caaSS7','nwsDa']});
+if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)setPlay(false);
+
+/* ================= Explore controls ================= */
+for(const k in INP){$(INP[k]).addEventListener('input',e=>{toExplore();T[k]=+e.target.value;if(k==='fuel'&&T.burn>T.fuel)T.burn=T.fuel;
+  if(k in BASE_L)userL[k]=T[k];else userP[k]=T[k];syncInputs();});}
+for(const b of $('tabs').children)b.onclick=()=>{toExplore();setView(b.dataset.v);};
+for(const b of $('surf').querySelectorAll('[data-s]'))b.onclick=()=>{toExplore();S.surf=userSurf=b.dataset.s;syncSurf();};
+$('tAx').onclick=()=>{toExplore();setTog('tAx','mom',!S.mom);};
+$('tUt').onclick=()=>{toExplore();setTog('tUt','util',!S.util);};
+$('resetL').onclick=()=>{toExplore();userL={...BASE_L};Object.assign(T,userL);syncInputs();};
+$('resetP').onclick=()=>{toExplore();userP={...BASE_P};userSurf=S.surf='paved';Object.assign(T,userP);syncSurf();syncInputs();};
+
+/* ================= Empty weight popup ================= */
+const ewDlg=$('ewDlg');
+function fillEw(){$('ewW').value=BEW.w;$('ewA').value=BEW.arm;$('ewW').setAttribute('aria-invalid','false');$('ewA').setAttribute('aria-invalid','false');}
+function readEw(){const b={w:parseFloat($('ewW').value),arm:parseFloat($('ewA').value)},ok=bewOk(b);
+  $('ewW').setAttribute('aria-invalid',String(!ok));$('ewA').setAttribute('aria-invalid',String(!ok));
+  if(ok){BEW=b;try{localStorage.setItem('wb.bew',JSON.stringify(BEW));}catch(e){}}}
+$('ewW').addEventListener('input',readEw);$('ewA').addEventListener('input',readEw);
+$('ewReset').onclick=()=>{BEW={...BEW0};fillEw();try{localStorage.removeItem('wb.bew');}catch(e){}};
+$('ewBtn').onclick=()=>{toExplore();setPlay(false);fillEw();ewDlg.showModal();};
+$('ewClose').onclick=()=>ewDlg.close();
+ewDlg.addEventListener('click',e=>{if(e.target===ewDlg)ewDlg.close();});
+
+/* ================= Loop ================= */
+let lastT=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-lastT)/1000);lastT=now;
+  lessonTick(dt);
+  const k=Math.min(1,dt*6*Math.max(1,L_.speed));for(const key of KEYS){const e=T[key]-S[key];S[key]+=Math.abs(e)<0.05?e:e*k;}
+  if(L_.playing)anim+=dt*L_.speed;
+  // tour lessons are written for the sample empty weight
+  const bewSave=BEW;if(L_.mode==='tour')BEW=BEW0;
+  const Ld=load(S),stat=loadStatus(Ld,S,S.util);
+  const P=perf(S.view==='ldg'?'ldg':'to',Ld.W,S,S.surf),pst=perfStatus(P,S.rwy);
+  if(S.view==='load'){drawSide(Ld,stat);drawEnv(Ld,stat);pop('popR',stat);pop('popL',null);}
+  else{drawRwy(P,pst);drawChart(P);pop('popL',pst);pop('popR',null);}
+  readouts(Ld,stat,P,pst);
+  BEW=bewSave;
+  requestAnimationFrame(frame);}
+goStep(0);Object.assign(S,pick(T,{...BASE_L,...BASE_P}));requestAnimationFrame(frame);
+</script>
+</body></html>

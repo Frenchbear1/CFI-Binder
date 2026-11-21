@@ -1,19 +1,15 @@
 ---
-// One of David's Aviation Interactives (sims), played right in the lesson. Loads when tapped.
+// One of the binder's sims (from Aviation Interactives, in public/sims/), part of the lesson: it takes on
+// the reading theme and fonts and grows to its full height, so it scrolls with the page.
 import data from '../data/interactives.json';
-interface Props { id: string; title?: string; height?: number }
-const { id, title, height = 620 } = Astro.props;
+interface Props { id: string; title?: string }
+const { id, title } = Astro.props;
 const sim = data.items.find((s) => s.id === id);
-const src = sim ? new URL(sim.path, data.site).href : '';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
 ---
 {sim && (
-  <figure class="embed sim" data-embed={src} data-sim={id} style={`--h:${height}px`}>
-    <button type="button" class="embed-load sim-load" data-embed-load>
-      <span class="sim-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></span>
-      <span class="embed-t">{title || sim.name}</span>
-      <span class="muted small">{sim.about}</span>
-    </button>
-    <figcaption><span>{sim.tag}</span> · <a href={`${base}interactives/${id}/`}>Open full screen</a></figcaption>
+  <figure class="sim" data-sim={id}>
+    <iframe class="sim-frame" src={`${base}${data.site}${sim.path}`} title={title || sim.name} loading="lazy" data-sim-frame></iframe>
+    <figcaption><span>{title || sim.name}</span> · <a href={`${base}interactives/${id}/`}>Full screen</a></figcaption>
   </figure>
 )}

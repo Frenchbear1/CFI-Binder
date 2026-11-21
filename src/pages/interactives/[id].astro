@@ -1,16 +1,15 @@
 ---
-// A sim on its own page, full height. Listed in the Interactives folder on the home page.
+// A sim on its own page, in the binder's theme. Listed in the Interactives folder on the home page.
 import Base from '../../layouts/Base.astro';
 import data from '../../data/interactives.json';
 export function getStaticPaths() { return data.items.map((s) => ({ params: { id: s.id }, props: { s } })); }
 const { s } = Astro.props;
-const src = new URL(s.path, data.site).href;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
 ---
 <Base title={s.name} description={s.about}>
   <div class="sim-page">
     <p class="crumbs"><a href={base}>Binder</a> / Interactives</p>
-    <iframe class="sim-frame" src={src} title={s.name} allow="fullscreen" allowfullscreen></iframe>
-    <p class="muted small sim-alt">Not loading? <a href={src} target="_blank" rel="noopener">Open {s.name} on its own site</a></p>
+    <h1 class="sim-h">{s.name}</h1>
+    <iframe class="sim-frame" src={`${base}${data.site}${s.path}`} title={s.name} data-sim-frame></iframe>
   </div>
 </Base>

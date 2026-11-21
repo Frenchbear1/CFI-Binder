@@ -1,0 +1,4 @@
+/* Inside the binder the sim is one block of the page: no "All simulations" link, no extra page padding. */
+html.in-binder .homebar { display: none !important; }
+html.in-binder body { padding-left: 0 !important; padding-right: 0 !important; }
+html.in-binder .wrap { padding-block: 0 4px !important; }

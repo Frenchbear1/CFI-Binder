@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script src="sim-theme.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html{color-scheme:dark}body{margin:0;font:14px system-ui,sans-serif}[hidden]{display:none!important}
+.homebar{max-width:1200px;margin:0 auto;padding-top:14px}
+.homebar a{font:500 13px "IBM Plex Mono",ui-monospace,monospace;color:#8ea2a5;text-decoration:none;letter-spacing:.06em}
+.homebar a:hover,.homebar a:focus-visible{color:#e4ece9}</style>
+<meta name="theme-color" content="#0a1014">
+<title>Airfoil Flow Lab</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+/* Layout: flow "wind tunnel" canvas on top, lesson strip on top, controls + readouts below. Single dark avionics look, matching the other sims. */
+:root{
+  --bg:#0a1014; --panel:#0f181c; --panel2:#0c1418; --line:#1f2f36; --ink:#e4ece9; --dim:#8ea2a5;
+  --ref:#5ccfe3; --var:#ffb54a; --cmp:#ef7fd1; --warn:#e2574a; --ok:#7fd98a;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1200px;margin:0 auto;padding-block:14px 40px;display:flex;flex-direction:column;gap:12px}
+.hint{font-size:13.5px;color:var(--dim)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
+.stage{position:relative;padding:0;overflow:hidden}
+#flow{display:block;width:100%;touch-action:none;cursor:crosshair}
+.pop{position:absolute;left:50%;top:12px;transform:translateX(-50%);font:600 15px var(--f-mono);letter-spacing:.16em;padding:5px 14px;border-radius:6px;pointer-events:none;white-space:nowrap}
+#popStall{background:var(--warn);color:#160806}
+#popWarn{background:var(--var);color:#1a1004}
+#popG{top:auto;bottom:12px;background:#2a1311;color:#ffb3aa;border:1px solid var(--warn);font-size:12.5px;letter-spacing:.1em}
+.probe{position:absolute;width:230px;background:rgba(9,16,19,.96);border:1px solid #33505a;border-radius:8px;padding:8px 10px 10px;pointer-events:auto;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.probe .ph{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.probe .ph button{background:none;border:0;color:var(--dim);font:16px var(--f-mono);cursor:pointer;padding:0 2px;line-height:1}
+.probe .pt{font:600 19px var(--f-display);line-height:1.1;margin:2px 0 4px;white-space:nowrap}
+.probe canvas{display:block;width:100%;height:150px}
+.probe .pr{display:flex;justify-content:space-between;font:12px var(--f-mono);color:var(--dim);margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.probe .pr b{color:var(--ink);font-weight:500}
+
+.lesson{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 20px;align-items:start}
+.lesson-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;grid-column:1/-1}
+#stepNum{font-family:var(--f-mono);font-size:12px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.dots{display:flex;gap:6px;flex-wrap:wrap}
+.dots button{width:22px;height:6px;border-radius:3px;border:0;background:var(--line);padding:0;cursor:pointer}
+.dots button.on{background:var(--ink)} .dots button.done{background:#4d6268}
+.dots button:focus-visible{outline:2px solid var(--ref);outline-offset:3px}
+.lesson-text{min-width:0}
+#stepTitle{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.1;margin:2px 0 4px;text-wrap:balance}
+#stepBody{margin:0;max-width:72ch;min-height:4.5em}
+#stepBody b.l{color:var(--ref);font-weight:600} #stepBody b.t{color:var(--var);font-weight:600} #stepBody b.s{color:var(--warn);font-weight:600} #stepBody b.g{color:var(--ok);font-weight:600} #stepBody b.d{color:var(--cmp);font-weight:600}
+.bar{grid-column:1/-1;height:2px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:6px}
+#stepBar{height:100%;width:0;background:var(--dim)}
+.lctl{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+button.b{font:500 13px var(--f-body);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;min-height:34px}
+button.b:hover{border-color:#3d545c} button.b:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+button.b.primary{background:var(--ink);color:#0a1014;border-color:var(--ink);min-width:84px}
+button.b:disabled{opacity:.4;cursor:default}
+.speed{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:12px;color:var(--dim)}
+.speed input{width:120px;accent-color:var(--ink);height:auto}
+#speedTxt{min-width:4ch}
+@media (max-width:480px){.dots button{width:14px}}
+@media (max-width:760px){.lesson{grid-template-columns:minmax(0,1fr)}.lctl{align-items:stretch}.btns{justify-content:flex-start}}
+.deck{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:12px;align-items:stretch}
+@media (max-width:640px){.deck{grid-template-columns:minmax(0,1fr)}}
+.ctl{display:flex;flex-direction:column;gap:14px}
+.sl{display:flex;flex-direction:column;gap:4px}
+.sl .h{display:flex;justify-content:space-between;align-items:baseline}
+.lab{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.sl output{font:600 22px var(--f-display);font-variant-numeric:tabular-nums;min-width:4.5ch;text-align:right}
+input[type=range]{width:100%;accent-color:var(--ink);margin:0;height:26px}
+.tg{display:flex;gap:6px;flex-wrap:wrap}
+.tg button{font:500 13px var(--f-body);color:var(--dim);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:6px 12px;cursor:pointer;min-height:34px}
+.tg button[aria-pressed=true]{color:var(--ink);border-color:#4d6a73;background:#14232a}
+.tg button:focus-visible,input[type=range]:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+.tg button.reset{margin-left:auto}
+.ro{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;align-content:start}
+.ro>div{display:flex;flex-direction:column;min-width:0}
+.ro strong{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.05;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ro strong small{font-size:15px;color:var(--dim);font-weight:500;margin-left:3px}
+.warnc{color:var(--warn)!important} .ambc{color:var(--var)!important}
+</style>
+<link rel="stylesheet" href="sim-theme.css">
+</head>
+<body>
+<div class="homebar"><a href="../index.html">← All simulations</a></div>
+<div class="wrap">
+  <section class="lesson" aria-live="polite">
+    <div class="lesson-meta"><span id="stepNum">Step 1 of 12</span><div class="dots" id="dots" role="tablist" aria-label="Lesson steps"></div></div>
+    <div class="lesson-text">
+      <h2 id="stepTitle"></h2>
+      <p id="stepBody"></p>
+    </div>
+    <div class="lctl">
+      <div class="btns">
+        <button class="b" id="prev" type="button">◀ Back</button>
+        <button class="b primary" id="play" type="button">Pause</button>
+        <button class="b" id="next" type="button">Next ▶</button>
+        <button class="b" id="explore" type="button">Explore freely</button>
+      </div>
+      <label class="speed" for="speed">Speed <input id="speed" type="range" min="0.25" max="2" step="0.25" value="1"> <span id="speedTxt">1×</span></label>
+    </div>
+    <div class="bar"><div id="stepBar"></div></div>
+  </section>
+
+  <div class="panel stage" id="stage">
+    <canvas id="flow" aria-label="Airflow around a NACA 2412 airfoil"></canvas>
+    <div class="pop" id="popStall" hidden>STALL</div>
+    <div class="pop" id="popWarn" hidden>STALL WARNING</div>
+    <div class="probe" id="probe" hidden>
+      <div class="ph"><span id="pbWhere">Upper · 40% chord</span><button id="pbClose" aria-label="Close">×</button></div>
+      <div class="pt" id="pbType">Laminar</div>
+      <canvas id="pbCv"></canvas>
+      <div class="pr"><span>Thickness <b id="pbD">0.0 mm</b></span><span>H <b id="pbH">2.59</b></span></div>
+      <div class="pr"><span>Edge <b id="pbU">1.00 V∞</b></span><b id="pbG">Pressure falling</b></div>
+    </div>
+  </div>
+
+  <div class="deck">
+    <div class="panel ctl">
+      <div class="sl"><div class="h"><label class="lab" for="aoa">Angle of attack</label><output id="aoaOut">4.0°</output></div>
+        <input id="aoa" type="range" min="-6" max="22" step="0.1" value="4"></div>
+      <div class="tg">
+        <button id="tP" aria-pressed="false">Pressure</button>
+        <button id="tB" aria-pressed="true">Boundary layer</button>
+        <button id="tF" aria-pressed="true">Forces</button>
+        <button id="tS" aria-pressed="false">Slow motion</button>
+      </div>
+    </div>
+    <div class="panel ro">
+      <div><span class="lab">Lift coeff.</span><strong id="rCL">0.65</strong></div>
+      <div><span class="lab">Lift / drag</span><strong id="rLD">95</strong></div>
+      <div><span class="lab">Level-flight speed</span><strong id="rV">77<small>KIAS</small></strong></div>
+      <div><span class="lab">Reynolds no.</span><strong id="rRe">3.6<small>M</small></strong></div>
+    </div>
+  </div>
+</div>
+
+<script src="kit.js"></script>
+<script>
+"use strict";
+/* ================= Physics =================
+   Geometry: NACA 2412 (Cessna 172 wing section), chord 1.47 m.
+   Inviscid flow: Hess-Smith source + vortex panel method with Kutta condition (exact potential flow around the real shape).
+   Viscous: Thwaites laminar BL, Michel transition (or laminar separation), Head turbulent BL, Squire-Young drag.
+   Separation/stall: Kirchhoff-Beddoes-Leishman separation point f(α) calibrated to NACA 2412 data
+   (a≈0.106/deg, α0≈-2.1°, cl,max≈1.68 near 16°, Abbott & von Doenhoff, Re≈6M).
+   Aircraft: C172S, Vs1 48 KIAS (max weight, flaps up), limit load +3.8 G.  */
+const CHORD_M=1.47, NU_AIR=1.46e-5, VS1=48, VNE=163, NLIM=3.8;
+const A_SLOPE=0.106, A_ZERO=-2.1, BL_A1=16.6, BL_S1=3, BL_S2=2;
+const PANELS_PER_SIDE=70;
+
+function naca4(M,m=0.02,p=0.4,t=0.12){
+  const pt=x=>{const yt=5*t*(0.2969*Math.sqrt(x)-0.1260*x-0.3516*x*x+0.2843*x*x*x-0.1036*x*x*x*x);
+    let yc,dy;if(x<p){yc=m/(p*p)*(2*p*x-x*x);dy=2*m/(p*p)*(p-x);}else{yc=m/((1-p)*(1-p))*((1-2*p)+2*p*x-x*x);dy=2*m/((1-p)*(1-p))*(p-x);}
+    const th=Math.atan(dy);return{xu:x-yt*Math.sin(th),yu:yc+yt*Math.cos(th),xl:x+yt*Math.sin(th),yl:yc-yt*Math.cos(th)};};
+  const xs=[];for(let i=0;i<=M;i++)xs.push(0.5*(1-Math.cos(Math.PI*i/M)));
+  const X=[],Y=[];
+  for(let i=M;i>=0;i--){const q=pt(xs[i]);X.push(q.xl);Y.push(q.yl);}
+  for(let i=1;i<=M;i++){const q=pt(xs[i]);X.push(q.xu);Y.push(q.yu);}
+  X[2*M]=X[0];Y[2*M]=Y[0];return{X,Y};
+}
+function infl(pn,px,py,self){
+  const dx=px-pn.x0,dy=py-pn.y0,xi=dx*pn.tx+dy*pn.ty,eta=dx*pn.nx+dy*pn.ny;
+  const r1=xi*xi+eta*eta,r2=(xi-pn.l)*(xi-pn.l)+eta*eta;
+  const lnr=0.25*Math.log(r1/r2)/Math.PI;
+  const b=(self?Math.PI:(Math.atan2(eta,xi-pn.l)-Math.atan2(eta,xi)))/(2*Math.PI);
+  return[lnr*pn.tx+b*pn.nx,lnr*pn.ty+b*pn.ny,-b*pn.tx+lnr*pn.nx,-b*pn.ty+lnr*pn.ny];
+}
+function gauss(A,bs){const n=A.length;A=A.map(r=>r.slice());bs=bs.map(b=>b.slice());
+  for(let k=0;k<n;k++){let p=k;for(let i=k+1;i<n;i++)if(Math.abs(A[i][k])>Math.abs(A[p][k]))p=i;
+    [A[k],A[p]]=[A[p],A[k]];for(const b of bs)[b[k],b[p]]=[b[p],b[k]];
+    for(let i=k+1;i<n;i++){const f=A[i][k]/A[k][k];if(!f)continue;for(let j=k;j<n;j++)A[i][j]-=f*A[k][j];for(const b of bs)b[i]-=f*b[k];}}
+  for(const b of bs)for(let i=n-1;i>=0;i--){let s=b[i];for(let j=i+1;j<n;j++)s-=A[i][j]*b[j];b[i]=s/A[i][i];}
+  return bs;}
+
+const M=PANELS_PER_SIDE;
+const G=(()=>{const{X,Y}=naca4(M);const P=[];
+  for(let j=0;j<X.length-1;j++){const dx=X[j+1]-X[j],dy=Y[j+1]-Y[j],l=Math.hypot(dx,dy),tx=dx/l,ty=dy/l;
+    P.push({x0:X[j],y0:Y[j],l,tx,ty,nx:-ty,ny:tx,cx:(X[j]+X[j+1])/2,cy:(Y[j]+Y[j+1])/2});}
+  const N=P.length,An=[],At=[],Bn=new Array(N).fill(0),Bt=new Array(N).fill(0);
+  for(let i=0;i<N;i++){An.push(new Array(N));At.push(new Array(N));const pi=P[i];
+    for(let j=0;j<N;j++){const f=infl(P[j],pi.cx,pi.cy,i===j);
+      An[i][j]=f[0]*pi.nx+f[1]*pi.ny;At[i][j]=f[0]*pi.tx+f[1]*pi.ty;Bn[i]+=f[2]*pi.nx+f[3]*pi.ny;Bt[i]+=f[2]*pi.tx+f[3]*pi.ty;}}
+  const[qx,qy,qc]=gauss(An,[P.map(p=>-p.nx),P.map(p=>-p.ny),Bn.map(v=>-v)]);
+  const vt=(q,ux,uy,g)=>P.map((p,i)=>{let s=ux*p.tx+uy*p.ty+g*Bt[i];for(let j=0;j<N;j++)s+=q[j]*At[i][j];return s;});
+  return{X,Y,P,N,qx,qy,qc,Vx:vt(qx,1,0,0),Vy:vt(qy,0,1,0),Vc:vt(qc,0,0,1),per:P.reduce((s,p)=>s+p.l,0)};})();
+function gammaKutta(a){const N=G.N,ca=Math.cos(a),sa=Math.sin(a);return-(ca*(G.Vx[0]+G.Vx[N-1])+sa*(G.Vy[0]+G.Vy[N-1]))/(G.Vc[0]+G.Vc[N-1]);}
+function fieldAt(px,py){let a=1,b=0,c=0,d=1,e=0,f=0;const P=G.P;
+  for(let j=0;j<G.N;j++){const g=infl(P[j],px,py,false);a+=G.qx[j]*g[0];b+=G.qx[j]*g[1];c+=G.qy[j]*g[0];d+=G.qy[j]*g[1];e+=G.qc[j]*g[0]+g[2];f+=G.qc[j]*g[1]+g[3];}
+  return[a,b,c,d,e,f];}
+
+// separation point (fraction of chord, upper surface) and section coefficients
+function sepF(ad){return ad<=BL_A1?1-0.3*Math.exp((ad-BL_A1)/BL_S1):0.04+0.66*Math.exp((BL_A1-ad)/BL_S2);}
+function clOf(ad){const r=Math.sqrt(sepF(ad));return A_SLOPE*(ad-A_ZERO)*((1+r)/2)**2;}
+let A_CRIT=0,CL_MAX=0;for(let a=8;a<=22;a+=0.01){const c=clOf(a);if(c>CL_MAX){CL_MAX=c;A_CRIT=a;}}
+
+// geometry lookup tables (body frame): upper panels M..N-1 (x increasing), lower panels M-1..0 (x increasing)
+const UP=[],LO=[];for(let i=M;i<G.N;i++)UP.push(i);for(let i=M-1;i>=0;i--)LO.push(i);
+function surfIdx(list,x){let lo=0,hi=list.length-1;const P=G.P;if(x<=P[list[0]].cx)return 0;if(x>=P[list[hi]].cx)return hi;
+  while(hi-lo>1){const m=(lo+hi)>>1;if(P[list[m]].cx<x)lo=m;else hi=m;}return(x-P[list[lo]].cx)<(P[list[hi]].cx-x)?lo:hi;}
+function surfY(upper,x){ // y on surface at body x by node interpolation
+  const X=G.X,Y=G.Y;if(upper){for(let i=M;i<2*M;i++)if(X[i+1]>=x){const t=(x-X[i])/(X[i+1]-X[i]||1);return Y[i]+t*(Y[i+1]-Y[i]);}return Y[2*M];}
+  for(let i=M;i>0;i--)if(X[i-1]>=x){const t=(x-X[i])/(X[i-1]-X[i]||1);return Y[i]+t*(Y[i-1]-Y[i]);}return Y[0];}
+const YT=new Float32Array(1001),YB=new Float32Array(1001);for(let i=0;i<=1000;i++){YT[i]=surfY(true,i/1000);YB[i]=surfY(false,i/1000);}
+function inBody(bx,by){if(bx<0||bx>1)return false;const k=Math.min(999,(bx*1000)|0),t=bx*1000-k;
+  return by<YT[k]+(YT[k+1]-YT[k])*t&&by>YB[k]+(YB[k+1]-YB[k])*t;}
+
+// ---- boundary layer on one side ----
+function blSurface(s,ue,x,Re){
+  const n=s.length,nu=1/Re,out=[];let I=0,turb=false,th=0,H=2.6,H1=0,tr=-1;
+  const inv=h1=>h1<5.3?0.6778+1.1538*Math.pow(Math.max(h1-3.3,1e-3),-0.326):1.1+0.86*Math.pow(h1-3.3,-0.777);
+  const rhs=(t_,H_,H1_,U_,dU)=>{const R=Math.max(U_*t_*Re,50),cf=0.246*Math.pow(10,-0.678*H_)*Math.pow(R,-0.268);
+    return[cf/2-(H_+2)*t_/U_*dU,U_*0.0306*Math.pow(Math.max(H1_-3,0.01),-0.6169)];};
+  for(let i=0;i<n;i++){
+    const U=Math.max(ue[i],1e-4),dUds=i>0?(ue[i]-ue[i-1])/Math.max(s[i]-s[i-1],1e-9):ue[0]/Math.max(s[0],1e-9);
+    if(!turb){
+      if(i>0)I+=0.5*(Math.pow(Math.max(ue[i-1],0),5)+Math.pow(U,5))*(s[i]-s[i-1]);else I=Math.pow(U,5)*s[0]/6;
+      th=Math.sqrt(0.45*nu*I/Math.pow(U,6));
+      const lr=th*th/nu*dUds,lam=Math.max(-0.09,Math.min(0.25,lr)),z=0.25-lam;
+      H=2.0+4.14*z-83.5*z*z+854*z*z*z-3337*z**4+4576*z**5;
+      const Rth=U*th*Re,Rx=Math.max(U*s[i]*Re,1);
+      if((i>2&&Rth>1.174*(1+22400/Rx)*Math.pow(Rx,0.46))||lr<-0.09){turb=true;tr=i;H=1.4;H1=3.3+0.8234*Math.pow(0.3,-1.287);}
+      out.push({th,H,lam,turb:false});
+    }else{
+      const ds=s[i]-s[i-1],Up=Math.max(ue[i-1],1e-4),thp=th,Hp=H,H1p=H1;
+      const k1=rhs(thp,Hp,H1p,Up,dUds);let t2=Math.max(thp+ds*k1[0],1e-6),E=Up*thp*H1p+ds*k1[1];
+      const H12=Math.max(3.31,E/(U*t2)),k2=rhs(t2,inv(H12),H12,U,dUds);
+      th=Math.max(thp+ds*0.5*(k1[0]+k2[0]),1e-6);E=Up*thp*H1p+ds*0.5*(k1[1]+k2[1]);
+      H1=Math.max(3.31,E/(U*th));H=Math.min(inv(H1),3.5);out.push({th,H,lam:0,turb:true});
+    }
+  }
+  for(const o of out)o.d=o.turb?o.th*(3.15+1.72/Math.max(o.H-1,0.05))+o.H*o.th:o.th*o.H*2.9;
+  return{pts:out,tr};
+}
+
+// ================= State =================
+const S={aT:4,a:4,bank:0,bankT:0,showP:false,showBL:true,showF:true,slow:false,
+  f:1,gam:0,CL:0,CD:0,n:1,V:0,Re:5e6,stag:{x:0,y:0},tr:{up:null,lo:null},sepX:1,
+  bl:new Array(G.N).fill(null),vt:new Float64Array(G.N),cpSep:0,teD:0.01};
+
+function solveState(){
+  const ad=S.a,a=ad*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a);
+  S.f=Math.min(1,sepF(ad));S.n=1/Math.cos(S.bank*Math.PI/180);
+  S.CL=clOf(ad);
+  S.gam=gammaKutta(a)*(1-0.14*Math.min(1,Math.max(0,(0.975-S.f)/0.35)));
+  for(let i=0;i<G.N;i++)S.vt[i]=ca*G.Vx[i]+sa*G.Vy[i]+S.gam*G.Vc[i];
+  // airspeed to hold level flight at this AoA, 1 G (KIAS) -> Reynolds number
+  S.V=S.CL>0.02?VS1*Math.sqrt(S.n)*Math.sqrt(CL_MAX/S.CL):Infinity;
+  const vk=Math.min(Math.max(isFinite(S.V)?S.V:VNE,VS1*0.9),VNE*1.15);
+  S.Re=vk*0.5144*CHORD_M/NU_AIR;
+  // stagnation point
+  let k=M-1;for(let i=0;i<G.N-1;i++){if(S.vt[i]<=0&&S.vt[i+1]>0){k=i;break;}}
+  const P=G.P,w=S.vt[k]/(S.vt[k]-S.vt[k+1]);S.stag={x:P[k].cx+(P[k+1].cx-P[k].cx)*w,y:P[k].cy+(P[k+1].cy-P[k].cy)*w};
+  S.bl.fill(null);let cd=0;S.tr={up:null,lo:null};
+  for(const side of[0,1]){const idx=[];if(side===0)for(let i=k+1;i<G.N;i++)idx.push(i);else for(let i=k;i>=0;i--)idx.push(i);
+    const s=[],ue=[],x=[];let acc=0,px=S.stag.x,py=S.stag.y;
+    for(const i of idx){const p=P[i];acc+=Math.hypot(p.cx-px,p.cy-py);px=p.cx;py=p.cy;s.push(Math.max(acc,1e-5));ue.push(Math.max(0,(side?-1:1)*S.vt[i]));x.push(p.cx);}
+    // real (viscous) flow has no trailing-edge stagnation: extend edge velocity smoothly over the last 10%
+    const j0=x.findIndex((xx,j)=>j>5&&xx>0.9);if(j0>3){const sl=(ue[j0]-ue[j0-3])/(s[j0]-s[j0-3]);for(let j=j0+1;j<ue.length;j++)ue[j]=Math.max(0.2,ue[j0]+sl*(s[j]-s[j0]));}
+    const r=blSurface(s,ue,x,S.Re);
+    idx.forEach((i,j)=>{S.bl[i]={...r.pts[j],ue:ue[j]};});
+    if(r.tr>=0){const i=idx[r.tr];S.tr[side?'lo':'up']={i,lamSep:r.pts[r.tr].lam<=-0.0899};}
+    const L=r.pts[r.pts.length-1],ute=ue[ue.length-1];cd+=2*L.th*Math.pow(ute,(L.H+5)/2);
+    if(side===0)S.teD=L.d;else S.teD=Math.max(S.teD,L.d);
+  }
+  S.teD=Math.min(S.teD,0.05);  // attached-layer value; the separated wake is modelled separately
+  // separated region on the upper surface
+  S.sepX=S.f;let cps=null;
+  for(const i of UP){if(P[i].cx>=S.f&&S.f<0.985){if(cps===null){const u=S.bl[i]?S.bl[i].ue:Math.abs(S.vt[i]);cps=1-u*u;}if(S.bl[i])S.bl[i].sep=true;}}
+  S.cpSep=cps===null?0:Math.max(cps,-0.55-0.25*Math.min(1,(0.975-S.f)/0.35));  // separated-region pressure plateau
+  const r=Math.sqrt(S.f);S.CD=cd+2*Math.sin(a)**2*(1-r)+0.0005;
+}
+
+// ================= Velocity field grid (body frame, 3 basis flows x (u,v)) =================
+const GR=[{x0:0.25-2.6,y0:-2.6,h:0.035,nx:0,ny:0,d:null},{x0:-0.12,y0:-0.3,h:0.006,nx:0,ny:0,d:null}];
+GR[0].nx=Math.ceil(5.2/GR[0].h)+1;GR[0].ny=GR[0].nx;GR[1].nx=Math.ceil(1.42/GR[1].h)+1;GR[1].ny=Math.ceil(0.62/GR[1].h)+1;
+for(const g of GR)g.d=new Float32Array(g.nx*g.ny*6);
+let gridReady=false;
+(function buildGrid(){const jobs=[];for(const g of GR)for(let j=0;j<g.ny;j++)jobs.push([g,j]);let q=0;
+  function step(){const t0=performance.now();while(q<jobs.length&&performance.now()-t0<24){const[g,j]=jobs[q++];const y=g.y0+j*g.h;
+      for(let i=0;i<g.nx;i++){const v=fieldAt(g.x0+i*g.h,y),o=(j*g.nx+i)*6;for(let c=0;c<6;c++)g.d[o+c]=v[c];}}
+    if(q<jobs.length)setTimeout(step,0);else{gridReady=true;resetSmoke();pressDirty=true;}}
+  step();})();
+const _f=new Float64Array(6);
+function sampleBody(bx,by){let g=GR[1];let fx=(bx-g.x0)/g.h,fy=(by-g.y0)/g.h;
+  if(fx<0||fy<0||fx>=g.nx-1||fy>=g.ny-1){g=GR[0];fx=(bx-g.x0)/g.h;fy=(by-g.y0)/g.h;
+    if(fx<0||fy<0||fx>=g.nx-1||fy>=g.ny-1){_f[0]=1;_f[1]=0;_f[2]=0;_f[3]=1;_f[4]=0;_f[5]=0;return _f;}}
+  const i=fx|0,j=fy|0,tx=fx-i,ty=fy-j,o00=(j*g.nx+i)*6,o10=o00+6,o01=o00+g.nx*6,o11=o01+6,d=g.d;
+  for(let c=0;c<6;c++)_f[c]=(d[o00+c]*(1-tx)+d[o10+c]*tx)*(1-ty)+(d[o01+c]*(1-tx)+d[o11+c]*tx)*ty;return _f;}
+
+// ================= View transforms =================
+const cv=document.getElementById('flow'),ctx=cv.getContext('2d');
+const V={W:0,H:0,dpr:1,sc:300,ox:0,oy:0,xmin:-0.7,xmax:2.1,ymin:-1,ymax:1};
+let RC=1,RS=0; // rotation for current AoA
+function setRot(){const a=S.a*Math.PI/180;RC=Math.cos(a);RS=Math.sin(a);}
+function b2w(bx,by){const dx=bx-0.25,dy=by;return[RC*dx+RS*dy,-RS*dx+RC*dy];}
+function w2b(wx,wy){return[RC*wx-RS*wy+0.25,RS*wx+RC*wy];}
+const sx=wx=>V.ox+wx*V.sc,sy=wy=>V.oy-wy*V.sc;
+
+function resize(){const r=cv.getBoundingClientRect(),W=Math.max(300,r.width);
+  const H=Math.round(Math.max(300,Math.min(W*(W<640?0.85:0.5),620)));cv.style.height=H+'px';
+  V.dpr=Math.min(2,window.devicePixelRatio||1);cv.width=Math.round(W*V.dpr);cv.height=Math.round(H*V.dpr);V.W=W;V.H=H;
+  const span=W<640?1.55:2.35;V.sc=W/span;V.xmin=W<640?-0.42:-0.6;V.xmax=V.xmin+span;V.ox=-V.xmin*V.sc;V.oy=H*0.54;
+  V.ymax=V.oy/V.sc;V.ymin=-(H-V.oy)/V.sc;pressDirty=true;if(gridReady)resetSmoke();}
+
+// ================= Separated zone (world frame) =================
+const Z={on:false,Xs:0,Ys:0,m0:0,L:0.16,Xte:0,Yte:0,Xc:0,up:[],sig:0};
+function buildZone(){Z.on=S.f<0.975;if(!Z.on)return;Z.sig=Math.min(1,(0.975-S.f)/0.35);
+  const P=G.P;let first=-1;Z.up=[];
+  for(const i of UP){if(P[i].cx>=S.f){if(first<0)first=i;const w=b2w(P[i].cx,P[i].cy);Z.up.push(w);}}
+  const nE=b2w(G.X[2*M],G.Y[2*M]);Z.up.push(nE);
+  const p0=Z.up[0];Z.Xs=p0[0];Z.Ys=p0[1];const p1=Z.up[Math.min(2,Z.up.length-1)];
+  Z.m0=Math.max(-0.9,Math.min(0.4,(p1[1]-p0[1])/Math.max(p1[0]-p0[0],1e-4)))+0.12;
+  Z.L=0.1+0.25*Z.sig;Z.Xte=nE[0];Z.Yte=nE[1];
+  // shear layer must clear the trailing edge
+  const need=Z.Yte+0.02+0.06*Z.sig-Z.Ys;const reach=Z.m0*Z.L*(1-Math.exp(-(Z.Xte-Z.Xs)/Z.L));if(reach<need)Z.m0+=(need-reach)/(Z.L*(1-Math.exp(-(Z.Xte-Z.Xs)/Z.L))+1e-6);
+  Z.Lc=0.3+0.9*Z.sig;Z.Xc=Z.Xte+Z.Lc;}
+function zShear(X){const e=Math.exp(-(X-Z.Xs)/Z.L);return[Z.Ys+Z.m0*Z.L*(1-e),Z.m0*e];}
+function zSurf(X){const u=Z.up;if(X<=u[0][0])return u[0][1];for(let i=0;i<u.length-1;i++)if(u[i+1][0]>=X){const t=(X-u[i][0])/(u[i+1][0]-u[i][0]||1);return u[i][1]+t*(u[i+1][1]-u[i][1]);}return u[u.length-1][1];}
+function zLow(X){if(X<=Z.Xte)return[zSurf(X),0];const t=Math.min(1,(X-Z.Xte)/Z.Lc),s=t*t*(3-2*t),ys=zShear(X)[0];
+  const y=Z.Yte+(ys-Z.Yte)*s;const dt=1e-3,t2=Math.min(1,(X+dt-Z.Xte)/Z.Lc),s2=t2*t2*(3-2*t2);return[y,((Z.Yte+(zShear(X+dt)[0]-Z.Yte)*s2)-y)/dt];}
+
+// ================= Vortices shed from the separated shear layer =================
+let VX=[];let shedT=0,shedK=0;
+function vortVel(x,y,skip){let u=0,v=0;for(const q of VX){if(q===skip)continue;const dx=x-q.x,dy=y-q.y,r2=dx*dx+dy*dy+1e-9,rc2=q.rc*q.rc;if(r2>0.16)continue;
+  const k=q.g/(2*Math.PI*r2)*(1-Math.exp(-r2/rc2));u-=k*dy;v+=k*dx;}return[u,v];}
+
+// ================= Velocity at a world point =================
+function velMean(wx,wy){
+  const b=w2b(wx,wy),bx=b[0],by=b[1],f=(bx<0.03&&nearWall(bx,by))?fieldAt(bx,by):sampleBody(bx,by),a=S.a*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a);
+  let ub=ca*f[0]+sa*f[2]+S.gam*f[4],vb=ca*f[1]+sa*f[3]+S.gam*f[5];
+  // boundary layer: slow the flow by the local velocity profile
+  if(S.bl[0]&&bx>0.004&&bx<1.0&&by>-0.2&&by<0.3){
+    const upper=by>0.5*(surfYfast(true,bx)+surfYfast(false,bx));const list=upper?UP:LO,i=list[surfIdx(list,bx)],p=G.P[i],B=S.bl[i];
+    const nd=(bx-p.cx)*p.nx+(by-p.cy)*p.ny,WB=0.02;
+    // close to the wall the panel solution is replaced by the surface (edge) velocity along the wall
+    if(nd<WB&&bx>=0.03){const w=Math.max(0,nd)/WB,ut=S.vt[i],ft=ub*p.tx+vb*p.ty,fn=(ub*p.nx+vb*p.ny)*w*w,t=(1-w)*ut+w*ft;ub=t*p.tx+fn*p.nx;vb=t*p.ty+fn*p.ny;}
+    if(B&&!(upper&&B.sep)&&nd>0&&nd<B.d){const r=Math.max(0.03,profile(B,nd/B.d));ub*=r;vb*=r;}}
+  let u=RC*ub+RS*vb,v=-RS*ub+RC*vb;
+  // separated region and displacement of the outer flow
+  if(Z.on&&wx>Z.Xs-0.005&&wx<Z.Xc){const[ys,ms]=zShear(wx),[yl,ml]=zLow(wx);
+    if(wy<ys&&wy>yl-0.004){const h=Math.max(ys-yl,1e-4),z=Math.max(0,(wy-yl)/h),ramp=Math.min(1,(wx-Z.Xs)/0.03),end=Math.min(1,(Z.Xc-wx)/(0.3*Z.Lc+1e-3));
+      const uz=(-0.22+0.85*z*z)*Math.max(0,end)+(1-Math.max(0,end))*0.55;const vz=uz*((1-z)*ml+z*ms);
+      u=u*(1-ramp)+uz*ramp;v=v*(1-ramp)+vz*ramp;}
+    else if(wy>=ys){const w=Math.exp(-(wy-ys)/(0.06+0.12*Z.sig))*Math.min(1,(wx-Z.Xs)/0.02);v+=w*(u*ms-v);}}
+  // wake velocity deficit
+  let X0,Y0,b0,A0;if(Z.on){X0=Z.Xc;Y0=zShear(Z.Xc)[0]*0.5+Z.Yte*0.5;b0=0.04+0.15*Z.sig;A0=0.35+0.3*Z.sig;}else{X0=b2w(1,0)[0];Y0=b2w(1,0)[1];b0=Math.max(0.006,S.teD*0.6);A0=0.45;}
+  if(wx>X0){const dX=wx-X0,bw=b0*Math.sqrt(1+dX/0.08),A=A0/Math.sqrt(1+dX/0.06),dy=(wy-Y0)/bw;if(dy*dy<9){const k=1-A*Math.exp(-dy*dy);u*=k;}}
+  if(u!==u||v!==v)return[1,0];
+  return[u,v];
+}
+function nearWall(bx,by){if(bx<-0.015||bx>1.03)return false;const x=Math.min(1,Math.max(0,bx));return by<surfYfast(true,x)+0.014&&by>surfYfast(false,x)-0.014;}
+function surfYfast(upper,bx){const T=upper?YT:YB,k=Math.min(999,Math.max(0,(bx*1000)|0)),t=bx*1000-k;return T[k]+(T[k+1]-T[k])*t;}
+function vel(wx,wy){const m=velMean(wx,wy);if(VX.length){const q=vortVel(wx,wy),b=w2b(wx,wy),k=nearWall(b[0],b[1])?0.15:1;m[0]+=q[0]*k;m[1]+=q[1]*k;}return m;}
+
+// velocity profile u/Ue at fraction eta of BL thickness
+function pohlLam(lam){let lo=-12,hi=12;for(let k=0;k<40;k++){const L=(lo+hi)/2,r=37/315-L/945-L*L/9072,v=L*r*r;if(v<lam)lo=L;else hi=L;}return(lo+hi)/2;}
+function profile(B,eta){eta=Math.min(1,Math.max(0,eta));
+  if(B.sep)return 3*eta*eta-2*eta**3-1.6*eta*(1-eta)**2;
+  if(!B.turb){if(B.L===undefined)B.L=pohlLam(B.lam);return 2*eta-2*eta**3+eta**4+B.L/6*eta*(1-eta)**3;}
+  const nn=Math.min(9,Math.max(2,2/Math.max(B.H-1,0.05)));return Math.pow(eta,1/nn);}
+
+// ================= Smoke (streaklines with timelines) =================
+let lines=[],simT=0;
+const PULSE=0.22,PULSE_ON=0.05;
+let smokeT0=0;
+function resetSmoke(){lines=[];smokeT0=simT;const ys=[];for(let y=-0.02;y<V.ymax+0.05;y+=(Math.abs(y)<0.4?0.042:0.075))ys.push(y);for(let y=-0.062;y>V.ymin-0.05;y-=(Math.abs(y)<0.4?0.042:0.075))ys.push(y);
+  for(const y of ys)lines.push({src:[V.xmin-0.05,y+0.04],p:[],last:-1});
+  // dye ports just off the surface near the leading edge (upper and lower)
+  lines.push({port:'sep',p:[],last:-1});lines.push({port:'te',p:[],last:-1});
+  VX=[];}
+function portPos(which){const x=0.035,up=which==='up',i=(up?UP:LO)[surfIdx(up?UP:LO,x)],p=G.P[i];const B=S.bl[i];const off=B?Math.max(0.0015,B.d*0.45):0.0015;
+  return b2w(p.cx+p.nx*off,p.cy+p.ny*off);}
+const EMIT=0.011;
+function tePort(){const k=Math.random()-0.5,P0=G.P[0],PN=G.P[G.N-1];return b2w(1.004+0.004*Math.abs(k),k*Math.min(0.02,Math.max(0.004,S.teD*0.5)));}
+function sepPort(){const X=Z.Xs+0.02+Math.random()*0.05;const[ys]=zShear(X),yl=zLow(X)[0];return[X,yl+(ys-yl)*(0.3+0.5*Math.random())];}
+function stepSmoke(dt){
+  for(const L of lines){
+    // emit
+    const arrived=simT-smokeT0>(b2w(1,0)[0]-V.xmin+0.05)*1.05; // wake ports wait for the incoming air to reach the trailing edge
+    if(simT-L.last>=EMIT&&(!L.port||arrived)&&(L.port!=='sep'||(Z.on&&Z.sig>0.15))){L.int=Math.min(simT-L.last,EMIT*3);L.last=simT;const s=L.port==='sep'?sepPort():L.port==='te'?tePort():L.src;L.p.push({x:s[0],y:s[1],t:simT,dead:false});}
+    for(const q of L.p){if(q.dead)continue;
+      const k1=vel(q.x,q.y),mx=q.x+k1[0]*dt*0.5,my=q.y+k1[1]*dt*0.5,k2=vel(mx,my);q.x+=k2[0]*dt;q.y+=k2[1]*dt;q.u=k2[0];q.v=k2[1];
+      const b=w2b(q.x,q.y);if(inBody(b[0],b[1])){
+        // pushed against the wall by the separated recirculation: slide out along the normal
+        const up=b[1]>0.5*(surfYfast(true,b[0])+surfYfast(false,b[0])),i=(up?UP:LO)[surfIdx(up?UP:LO,b[0])],p=G.P[i];
+        const w=b2w(p.cx+p.nx*0.002,p.cy+p.ny*0.002);q.x=w[0];q.y=w[1];const vv=vel(q.x,q.y);q.u=vv[0];q.v=vv[1];if(simT-q.t>0.6&&!Z.on)q.dead=true;}
+      if(q.x!==q.x||q.x>V.xmax+0.1||q.y<V.ymin-0.3||q.y>V.ymax+0.3||simT-q.t>(L.port?6:9))q.dead=true;}
+    while(L.p.length&&L.p[0].dead)L.p.shift();
+    if(L.p.length>1400)L.p.splice(0,L.p.length-1400);
+  }
+  // vortices
+  if(Z.on&&Z.sig>0.05){shedT+=dt;const per=0.06+0.05*(1-Z.sig);if(shedT>per){shedT=0;shedK++;
+      const[ys]=zShear(Z.Xs+0.04),ue=Math.sqrt(Math.max(0.3,1-S.cpSep));
+      VX.push({x:Z.Xs+0.04,y:ys,g:-0.5*ue*ue*per*Z.sig*1.1,rc:0.015,age:0});
+      if(shedK%2===0)VX.push({x:Z.Xte+0.02,y:Z.Yte,g:0.25*ue*ue*per*Z.sig,rc:0.015,age:0});}}
+  for(const q of VX){const m=velMean(q.x,q.y),o=vortVel(q.x,q.y,q);q.nx=q.x+(m[0]*0.8+o[0]*0.6)*dt;q.ny=q.y+(m[1]*0.8+o[1]*0.6)*dt;}
+  for(const q of VX){q.x=q.nx;q.y=q.ny;q.age+=dt;q.rc=0.015+0.045*Math.sqrt(q.age);q.g*=Math.exp(-dt*0.25);const b=w2b(q.x,q.y);if(inBody(b[0],b[1]))q.age=99;}
+  VX=VX.filter(q=>q.x<V.xmax+0.4&&q.age<7);
+  if(!Z.on&&VX.length)VX.forEach(q=>q.g*=Math.exp(-dt*3));
+}
+
+// ================= Pressure field image =================
+const pc=document.createElement('canvas'),pctx=pc.getContext('2d');let pressDirty=true,pressFrame=0;
+function buildPressure(){const w=Math.round(V.W/4),h=Math.round(V.H/4);pc.width=w;pc.height=h;const img=pctx.createImageData(w,h),d=img.data;
+  for(let j=0;j<h;j++)for(let i=0;i<w;i++){const wx=V.xmin+(i+0.5)/w*(V.xmax-V.xmin),wy=V.ymax-(j+0.5)/h*(V.ymax-V.ymin);const b=w2b(wx,wy);const o=(j*w+i)*4;
+    if(inBody(b[0],b[1])){d[o+3]=0;continue;}
+    const f=sampleBody(b[0],b[1]),A=S.a*Math.PI/180,ca=Math.cos(A),sa=Math.sin(A),pu=ca*f[0]+sa*f[2]+S.gam*f[4],pv=ca*f[1]+sa*f[3]+S.gam*f[5];let cp=1-(pu*pu+pv*pv);
+    if(Z.on&&wx>Z.Xs&&wx<Z.Xc){const ys=zShear(wx)[0],yl=zLow(wx)[0];if(wy<ys+0.06&&wy>yl-0.03){const t=Math.max(0,Math.min(1,(wx-Z.Xte)/Z.Lc)),pl=S.cpSep*(1-t)+Math.min(cp,0.1)*t;
+      const e=Math.min(1,Math.min((ys+0.06-wy)/0.08,(wy-yl+0.03)/0.04)),k=e*e*(3-2*e);cp=cp*(1-k)+pl*k;}}
+    const m=Math.max(-1,Math.min(1,cp/(cp<0?2.2:1)));
+    if(m<0){d[o]=60;d[o+1]=170;d[o+2]=235;d[o+3]=Math.round(-m*200);}else{d[o]=240;d[o+1]=110;d[o+2]=80;d[o+3]=Math.round(m*170);}}
+  pctx.putImageData(img,0,0);pressDirty=false;}
+
+// ================= Drawing =================
+const COL={bg:'#071014',foil:'#1b2a30',edge:'#cfe0dd',lam:'#5ccfe3',turb:'#ffb54a',sep:'#e2574a',dim:'#8ea2a5',ink:'#e4ece9',smoke:'rgba(214,232,232,.40)',pulse:'rgba(255,255,255,.95)'};
+function label(t,x,y,c,al='left',bg=true){ctx.font=(V.W<640?'500 10px':'500 11px')+' "IBM Plex Mono",monospace';const w=ctx.measureText(t).width;let X=al==='left'?x:al==='right'?x-w:x-w/2;
+  X=Math.max(4,Math.min(V.W-w-4,X));if(bg){ctx.fillStyle='rgba(7,16,20,.78)';ctx.fillRect(X-3,y-10,w+6,14);}ctx.fillStyle=c;ctx.fillText(t,X,y);}
+function arrow(x1,y1,x2,y2,c,w=2.2){const a=Math.atan2(y2-y1,x2-x1),l=Math.hypot(x2-x1,y2-y1),hd=Math.min(10,l*0.4);ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=w;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2-Math.cos(a)*hd*0.8,y2-Math.sin(a)*hd*0.8);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-hd*Math.cos(a-0.4),y2-hd*Math.sin(a-0.4));ctx.lineTo(x2-hd*Math.cos(a+0.4),y2-hd*Math.sin(a+0.4));ctx.closePath();ctx.fill();}
+function bs(bx,by){const w=b2w(bx,by);return[sx(w[0]),sy(w[1])];}
+
+let probe=null; // {upper, i}
+function draw(){
+  const shake=L_.playing&&Z.on&&Z.sig>0.35?(Math.random()-0.5)*2.2*Z.sig:0;
+  ctx.setTransform(V.dpr,0,0,V.dpr,0,shake*V.dpr);ctx.fillStyle=COL.bg;ctx.fillRect(0,-4,V.W,V.H+8);
+  if(S.showP&&gridReady){if(pressDirty&&(!moving||++pressFrame%4===0))buildPressure();ctx.imageSmoothingEnabled=true;ctx.drawImage(pc,0,0,V.W,V.H);}
+  // smoke: dim streak + bright timeline pulses
+  const pa=new Path2D(),pb=new Path2D();
+  const tau=EMIT*1.15;
+  for(const L of lines){const tl=Math.max(tau,(L.int||0)*1.12);for(const b of L.p){if(b.dead||b.u===undefined)continue;
+      let dx=b.u*tl,dy=b.v*tl;const l2=dx*dx+dy*dy;if(l2>0.0016){const k=0.04/Math.sqrt(l2);dx*=k;dy*=k;}
+      const ph=((b.t%PULSE)+PULSE)%PULSE,path=ph<PULSE_ON?pb:pa;path.moveTo(sx(b.x-dx),sy(b.y-dy));path.lineTo(sx(b.x),sy(b.y));}}
+  ctx.lineCap='round';ctx.lineWidth=1.2;ctx.strokeStyle=COL.smoke;ctx.stroke(pa);ctx.lineWidth=1.8;ctx.strokeStyle=COL.pulse;ctx.stroke(pb);
+  // separated zone tint
+  if(Z.on&&Z.sig>0.02){ctx.beginPath();const st=(Z.Xc-Z.Xs)/40;for(let k=0;k<=40;k++){const X=Z.Xs+k*st;const y=zShear(X)[0];k?ctx.lineTo(sx(X),sy(y)):ctx.moveTo(sx(X),sy(y));}
+    for(let k=40;k>=0;k--){const X=Z.Xs+k*st;ctx.lineTo(sx(X),sy(zLow(X)[0]));}ctx.closePath();ctx.fillStyle=`rgba(226,87,74,${0.05+0.08*Z.sig})`;ctx.fill();}
+  // airfoil
+  ctx.beginPath();for(let k=0;k<G.X.length;k++){const p=bs(G.X[k],G.Y[k]);k?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);}ctx.closePath();
+  ctx.fillStyle=COL.foil;ctx.fill();ctx.lineWidth=1.2;ctx.strokeStyle=COL.edge;ctx.stroke();
+  // chord line + angle of attack
+  {const a=bs(0,0),b=bs(1,0),e=bs(-0.32,0);ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(228,236,233,.38)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(e[0],e[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
+    const Lr=0.32*V.sc;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(a[0]-Lr,a[1]);ctx.stroke();ctx.setLineDash([]);
+    const R=Lr*0.8,A=S.a*Math.PI/180;ctx.strokeStyle=COL.ink;ctx.lineWidth=1.3;ctx.beginPath();
+    if(Math.abs(S.a)>0.3){ctx.arc(a[0],a[1],R,Math.PI,Math.PI+A,A<0);ctx.stroke();}
+    label('α '+(Math.abs(S.a)<0.05?0:S.a).toFixed(1)+'°',a[0]-R-8,a[1]+(S.a>=0?-Math.max(4,R*Math.sin(A)*0.5)+4:14),COL.ink,'right');
+    if(V.W>=640)label('Chord line',e[0]-4,e[1]-8,COL.dim,'center',false);}
+  // pressure arrows on surface
+  if(S.showP){for(let i=3;i<G.N-3;i+=2){const p=G.P[i];let cp;const B=S.bl[i];cp=B&&B.sep?S.cpSep:1-S.vt[i]*S.vt[i];
+      const L=Math.max(-2.5,Math.min(1,cp))*0.07;const o=bs(p.cx,p.cy);
+      if(cp<0){const e=bs(p.cx-p.nx*L,p.cy-p.ny*L);ctx.strokeStyle='rgba(92,207,227,.9)';ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(o[0],o[1]);ctx.lineTo(e[0],e[1]);ctx.stroke();}
+      else{const s=bs(p.cx+p.nx*L,p.cy+p.ny*L);ctx.strokeStyle='rgba(240,110,80,.9)';ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(s[0],s[1]);ctx.lineTo(o[0],o[1]);ctx.stroke();}}
+    ctx.fillStyle='rgba(7,16,20,.8)';ctx.fillRect(V.W-158,V.H-28,154,22);ctx.fillStyle='rgba(60,170,235,.85)';ctx.fillRect(V.W-150,V.H-22,10,10);label('Low',V.W-136,V.H-13,COL.ink,'left',false);
+    ctx.fillStyle='rgba(240,110,80,.85)';ctx.fillRect(V.W-96,V.H-22,10,10);label('High pressure',V.W-82,V.H-13,COL.ink,'left',false);}
+  // boundary layer (true thickness)
+  if(S.showBL&&S.bl[0]){for(let i=0;i<G.N;i++){const B=S.bl[i];if(!B||B.sep)continue;const p=G.P[i],x0=G.X[i],y0=G.Y[i],x1=G.X[i+1],y1=G.Y[i+1];
+      const B0=S.bl[i-1]&&!S.bl[i-1].sep?S.bl[i-1].d:B.d,B1=S.bl[i+1]&&!S.bl[i+1].sep?S.bl[i+1].d:B.d,d0=(B0+B.d)/2,d1=(B1+B.d)/2;
+      const a=bs(x0,y0),b=bs(x1,y1),c=bs(x1+p.nx*d1,y1+p.ny*d1),d=bs(x0+p.nx*d0,y0+p.ny*d0);
+      ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.lineTo(c[0],c[1]);ctx.lineTo(d[0],d[1]);ctx.closePath();
+      ctx.fillStyle=B.turb?'rgba(255,181,74,.42)':'rgba(92,207,227,.5)';ctx.fill();
+      ctx.strokeStyle=B.turb?COL.turb:COL.lam;ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(d[0],d[1]);ctx.lineTo(c[0],c[1]);ctx.stroke();}
+    // markers
+    const st=bs(S.stag.x,S.stag.y);dot(st,COL.ink);label('Stagnation point',st[0]-10,st[1]+(S.a>=0?20:-12),COL.ink,'right');
+    const tu=S.tr.up;if(tu&&!(S.bl[tu.i]&&S.bl[tu.i].sep)){const p=G.P[tu.i],q=bs(p.cx,p.cy);dot(q,COL.turb);const o=bs(p.cx+p.nx*0.05,p.cy+p.ny*0.05);
+      label(tu.lamSep?'Laminar bubble':'Transition',o[0]-4,o[1]-2,COL.turb,'center');
+      const lm=G.P[Math.max(M,Math.round((tu.i+M)/2))];}
+    const tl=S.tr.lo;if(tl){const p=G.P[tl.i],q=bs(p.cx,p.cy);dot(q,COL.turb);const o=bs(p.cx+p.nx*0.05,p.cy+p.ny*0.05);label('Transition',o[0],o[1]+10,COL.turb,'center');}
+    // laminar / turbulent tags on the upper surface
+    if(V.W>=640){const iu=S.tr.up?S.tr.up.i:G.N-1;const il=Math.min(G.N-1,Math.round((Math.max(M+2,iu)+Math.max(M,iu-20))/2));
+      if(iu-M>14){const p=G.P[Math.round((M+iu)/2)],o=bs(p.cx+p.nx*0.02,p.cy+p.ny*0.02);label('Laminar',o[0],o[1]-4,COL.lam,'center',false);}
+      const endI=UP.find(i=>S.bl[i]&&S.bl[i].sep)||G.N-1;if(S.tr.up&&G.P[endI].cx-G.P[iu].cx>0.3){const p=G.P[Math.round((iu+endI)/2)],B=S.bl[Math.round((iu+endI)/2)],o=bs(p.cx+p.nx*(B.d+0.035),p.cy+p.ny*(B.d+0.035));label('Turbulent',o[0],o[1],COL.turb,'center',false);}}
+  }
+  if(S.wash&&gridReady){for(const[wx,wy,name]of[[Math.max(V.xmin+0.12,-0.48),0.12,'Upwash'],[1.15,-0.13,'Downwash']]){const v=velMean(wx,wy),ang=Math.atan2(v[1],v[0]),L=70,x0=sx(wx)-L/2,y0=sy(wy);
+      ctx.setLineDash([3,4]);ctx.strokeStyle='rgba(228,236,233,.45)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x0+L,y0);ctx.stroke();ctx.setLineDash([]);
+      arrow(x0,y0,x0+L*Math.cos(ang),y0-L*Math.sin(ang),'#ffd27a',2.4);label(name+' '+Math.abs(ang*180/Math.PI).toFixed(1)+'°',x0,y0+(name==='Upwash'?-L*Math.sin(ang)-12:22),'#ffd27a','left');}}
+  if(!S.showBL&&S.markStag){const st=bs(S.stag.x,S.stag.y);dot(st,COL.ink);label('Stagnation point',st[0]-10,st[1]+(S.a>=0?20:-12),COL.ink,'right');}
+  if(Z.on){const p=bs(...(()=>{const i=UP.find(i=>G.P[i].cx>=S.f);return[G.P[i].cx,G.P[i].cy];})());dot(p,COL.sep);label('Separation',p[0]+8,p[1]-12,COL.sep,'left');
+    if(Z.sig>0.25){const X=(Z.Xs+Z.Xte)/2+0.15*Z.sig;label('Separated flow',sx(X),sy((zShear(X)[0]+zLow(X)[0])/2)+4,'#ff9d93','center',false);}}
+  // forces (coefficients; drag at the same scale)
+  if(S.showF){const q=bs(0.25,0),Ls=0.17*V.sc;const lx=q[0],ly=q[1]-S.CL*Ls;arrow(q[0],q[1],lx,ly,'#7fd98a',2.6);label('Lift',lx+8,ly+8,'#7fd98a');
+    const dl=S.CD*Ls;if(dl>2){arrow(q[0],q[1],q[0]+dl,q[1],'#ef7fd1',2.6);label('Drag',q[0]+dl+6,q[1]+14,'#ef7fd1');}}
+  // relative wind
+  {const y=V.ymax-0.09,x0=V.xmin+0.06;arrow(sx(x0),sy(y),sx(x0)+70,sy(y),COL.ink,1.6);label('Relative wind',sx(x0)+78,sy(y)+4,COL.ink,'left',false);
+    label('NACA 2412 · Cessna 172',V.W-8,18,COL.dim,'right');}
+  // probe marker
+  if(probe){const p=G.P[probe.i],q=bs(p.cx,p.cy);ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(q[0],q[1],6,0,7);ctx.stroke();}
+  ctx.setTransform(1,0,0,1,0,0);
+}
+function dot(p,c){ctx.fillStyle=c;ctx.beginPath();ctx.arc(p[0],p[1],3.6,0,7);ctx.fill();ctx.strokeStyle=COL.bg;ctx.lineWidth=1.2;ctx.stroke();}
+
+function barrow(c,x1,y1,x2,y2,col){const a=Math.atan2(y2-y1,x2-x1),hd=8;c.strokeStyle=col;c.fillStyle=col;c.lineWidth=2.2;c.beginPath();c.moveTo(x1,y1);c.lineTo(x2-Math.cos(a)*6,y2-Math.sin(a)*6);c.stroke();
+  c.beginPath();c.moveTo(x2,y2);c.lineTo(x2-hd*Math.cos(a-0.4),y2-hd*Math.sin(a-0.4));c.lineTo(x2-hd*Math.cos(a+0.4),y2-hd*Math.sin(a+0.4));c.closePath();c.fill();}
+
+// ================= Readouts & popups =================
+const $=id=>document.getElementById(id);
+function readouts(){
+  $('aoaOut').textContent=(Math.abs(S.aT)<0.05?0:S.aT).toFixed(1)+'°';
+  $('rCL').textContent=S.CL.toFixed(2);
+  $('rLD').textContent=S.CL<=0?'—':(S.CL/S.CD).toFixed(0);
+  const vs=VS1;
+  const stalled=S.a>A_CRIT,vv=$('rV');
+  if(stalled){vv.innerHTML='Stalled';}else if(!isFinite(S.V)){vv.innerHTML='—';}else if(S.V>VNE){vv.innerHTML='&gt;'+VNE+'<small>VNE</small>';}else vv.innerHTML=S.V.toFixed(0)+'<small>KIAS</small>';
+  vv.classList.toggle('warnc',stalled||S.V>VNE);
+  $('rRe').innerHTML=(S.Re/1e6).toFixed(1)+'<small>M</small>';
+  const warn=!stalled&&isFinite(S.V)&&S.V-vs<=7;   // C172 horn sounds 5-10 kt above the stall
+  $('popStall').hidden=!stalled;$('popWarn').hidden=!warn;
+}
+// probe popup
+const pb=$('probe'),pbc=$('pbCv'),pbx=pbc.getContext('2d');
+function pickProbe(e){const r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+  const w=[(mx-V.ox)/V.sc,-(my-V.oy)/V.sc],b=w2b(w[0],w[1]);let best=-1,bd=1e9;
+  for(let i=0;i<G.N;i++){const p=G.P[i],d=Math.hypot(p.cx-b[0],p.cy-b[1]);if(d<bd){bd=d;best=i;}}
+  if(bd*V.sc<36){probe={i:best};pb.hidden=false;updateProbe();return true;}return false;}
+function updateProbe(){if(!probe)return;const i=probe.i,p=G.P[i],B=S.bl[i];const up=i>=M;
+  $('pbWhere').textContent=(up?'Upper':'Lower')+' · '+Math.round(p.cx*100)+'% chord';
+  let type='Laminar',col='#5ccfe3',d=0,Hs='—';
+  if(!B){type='Stagnation';}else if(B.sep){type='Separated · reversed flow';col='#e2574a';const w=b2w(p.cx,p.cy);d=Z.on?Math.max(0,zShear(w[0])[0]-zLow(w[0])[0]):0;Hs='>3';}
+  else{type=B.turb?'Turbulent':'Laminar';col=B.turb?'#ffb54a':'#5ccfe3';d=B.d;Hs=B.H.toFixed(2);}
+  const dmm=d*CHORD_M*1000;
+  $('pbType').textContent=type;$('pbType').style.color=col;$('pbD').textContent=dmm.toFixed(dmm<10?1:0)+' mm';$('pbH').textContent=Hs;
+  // local edge speed and pressure gradient along the flow (BL side: upper runs i+1 downstream, lower runs i-1)
+  const ue=B?(B.sep?Math.sqrt(Math.max(0,1-S.cpSep)):B.ue):0;
+  const dn=S.bl[i+1]&&i+1<G.N&&i>=0?i:i;const sideUp=S.vt[i]>=0,iu=sideUp?i-1:i+1,idn=sideUp?i+1:i-1;
+  let grad=0;if(B&&!B.sep&&S.bl[iu]&&S.bl[idn]){const a=G.P[iu],b=G.P[idn];grad=(S.bl[idn].ue-S.bl[iu].ue)/Math.hypot(b.cx-a.cx,b.cy-a.cy);}
+  $('pbU').textContent=ue.toFixed(2)+' V∞';
+  const gEl=$('pbG');if(B&&B.sep){gEl.textContent='Reversed flow';gEl.style.color='#e2574a';}
+  else{gEl.textContent=grad>0.05?'Pressure falling':grad<-0.05?'Pressure rising':'Pressure steady';gEl.style.color=grad>0.05?'#7fd98a':grad<-0.05?'#ffb54a':'#8ea2a5';}
+  // profile plot: height = local thickness (mm scale shown), length = real speed relative to the free stream
+  const r=pbc.getBoundingClientRect(),dp=Math.min(2,window.devicePixelRatio||1);if(pbc.width!==Math.round(r.width*dp)){pbc.width=Math.round(r.width*dp);pbc.height=Math.round(150*dp);}
+  const c=pbx,W=r.width,H=150;c.setTransform(dp,0,0,dp,0,0);c.clearRect(0,0,W,H);const x0=40,y0=H-16,pw=W-x0-12,ph=H-30,UMAX=2.2,ux=u=>x0+u/UMAX*pw;
+  c.fillStyle='#22343b';c.fillRect(8,y0,W-16,6);c.font='10px "IBM Plex Mono",monospace';c.fillStyle='#8ea2a5';c.fillText('Wall',10,y0+15);
+  c.strokeStyle='rgba(142,162,165,.4)';c.lineWidth=1;c.beginPath();c.moveTo(x0,y0);c.lineTo(x0,y0-ph);c.stroke();
+  // free-stream reference
+  c.setLineDash([2,3]);c.beginPath();c.moveTo(ux(1),y0);c.lineTo(ux(1),y0-ph);c.stroke();c.setLineDash([]);c.fillText('V∞',ux(1)-7,y0+15);
+  if(B){const top=y0-ph*0.82;c.setLineDash([3,3]);c.beginPath();c.moveTo(8,top);c.lineTo(W-8,top);c.stroke();c.setLineDash([]);
+    c.fillText(dmm.toFixed(dmm<10?1:0)+' mm',8,top-3);
+    const prof=e=>profile(B,e)*ue,yy=e=>y0-e*(y0-top);
+    for(let k=1;k<=9;k++){const e=k/10,u=prof(e);if(Math.abs(u)>0.02)barrow(c,x0,yy(e),ux(u),yy(e),col+'aa');}
+    c.strokeStyle=col;c.lineWidth=2;c.beginPath();for(let k=0;k<=60;k++){const e=k/60;k?c.lineTo(ux(prof(e)),yy(e)):c.moveTo(ux(prof(e)),yy(e));}
+    c.lineTo(ux(ue),y0-ph);c.stroke();}
+  // position the card next to the probe
+  const q=bs(p.cx,p.cy),sw=$('stage').clientWidth,sh=$('stage').clientHeight,cw=230,ch=pb.offsetHeight||230;
+  let L=q[0]+18,T=q[1]+(up?-ch-14:14);if(L+cw>sw-8)L=q[0]-cw-18;L=Math.max(8,Math.min(sw-cw-8,L));T=Math.max(8,Math.min(sh-ch-8,T));pb.style.left=L+'px';pb.style.top=T+'px';}
+let dragging=false;
+cv.addEventListener('pointerdown',e=>{if(pickProbe(e)){dragging=true;cv.setPointerCapture(e.pointerId);}else{probe=null;pb.hidden=true;}});
+cv.addEventListener('pointermove',e=>{if(dragging)pickProbe(e);});
+cv.addEventListener('pointerup',()=>dragging=false);cv.addEventListener('pointercancel',()=>dragging=false);
+$('pbClose').onclick=()=>{probe=null;pb.hidden=true;};
+
+// controls
+$('aoa').addEventListener('input',e=>{if(L_.mode==='tour')goStep(STEPS.length-1,true,true);S.aT=+e.target.value;});
+function tog(id,key){const b=$(id);b.onclick=()=>{if(L_.mode==='tour')goStep(STEPS.length-1,true,true);S[key]=!S[key];b.setAttribute('aria-pressed',S[key]);pressDirty=true;};}
+function setTog(id,key,v){S[key]=v;$(id).setAttribute('aria-pressed',v);pressDirty=true;}
+tog('tP','showP');tog('tB','showBL');tog('tF','showF');tog('tS','slow');
+
+
+// ================= Guided lesson =================
+// a: angle of attack (number, or [from,to,t0,t1] ramp in seconds); P/B/F/slow: layers; probe: [upper?, x/c] or null
+const STEPS=[
+{title:'The relative wind',dur:11,a:4,P:0,B:0,F:0,
+ body:'This is the NACA 2412, the wing section of a Cessna 172. Air meets it from straight ahead: the <b>relative wind</b>, opposite to the flight path. The angle between the relative wind and the chord line is the <b>angle of attack</b>, α.'},
+{title:'The stagnation point',dur:10,a:4,P:0,B:0,F:0,stag:1,
+ body:'The flow divides just under the leading edge. On the dividing line the air comes to rest against the skin. That is the <b>stagnation point</b>, the highest pressure anywhere on the wing.'},
+{title:'Faster over the top',dur:14,a:4,P:0,B:0,F:0,slow:1,stag:1,
+ body:'Watch the bright pulses. Each one is a line of air released at the same instant. The part going over the top gets to the trailing edge first and never meets up again with its lower half. The upper air really is <b>faster</b>, not just going farther.'},
+{title:'Faster air, lower pressure',dur:13,a:4,P:1,B:0,F:0,
+ body:'By Bernoulli, where the air speeds up its static pressure drops. <b class="l">Low pressure</b> sits over the top, especially near the front, and <b class="s">higher pressure</b> sits underneath. The arrows show the pressure on each part of the skin.'},
+{title:'Lift and drag',dur:11,a:4,P:1,B:0,F:1,
+ body:'Add up that pressure and you get <b class="g">lift</b>, perpendicular to the relative wind, and <b class="d">drag</b>, parallel to it. At 4° this section makes about 80 times more lift than drag.'},
+{title:'Newton: turning the air down',dur:16,a:4,P:0,B:0,F:1,wash:1,
+ body:'The wing also bends the airflow. The air rises ahead of it (<b>upwash</b>) and leaves angled down behind it (<b>downwash</b>). Pushing air downward means the air pushes the wing up: Newton\'s third law. Bernoulli and Newton are not two separate parts of lift. The pressure difference is what turns the air, so they describe the same force.'},
+{title:'The boundary layer',dur:15,a:4,P:0,B:1,F:0,probe:[1,0.12],
+ body:'Air touching the skin sticks to it (no-slip). Its speed builds from zero at the wall to full speed through a thin <b class="l">boundary layer</b>, drawn here at true size. Near the nose it is <b class="l">laminar</b>: smooth layers sliding over each other.'},
+{title:'Transition to turbulent',dur:15,a:4,P:0,B:1,F:0,probe:[1,0.7],
+ body:'Downstream the layer becomes unstable and turns <b class="t">turbulent</b>. Eddies mix fast air down toward the skin, so the profile is fuller and the layer thicker, with more skin friction. The probe shows a turbulent profile at 70% chord.'},
+{title:'More angle, more lift',dur:14,a:[4,12,1,10],P:0,B:1,F:1,
+ body:'Raise the angle of attack and lift rises about 0.1 C<sub>L</sub> per degree. The suction peak grows and moves forward, transition moves forward with it, and the layer near the trailing edge thickens as it climbs against rising pressure.'},
+{title:'Separation begins',dur:14,a:[12,15.5,1,9],P:0,B:1,F:1,probe:[1,0.85],
+ body:'The air near the wall has too little energy to keep climbing into higher pressure. It stops and turns back, and the flow <b class="s">separates</b>, first at the trailing edge and then creeping forward. On a 172 the stall horn sounds about 5 to 10 kt before the stall.'},
+{title:'Critical angle of attack',dur:12,a:[15.5,16.2,0,4],P:0,B:1,F:1,
+ body:'Lift peaks at about 16°, C<sub>L</sub> 1.68 for this section. This is the <b>critical angle of attack</b>. The wing stalls past this angle at any airspeed, weight or attitude.'},
+{title:'Stall',dur:14,a:[16.2,20,0,4],P:0,B:1,F:1,
+ body:'Past the critical angle the flow leaves most of the upper surface. A swirling <b class="s">separated wake</b> replaces the smooth flow, lift falls and drag climbs steeply. Recover by <b>reducing the angle of attack</b>: lower the nose.'},
+{title:'Your turn',dur:0,a:null,P:null,B:null,F:null,
+ body:'Set any angle of attack and switch the layers on and off. Tap or drag along the wing to read the boundary layer anywhere. Try finding the angle where the separation point first leaves the trailing edge.'}
+];
+
+// ---------- references + deep dive (shared kit) ----------
+const DEEP=[
+{refs:['phak4','phak5','acsI_F'],more:`<ul>
+<li><b>Chord line:</b> straight line from leading to trailing edge. <b>Relative wind:</b> airflow parallel and opposite to the flight path.</li>
+<li>AOA is <b>not pitch attitude</b>. Nose-high in a steep descent can be a high AOA; nose-low in a pull-up can be a high AOA too.</li>
+<li><b>Angle of incidence</b> is the fixed angle between chord and the airplane's longitudinal axis. The pilot cannot change it; the pilot changes AOA with the elevator.</li>
+<li>NACA 2412 = 2% max camber at 40% chord, 12% thick.</li></ul>`},
+{refs:['phak4','phak8'],more:`<ul>
+<li>At the stagnation point local speed is zero and pressure rises by the full <b>dynamic pressure</b>: <span class="k">q = ½ρV²</span>.</li>
+<li>Your <b>pitot tube</b> is a stagnation point. The airspeed indicator reads total − static pressure = q, which is why it shows <b>indicated</b> airspeed, not true airspeed.</li>
+<li>As AOA rises the stagnation point slides down and aft under the leading edge. Stall-warning reeds and vanes sit just there to sense it.</li></ul>`},
+{refs:['phak4','nasaWrong'],more:`<ul>
+<li>The "equal transit time" idea (top and bottom air must meet at the trailing edge) is <b>false</b>. Upper-surface air arrives much earlier.</li>
+<li>Path length doesn't make lift: a flat plate or a cambered sail has equal paths and still lifts when it meets the air at an angle.</li></ul>`},
+{refs:['phak4','nasaBern'],more:`<ul>
+<li>Along a streamline: <span class="k">p + ½ρV² = constant</span> (valid for low-speed, incompressible flow, below about Mach 0.3).</li>
+<li>Pressure is shown as <b>Cp</b>; the strongest suction is near the front of the upper surface, which is why leading-edge contamination hurts so much.</li>
+<li>The <b>center of pressure</b> of a cambered airfoil moves forward as AOA rises and aft as it drops. That shifting is one reason a tail is needed for stability.</li></ul>`},
+{refs:['phak5','acsI_F'],more:`<ul>
+<li><span class="k">L = C<sub>L</sub> · ½ρV² · S</span> &nbsp; <span class="k">D = C<sub>D</sub> · ½ρV² · S</span></li>
+<li>At constant lift (level flight), slower means higher C<sub>L</sub>, which means higher AOA.</li>
+<li>Section L/D (this 2-D slice) is far higher than the whole airplane's. A 172 glides at roughly <span class="k">9:1</span> because of parasite and induced drag.</li>
+<li>Max L/D occurs at one AOA: that is <b>best glide speed</b> (68 KIAS in a C172S at max weight; lower when lighter).</li></ul>`},
+{refs:['phak4','phak5','nasaBern'],more:`<ul>
+<li>On a real wing, downwash and high-pressure air curling around the tips form <b>wingtip vortices</b>. They tilt the lift vector aft: that rearward part is <b>induced drag</b>.</li>
+<li>Induced drag is greatest at <b>high AOA / low speed</b>; parasite drag grows with speed. Their sum is lowest at L/D<sub>max</sub>.</li>
+<li><b>Ground effect:</b> within about one wingspan of the ground (strongest under half a span), the ground limits downwash, reducing induced drag. This can make an airplane float or lift off before it can climb.</li>
+<li>The same vortices are <b>wake turbulence</b>, strongest behind heavy, clean, slow airplanes.</li></ul>`},
+{refs:['phak4','afh2','aim7'],more:`<ul>
+<li>Thickness here is a few millimetres. Its behavior is set by the <b>Reynolds number</b> <span class="k">Re = V·c / ν</span> (about 3–4 million for a 172 in cruise).</li>
+<li>Skin friction from this layer is part of <b>parasite drag</b>.</li>
+<li>Frost, ice, bugs and rough paint trip and thicken the layer, raising drag and lowering C<sub>L,max</sub>, so the wing stalls at a <b>lower AOA</b> and higher speed. Remove all frost before takeoff.</li></ul>`},
+{refs:['phak4','airfoiltools'],more:`<ul>
+<li>Transition is triggered by rising pressure (adverse gradient), roughness and higher Re. On this section it sits near the suction peak and moves forward with AOA.</li>
+<li>Turbulent layers cause more friction but carry more energy near the wall, so they <b>resist separation</b> better. Vortex generators use this deliberately.</li>
+<li>Laminar-flow airfoils delay transition for lower drag but are more sensitive to bugs and rain.</li></ul>`},
+{refs:['phak5','airfoiltools'],more:`<ul>
+<li>Section lift slope ≈ <span class="k">0.1 C<sub>L</sub>/deg</span> (2π per radian in theory). A finite wing's slope is lower because of downwash: about 0.08/deg for a 172-like aspect ratio.</li>
+<li>Zero-lift AOA is about <span class="k">−2°</span>: camber makes lift at 0°.</li>
+<li><b>Flaps</b> add camber: more C<sub>L</sub> at a given AOA and a higher C<sub>L,max</sub>, but a slightly <b>lower</b> critical AOA and more drag.</li></ul>`},
+{refs:['phak5','afh5','acsVII'],more:`<ul>
+<li>Thick sections like the 2412 stall from the <b>trailing edge forward</b>: gentle, with buffet first. Thin sections can stall abruptly from the leading edge.</li>
+<li>The 172 wing has <b>washout</b> (twist, tip at a lower incidence) so the root stalls first and the ailerons keep working.</li>
+<li>Warning cues: stall horn or light, mushy controls, buffet, high pitch with decaying speed. Respond to the first cue.</li></ul>`},
+{refs:['phak5','afh5','acsVII'],more:`<ul>
+<li>Stall speed changes; critical AOA doesn't. Vs rises with <b>weight</b> (∝√W), <b>load factor</b> (∝√n: ×1.41 at 60° bank), <b>forward CG</b> (more tail download) and ice. Power and flaps lower it.</li>
+<li><b>Accelerated stall:</b> a stall above the published Vs, from a pull or a steep turn. Common in base-to-final turns.</li>
+<li>C172S: Vs1 <span class="k">48 KIAS</span> (clean), Vso <span class="k">40 KIAS</span> (flaps 30°), max weight. Use your POH.</li></ul>`},
+{refs:['afh5','acsVII','phak5'],more:`<ul>
+<li>AFH recovery order: <b>1</b> pitch nose-down to reduce AOA until the warning stops, <b>2</b> roll wings level, <b>3</b> add power as needed, <b>4</b> return to the desired flight path. AOA first, always.</li>
+<li>Stall + yaw (uncoordinated) can become a <b>spin</b>. Keep the ball centred near the stall.</li>
+<li>ACS PA.VII.A slow flight: altitude <span class="k">±100 ft</span>, heading <span class="k">±10°</span>, airspeed <span class="k">+10/−0 kt</span>, bank <span class="k">±10°</span>, no stall warning. PA.VII.B/C: recognize and recover promptly from power-off and power-on stalls.</li></ul>`},
+{refs:['phak4','phak5','afh5','acsI_F','acsVII'],more:`<ul>
+<li>Find the AOA where separation leaves the trailing edge (start of the stall break) and where C<sub>L</sub> peaks.</li>
+<li>Compare L/D at 2°, 4° and 8°: max L/D is not at max lift.</li>
+<li>Model: 2-D section, low speed, clean leaf. A real 3-D wing has lower slope, lower C<sub>L,max</sub> and root-first stall from washout.</li></ul>`},
+];
+STEPS.forEach((s,i)=>Object.assign(s,DEEP[i]||{}));
+const L_={step:0,t:0,mode:'tour',playing:true,speed:1};
+$('speed').addEventListener('input',e=>{L_.speed=+e.target.value;$('speedTxt').textContent=L_.speed+'×';});
+const dotsEl=$('dots');
+STEPS.forEach((st,i)=>{const b=document.createElement('button');b.type='button';b.setAttribute('aria-label','Step '+(i+1)+': '+st.title);b.onclick=()=>goStep(i,true);dotsEl.appendChild(b);});
+function probeAt(upper,x){const list=upper?UP:LO;probe={i:list[surfIdx(list,x)]};pb.hidden=false;updateProbe();}
+function stepA(st,t){if(st.a===null)return null;if(typeof st.a==='number')return st.a;const[a0,a1,t0,t1]=st.a,k=Math.max(0,Math.min(1,(t-t0)/(t1-t0)));return a0+(a1-a0)*k*k*(3-2*k);}
+function goStep(i,manual,keep){
+  i=Math.max(0,Math.min(STEPS.length-1,i));L_.step=i;L_.t=0;const st=STEPS[i];
+  L_.mode=i===STEPS.length-1?'explore':'tour';
+  $('stepNum').textContent='Step '+(i+1)+' of '+STEPS.length;$('stepTitle').textContent=st.title;$('stepBody').innerHTML=st.body;
+  [...dotsEl.children].forEach((b,k)=>{b.className=k===i?'on':(k<i?'done':'');b.setAttribute('aria-current',k===i?'step':'false');});
+  $('explore').hidden=L_.mode==='explore';Kit.step(st);$('next').disabled=i===STEPS.length-1;$('prev').disabled=i===0;
+  if(L_.mode==='explore'){S.markStag=false;S.wash=false;if(!keep){setTog('tP','showP',false);setTog('tB','showBL',true);setTog('tF','showF',true);setTog('tS','slow',false);probe=null;pb.hidden=true;}return;}
+  setTog('tP','showP',!!st.P);setTog('tB','showBL',!!st.B);setTog('tF','showF',!!st.F);setTog('tS','slow',!!st.slow);S.markStag=!!st.stag;S.wash=!!st.wash;
+  S.aT=stepA(st,0);$('aoa').value=S.aT;
+  if(st.probe)probeAt(st.probe[0],st.probe[1]);else{probe=null;pb.hidden=true;}
+  dirty=true;}
+function lessonTick(dt){const st=STEPS[L_.step];
+  if(L_.mode==='tour'&&L_.playing){L_.t+=dt*L_.speed;const a=stepA(st,L_.t);if(a!==null&&Math.abs(a-S.aT)>1e-4){S.aT=a;$('aoa').value=a;}
+    if(st.probe&&probe)updateProbe();
+    if(st.dur&&L_.t>=st.dur)goStep(L_.step+1);}
+  $('stepBar').style.width=(st.dur?Math.min(1,L_.t/st.dur)*100:100)+'%';}
+$('prev').onclick=()=>goStep(L_.step-1,true);$('next').onclick=()=>goStep(L_.step+1,true);
+$('explore').onclick=()=>goStep(STEPS.length-1,true);
+function setPlay(v){L_.playing=v;$('play').textContent=v?'Pause':'Play';}
+$('play').onclick=()=>setPlay(!L_.playing);
+Kit.mount({pause:()=>setPlay(false),sources:['phak4','phak5','phak8','afh2','afh5','aim7','acsI_F','acsVII','nasaWrong','nasaBern','airfoiltools']});
+if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches){L_.playing=false;$('play').textContent='Play';}
+
+// ================= Loop =================
+let moving=true,lastT=performance.now(),dirty=true;
+function frame(now){
+  const rdt=Math.min(0.05,(now-lastT)/1000);lastT=now;
+  lessonTick(rdt);
+  const da=S.aT-S.a;moving=Math.abs(da)>0.005;
+  if(moving||dirty){S.a+=Math.abs(da)<0.005?da:da*Math.min(1,rdt*7*Math.max(1,L_.speed));
+    setRot();solveState();buildZone();readouts();if(probe)updateProbe();pressDirty=true;dirty=false;}
+  if(gridReady&&L_.playing){const rate=(S.slow?0.12:0.42)*L_.speed,dt=rdt*rate,n=2;for(let k=0;k<n;k++){simT+=dt/n;stepSmoke(dt/n);}}
+  draw();
+  requestAnimationFrame(frame);}
+const ro=new ResizeObserver(()=>{resize();dirty=true;});ro.observe($('stage'));
+resize();goStep(0);setRot();solveState();buildZone();readouts();requestAnimationFrame(frame);
+</script>
+</body></html>

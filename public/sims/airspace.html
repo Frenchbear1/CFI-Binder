@@ -1,0 +1,903 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script src="sim-theme.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html{color-scheme:dark}body{margin:0;font:14px system-ui,sans-serif}[hidden]{display:none!important}
+.homebar{max-width:1240px;margin:0 auto;padding-top:14px}
+.homebar a{font:500 13px "IBM Plex Mono",ui-monospace,monospace;color:#8ea2a5;text-decoration:none;letter-spacing:.06em}
+.homebar a:hover,.homebar a:focus-visible{color:#e4ece9}</style>
+<meta name="theme-color" content="#0a1014">
+<title>Airspace Lab</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+/* Layout: lesson strip, then map (terrain or sectional style) + conditions on the left, side profile along your course + "what applies here" on the right. */
+:root{
+  --bg:#0a1014; --panel:#0f181c; --panel2:#0c1418; --line:#1f2f36; --ink:#e4ece9; --dim:#8ea2a5;
+  --ref:#5ccfe3; --var:#ffb54a; --warn:#e2574a; --ok:#7fd98a;
+  --cA:#a99bff; --cB:#5b9dff; --cC:#e063c6; --cD:#5b9dff; --cE:#8fe3b5; --cG:#c9b98f;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1240px;margin:0 auto;padding-block:14px 40px;display:flex;flex-direction:column;gap:16px}
+
+.lesson{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 20px;align-items:start}
+.lesson-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;grid-column:1/-1}
+#stepNum{font-family:var(--f-mono);font-size:12px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.dots{display:flex;gap:6px;flex-wrap:wrap}
+.dots button{width:18px;height:6px;border-radius:3px;border:0;background:var(--line);padding:0;cursor:pointer}
+.dots button.on{background:var(--ink)} .dots button.done{background:#4d6268}
+.dots button:focus-visible{outline:2px solid var(--ref);outline-offset:3px}
+.lesson-text{min-width:0}
+#stepTitle{font-family:var(--f-display);font-weight:600;font-size:26px;line-height:1.1;margin:2px 0 4px;text-wrap:balance}
+#stepBody{margin:0;max-width:74ch;min-height:4.5em}
+b.A{color:var(--cA)} b.B{color:var(--cB)} b.C{color:var(--cC)} b.D{color:var(--cD)} b.E{color:var(--cE)} b.G{color:var(--cG)} b.w{color:var(--warn)} b.m{color:var(--cC)}
+#stepBody b{font-weight:600}
+.bar{grid-column:1/-1;height:2px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:6px}
+#stepBar{height:100%;width:0;background:var(--dim)}
+.lctl{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+button.b{font:500 13px var(--f-body);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;min-height:34px}
+button.b:hover{border-color:#3d545c} button.b:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+button.b.primary{background:var(--ink);color:#0a1014;border-color:var(--ink);min-width:84px}
+button.b:disabled{opacity:.4;cursor:default}
+.speed{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:12px;color:var(--dim)}
+.speed input{width:120px;accent-color:var(--ink)}
+#speedTxt{min-width:4ch}
+@media (max-width:480px){.dots button{width:11px}}
+@media (max-width:760px){.lesson{grid-template-columns:minmax(0,1fr)}.lctl{align-items:stretch}.btns{justify-content:flex-start}}
+
+.stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+@media (max-width:920px){.stage{grid-template-columns:minmax(0,1fr)}.col{display:contents}#ctl{order:9}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.plabel{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;min-height:30px}
+.plabel .grp{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+canvas{display:block;width:100%;border-radius:6px}
+#plan{aspect-ratio:1/1;touch-action:none;cursor:crosshair}
+#side{height:290px;touch-action:none;cursor:grab}
+@media (max-width:520px){#side{height:240px}}
+.hint{font-size:12.5px;color:var(--dim)}
+
+.lab{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.ctl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 16px}
+.ctl .plabel,.ctl .tg{grid-column:1/-1}
+@media (max-width:520px){.ctl{grid-template-columns:minmax(0,1fr)}}
+.sl{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sl .h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sl output{font:600 18px var(--f-display);font-variant-numeric:tabular-nums;white-space:nowrap}
+input[type=range]{width:100%;accent-color:var(--ink);margin:0;height:24px}
+input[type=range]:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+.tg{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button,.tg button,.zb{font:500 12.5px var(--f-body);letter-spacing:0;text-transform:none;color:var(--dim);background:var(--panel2);border:0;padding:5px 11px;cursor:pointer;min-height:30px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true],.tg button[aria-pressed=true]{color:var(--ink);background:#1a2c34}
+.tg button,.zb{border:1px solid var(--line);border-radius:7px}
+.zb{min-width:32px;padding:5px 8px;font-size:15px;line-height:1}
+.seg button:focus-visible,.tg button:focus-visible,.zb:focus-visible{outline:2px solid var(--ref);outline-offset:1px}
+
+.ro{display:flex;flex-direction:column;gap:0}
+.ro .top{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:4px 14px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.ro .top div{display:flex;flex-direction:column;min-width:0}
+.ro strong{font-family:var(--f-display);font-weight:600;font-size:28px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.ro em{font-style:normal;font-family:var(--f-mono);font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row{display:grid;grid-template-columns:7.2em minmax(0,1fr);gap:10px;padding:6px 0;border-bottom:1px solid var(--line);align-items:start}
+.row:last-child{border-bottom:0}
+.row .lab{padding-top:3px}
+.row p{margin:0;font-size:13.5px;line-height:1.4;min-height:2.8em}
+.row p .kit-chip{margin-left:4px;font-size:10.5px;padding:0 7px;vertical-align:1px}
+.row p span.ov{display:block}
+.okc{color:var(--ok)} .badc{color:var(--warn)} .cau{color:var(--var)}
+
+/* airspace guide popup */
+.gd .kb{padding-top:2px}
+.gd details{border-bottom:1px solid var(--line)}
+.gd summary{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;cursor:pointer;list-style:none}
+.gd summary::-webkit-details-marker{display:none}
+.gd summary:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+.gd summary .nm{font-weight:600;font-size:14.5px}
+.gd summary .lm{font:500 11px var(--f-mono);color:var(--dim);white-space:nowrap}
+.gd summary::after{content:"+";font:16px var(--f-mono);color:var(--dim);grid-column:3;grid-row:1;justify-self:end;display:none}
+.sw{width:22px;height:14px;border-radius:3px;display:block}
+.gd .gb{padding:0 0 10px 32px;font-size:13.5px;line-height:1.45}
+.gd dl{display:grid;grid-template-columns:6.6em minmax(0,1fr);gap:4px 10px;margin:0 0 6px}
+.gd dt{font:500 10.5px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);padding-top:2px}
+.gd dd{margin:0}
+.gd .gx{color:var(--dim);margin:4px 0 6px}
+.gd .gf{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.gd .gf button{font:500 12px var(--f-mono);color:#0a1014;background:var(--ink);border:0;border-radius:6px;padding:3px 10px;cursor:pointer;min-height:26px}
+@media (max-width:520px){.gd .gb{padding-left:0}.gd summary .lm{display:none}.gd summary{grid-template-columns:22px minmax(0,1fr)}}
+</style>
+<link rel="stylesheet" href="sim-theme.css">
+</head>
+<body>
+<div class="homebar"><a href="../index.html" id="home">← All simulations</a></div>
+<div class="wrap">
+  <section class="lesson" aria-live="polite">
+    <div class="lesson-meta"><span id="stepNum">Step 1</span><div class="dots" id="dots" role="tablist" aria-label="Lesson steps"></div></div>
+    <div class="lesson-text">
+      <h2 id="stepTitle"></h2>
+      <p id="stepBody"></p>
+    </div>
+    <div class="lctl">
+      <div class="btns">
+        <button class="b" id="prev" type="button">◀ Back</button>
+        <button class="b primary" id="play" type="button">Pause</button>
+        <button class="b" id="next" type="button">Next ▶</button>
+        <button class="b" id="explore" type="button">Explore freely</button>
+      </div>
+      <label class="speed" for="speed">Speed <input id="speed" type="range" min="0.25" max="2" step="0.25" value="1"> <span id="speedTxt">1×</span></label>
+    </div>
+    <div class="bar"><div id="stepBar"></div></div>
+  </section>
+
+  <main class="stage">
+    <div class="col">
+      <div class="panel">
+        <div class="plabel"><span>Map · sample area</span>
+          <span class="grp">
+            <span class="seg" role="group" aria-label="Map style"><button type="button" data-style="terrain" aria-pressed="true">Terrain</button><button type="button" data-style="sect" aria-pressed="false">Sectional</button></span>
+            <button type="button" class="zb" id="zOut" aria-label="Zoom out">−</button><button type="button" class="zb" id="zIn" aria-label="Zoom in">+</button>
+            <button type="button" class="tgb zb" id="guideBtn" style="font-size:12.5px;padding:5px 10px">Airspace guide</button>
+          </span></div>
+        <canvas id="plan" aria-label="Top view of a sample airspace area over terrain, with your aircraft and course line"></canvas>
+        <div class="hint">Tap or drag on the map to move the aircraft. The side view follows the dashed course line.</div>
+      </div>
+      <div class="panel ctl" id="ctl">
+        <div class="plabel"><span>Conditions</span></div>
+        <div class="sl"><div class="h"><label class="lab" for="alt">Altitude</label><output id="altOut">4,500 ft MSL</output></div><input id="alt" type="range" min="0" max="1000" step="1" value="180"></div>
+        <div class="sl"><div class="h"><label class="lab" for="hdg">Course</label><output id="hdgOut">090°</output></div><input id="hdg" type="range" min="0" max="355" step="5" value="90"></div>
+        <div class="sl"><div class="h"><label class="lab" for="time">Local time</label><output id="timeOut">14:00 · Day</output></div><input id="time" type="range" min="0" max="23.75" step="0.25" value="14"></div>
+        <div class="sl"><div class="h"><label class="lab" for="vis">Flight visibility</label><output id="visOut">10 SM</output></div><input id="vis" type="range" min="0.5" max="10" step="0.5" value="10"></div>
+        <div class="sl"><div class="h"><label class="lab" for="cloud">Cloud layer base</label><output id="cloudOut">None</output></div><input id="cloud" type="range" min="1000" max="16000" step="100" value="16000"></div>
+        <div class="tg"><span class="lab" style="margin-right:4px">NOTAM</span><button type="button" id="tfrBtn" aria-pressed="false">Fire TFR active</button></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="panel">
+        <div class="plabel"><span>Side view · along your course</span><span id="slTxt">course 090°</span></div>
+        <canvas id="side" aria-label="Side view cross-section of the airspace along your course, 20 NM behind to 50 NM ahead"></canvas>
+        <div class="hint">Drag the aircraft up or down to change altitude, sideways to fly along the course.</div>
+      </div>
+      <div class="panel ro" aria-live="polite">
+        <div class="top">
+          <div><span class="lab">You are in</span><strong id="rCls">Class E</strong><em id="rSpan">1,200 AGL – 18,000 MSL</em></div>
+          <div><span class="lab">Position</span><strong id="rPos">4,500 MSL</strong><em id="rAgl">3,700 AGL</em></div>
+        </div>
+        <div class="row"><span class="lab">VFR minimums</span><p id="rMin"></p></div>
+        <div class="row"><span class="lab">Weather</span><p id="rWx"></p></div>
+        <div class="row"><span class="lab">To enter</span><p id="rEnt"></p></div>
+        <div class="row"><span class="lab">Equipment</span><p id="rEq"></p></div>
+        <div class="row"><span class="lab">Speed</span><p id="rSpd"></p></div>
+        <div class="row"><span class="lab">Also here</span><p id="rOv"></p></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<dialog class="kit-dlg gd" id="guide" aria-label="Airspace guide"><div class="kh"><span>Airspace guide</span><button type="button" aria-label="Close">×</button></div><div class="kb" id="guideBody"></div></dialog>
+
+<script src="kit.js"></script>
+<script>
+(()=>{
+"use strict";
+const TAU=Math.PI*2,rad=d=>d*Math.PI/180,deg=r=>r*180/Math.PI;
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),ss=k=>{k=clamp(k,0,1);return k*k*(3-2*k);},lerp=(a,b,k)=>a+(b-a)*k;
+const fmt=n=>Math.round(n).toLocaleString('en-US'),r100=v=>Math.round(v/100)*100;
+const $=id=>document.getElementById(id);
+const FD='"Barlow Condensed","Arial Narrow",sans-serif',FB='"IBM Plex Sans",system-ui,sans-serif',FM='"IBM Plex Mono",ui-monospace,monospace';
+const COL={A:'#a99bff',B:'#5b9dff',C:'#e063c6',D:'#5b9dff',E:'#8fe3b5',G:'#c9b98f',ink:'#e4ece9',dim:'#8ea2a5',warn:'#e2574a',ok:'#7fd98a',amb:'#ffb54a',screen:'#071014'};
+const W=50,TOP=70000; // map shows ±50 NM; x = NM east, y = NM north
+
+/* ================= Sample world (not a real chart) =================
+   Coast to the east, rolling lowlands, mountains rising to ~7,000 ft in the west.
+   Dimensions follow typical values in AIM Ch 3 and PHAK Ch 15; real airspace is drawn to fit each airport. */
+const coastX=y=>36+3*Math.sin(y/9)+2*Math.sin(y/4.3+1);
+function hsh(i,j){let h=Math.imul(i,374761393)+Math.imul(j,668265263)|0;h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967295;}
+function vn(x,y){const i=Math.floor(x),j=Math.floor(y),u=x-i,v=y-j,su=u*u*(3-2*u),sv=v*v*(3-2*v);
+  return lerp(lerp(hsh(i,j),hsh(i+1,j),su),lerp(hsh(i,j+1),hsh(i+1,j+1),su),sv)*2-1;}
+function fbm(x,y,o){let s=0,a=.5,f=1;for(let k=0;k<o;k++){s+=a*vn(x*f+k*17.3,y*f-k*9.1);f*=2.03;a*=.5;}return s;}
+function ridged(x,y){let s=0,a=.55,f=1,w=1;for(let k=0;k<4;k++){let r=1-Math.abs(vn(x*f+k*5.7,y*f+k*3.1));r*=r;s+=a*r*w;w=clamp(r*1.6,0,1);f*=2.1;a*=.5;}return s;}
+function rawElev(x,y){const xc=coastX(y);if(x>xc)return 0;const inl=xc-x;
+  const base=20+600*ss((inl-4)/55),hills=380*(fbm(x/9,y/9,4)*.5+.5)*ss(inl/12);
+  const wx=x+7*fbm(x/22+3,y/22,2),wy=y+7*fbm(x/22,y/22+8,2);
+  const mt=6800*ss((-x-10)/32)*clamp(ridged(wx/13,wy/13)*1.15,0,1.1);
+  return base+hills+mt;}
+const APT=[
+  {id:'MET',name:'METRO INTL',x:12,y:-10,twr:1,vor:1},
+  {id:'BAY',name:'BAYPORT',x:18,y:34,twr:1},
+  {id:'RIV',name:'RIVERSIDE',x:-26,y:-32,twr:1},
+  {id:'CED',name:'CEDAR',x:-8,y:26,vor:1},
+  {id:'PIN',name:'PINE RIDGE',x:-36,y:2,vor:1},
+  {id:'HAR',name:'HARBOR',x:-2,y:4},
+  {id:'OSP',name:'OSPREY',x:-4,y:-44},
+];
+const AP={};APT.forEach(a=>{a.fe=Math.round(rawElev(a.x,a.y)/10)*10;AP[a.id]=a;});
+const {MET,BAY,RIV,CED,PIN,OSP}=AP;
+function elevA(x,y){let e=rawElev(x,y);for(const a of APT){const d=Math.hypot(x-a.x,y-a.y);if(d<4)e=lerp(a.fe,e,ss((d-1.2)/2.8));}return e;}
+// elevation grid for speed (covers side-view windows beyond the map edge)
+const GX0=-112,GS=.5,GN=449,EG=new Float32Array(GN*GN);
+for(let j=0;j<GN;j++)for(let i=0;i<GN;i++)EG[j*GN+i]=elevA(GX0+i*GS,GX0+j*GS);
+function elev(x,y){const fx=clamp((x-GX0)/GS,0,GN-1.001),fy=clamp((y-GX0)/GS,0,GN-1.001),i=fx|0,j=fy|0,u=fx-i,v=fy-j;
+  const a=EG[j*GN+i],b=EG[j*GN+i+1],c=EG[(j+1)*GN+i],d=EG[(j+1)*GN+i+1];return (a+(b-a)*u)*(1-v)+(c+(d-c)*u)*v;}
+const isWater=(x,y)=>x>coastX(y);
+
+// Class B (Metro): surface core and two shelves, ceiling 10,000 MSL
+const BR=[{r:6,f:0},{r:12,f:3000},{r:20,f:4500}],BCEIL=10000;
+const bRing=r=>BR.find(q=>r<q.r);
+// Class C (Bayport): 5 NM core SFC–4,000 AGL, 10 NM shelf from 1,200 AGL (charted MSL)
+const CC={ceil:r100(BAY.fe+4000),shelf:r100(BAY.fe+1200)};
+// Class D (Riverside): 4.3 NM, SFC–2,500 AGL; tower 0700–2200, then Class E surface area
+const DD={r:4.3,ceil:r100(RIV.fe+2500)};
+const twrOpen=t=>t>=7&&t<22;
+// TRSA around Riverside
+const TR={r1:8,r2:12,f1:r100(RIV.fe+1500),f2:r100(RIV.fe+2500),ceil:r100(RIV.fe+5000)};
+// Class E 700 AGL transition areas
+const E7=[[MET,24],[BAY,14],[RIV,8],[CED,8],[PIN,6]];
+const cedSfc=(x,y)=>Math.hypot(x-CED.x,y-CED.y)<4||(Math.abs(x-CED.x)<1.6&&y<CED.y&&y>CED.y-8);
+// Remote area where Class G reaches 14,500 MSL (faded blue edge), crossed by Victor airways
+const REM=[[-70,70],[-70,14],[-40,14],[-30,22],[-26,34],[-28,70]];
+const AWY=[{n:'V9',p:[[CED.x,CED.y],[-62,49]]},{n:'V3',p:[[MET.x,MET.y],[PIN.x,PIN.y],[-62,8]]},{n:'V21',p:[[MET.x,MET.y],[CED.x,CED.y]]}];
+function inPoly(P,x,y){let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const[xi,yi]=P[i],[xj,yj]=P[j];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)c=!c;}return c;}
+function segD(x,y,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],L=dx*dx+dy*dy,k=clamp(((x-a[0])*dx+(y-a[1])*dy)/L,0,1);return Math.hypot(x-a[0]-k*dx,y-a[1]-k*dy);}
+function lineD(P,x,y){let m=1e9;for(let i=1;i<P.length;i++)m=Math.min(m,segD(x,y,P[i-1],P[i]));return m;}
+function dists(x,y){return{rb:Math.hypot(x-MET.x,y-MET.y),rc:Math.hypot(x-BAY.x,y-BAY.y),rd:Math.hypot(x-RIV.x,y-RIV.y),
+  e7:E7.some(([a,r])=>Math.hypot(x-a.x,y-a.y)<r),rem:inPoly(REM,x,y),awy:Math.min(...AWY.map(a=>lineD(a.p,x,y)))};}
+
+// Overlays: special use and other airspace areas. lo/hi take terrain elevation g (ft MSL).
+const SFC=g=>g;
+const OV=[
+ {id:'veil',grp:'veil',name:'Mode C veil',sh:{c:[MET.x,MET.y,30]},lo:SFC,hi:()=>10000,lim:'SFC–10,000 MSL',st:'veil'},
+ {id:'trsa',grp:'trsa',name:'Riverside TRSA',sh:{c:[RIV.x,RIV.y,TR.r2]},lo:(g,x,y)=>{const r=Math.hypot(x-RIV.x,y-RIV.y);return r<DD.r?DD.ceil:r<TR.r1?TR.f1:TR.f2;},hi:()=>TR.ceil,lim:'to '+fmt(TR.ceil)+' MSL',st:'trsa'},
+ {id:'P',grp:'P',name:'P-99',sh:{c:[26,6,2]},lo:SFC,hi:()=>4000,lim:'SFC–4,000 MSL',st:'blue'},
+ {id:'R',grp:'R',name:'R-9901',sh:{p:[[-26,5],[-14,5],[-13,13],[-20,16],[-26,13]]},lo:SFC,hi:()=>12000,on:t=>t>=7&&t<19,hrs:'0700–1900',lim:'SFC–12,000 MSL',st:'blue'},
+ {id:'W',grp:'W',name:'W-999',sh:{r:[41,-36,80,30]},lo:SFC,hi:()=>40000,on:t=>t>=8&&t<20,hrs:'0800–2000',lim:'SFC–FL400',st:'blue'},
+ {id:'MOA',grp:'MOA',name:'HAWK MOA',sh:{r:[-80,-24,-30,-8]},lo:()=>9000,hi:()=>18000,on:t=>t>=8&&t<22,hrs:'0800–2200',lim:'9,000 MSL–FL180',st:'mag'},
+ {id:'AA',grp:'AA',name:'A-999',sh:{r:[20,-48,34,-34]},lo:SFC,hi:()=>4500,lim:'SFC–4,500 MSL',st:'mag'},
+ {id:'NSA',grp:'NSA',name:'NSA',sh:{c:[31,-18,2.5]},lo:SFC,hi:()=>2500,lim:'SFC–2,500 MSL',st:'nsa'},
+ {id:'park',grp:'park',name:'STONE PEAKS NP',sh:{r:[-80,-80,-40,-36]},lo:SFC,hi:g=>g+2000,lim:'request ≥ 2,000 AGL',st:'park'},
+ {id:'IR',grp:'MTR',name:'IR123',sh:{l:[[-62,-6],[-30,-3],[-22,-12],[-10,-14]],w:4},lo:g=>g+500,hi:()=>9000,lim:'500 AGL–9,000 MSL',st:'mtr'},
+ {id:'VR',grp:'MTR',name:'VR1234',sh:{l:[[-20,-62],[-14,-40],[-6,-32]],w:4},lo:SFC,hi:g=>g+1500,lim:'SFC–1,500 AGL',st:'mtr'},
+ {id:'jump',grp:'jump',name:'Parachute jumping',sh:{c:[OSP.x,OSP.y,2.5]},lo:SFC,hi:()=>12500,lim:'SFC–12,500 MSL',st:'act'},
+ {id:'glider',grp:'glider',name:'Glider operations',sh:{c:[CED.x,CED.y,3]},lo:SFC,hi:()=>8000,lim:'SFC–8,000 MSL',st:'act'},
+ {id:'ADIZ',grp:'ADIZ',name:'ADIZ',sh:{r:[44,-90,120,90]},lo:SFC,hi:()=>TOP,lim:'SFC and up',st:'adiz'},
+ {id:'TFR',grp:'TFR',name:'TFR · fire',sh:{c:[-40,32,5]},lo:SFC,hi:()=>11000,lim:'SFC–11,000 MSL',st:'tfr',tfr:1},
+];
+const OVI={};OV.forEach(o=>OVI[o.id]=o);
+function inSh(sh,x,y){if(sh.c)return Math.hypot(x-sh.c[0],y-sh.c[1])<sh.c[2];if(sh.r)return x>=sh.r[0]&&x<=sh.r[2]&&y>=sh.r[1]&&y<=sh.r[3];if(sh.p)return inPoly(sh.p,x,y);if(sh.l)return lineD(sh.l,x,y)<sh.w;return false;}
+const ovOn=(o,t)=>!o.on||o.on(t);
+
+/* ---------- classification ---------- */
+function clsAt(x,y,h,g,t,d){
+  const agl=h-g;
+  if(h>=60000)return{c:'E',k:'600'};
+  if(h>=18000)return{c:'A'};
+  if(d.rb<20){const q=bRing(d.rb);if(h>=(q.f||g)&&h<BCEIL)return{c:'B',k:q.f?'shelf':'core'};}
+  if(d.rc<10&&h<CC.ceil&&(d.rc<5||h>=CC.shelf))return{c:'C',k:d.rc<5?'core':'shelf'};
+  if(d.rd<DD.r&&h<DD.ceil)return twrOpen(t)?{c:'D',k:'core'}:{c:'E',k:'sfcD'};
+  if(cedSfc(x,y))return{c:'E',k:'sfc'};
+  if(h>=14500&&agl>=1500)return{c:'E',k:'145'};
+  if(d.rem){if(d.awy<4&&agl>=1200)return{c:'E',k:'awy'};return{c:'G',k:'rem'};}
+  const f=d.e7?700:1200;return agl>=f?{c:'E',k:String(f)}:{c:'G',k:String(f)};
+}
+// vertical stack of classes over one point: [{lo,hi,c,ll,hl}] with floor/ceiling labels
+function column(x,y,t){
+  const g=elev(x,y),d=dists(x,y),bp=[[g,'SFC']];const add=(h,l)=>{if(h>g+1)bp.push([h,l]);};
+  add(g+700,'700 AGL');add(g+1200,'1,200 AGL');add(g+1500,'1,500 AGL');add(14500,'14,500 MSL');add(18000,'FL180');add(60000,'FL600');
+  if(d.rb<20){const q=bRing(d.rb);if(q.f)add(q.f,fmt(q.f)+' MSL');add(BCEIL,'10,000 MSL');}
+  if(d.rc<10){add(CC.ceil,fmt(CC.ceil)+' MSL');if(d.rc>=5)add(CC.shelf,fmt(CC.shelf)+' MSL');}
+  if(d.rd<DD.r)add(DD.ceil,fmt(DD.ceil)+' MSL');
+  bp.push([TOP,'']);bp.sort((a,b)=>a[0]-b[0]);
+  const iv=[];for(let i=0;i<bp.length-1;i++){const lo=bp[i][0],hi=bp[i+1][0];if(hi-lo<1)continue;const c=clsAt(x,y,(lo+hi)/2,g,t,d).c,L=iv[iv.length-1];
+    if(L&&L.c===c){L.hi=hi;L.hl=bp[i+1][1];}else iv.push({lo,hi,c,ll:bp[i][1],hl:bp[i+1][1]});}
+  return{g,d,iv};
+}
+function ovCol(x,y,g,t){const out=[];for(const o of OV){if(o.tfr&&!S.tfr)continue;if(!inSh(o.sh,x,y))continue;const lo=o.lo(g,x,y),hi=o.hi(g,x,y);if(hi>lo)out.push({o,lo,hi,on:ovOn(o,t)});}return out;}
+const nightAt=t=>t<6.5||t>=18.5;
+
+// 14 CFR 91.155 basic VFR weather minimums
+function vfrMins(c,agl,h,night){
+  if(c==='A')return null;
+  const std={vis:3,b:500,a:1000,hz:'2,000 ft'},hi={vis:5,b:1000,a:1000,hz:'1 SM'};
+  if(c==='B')return{vis:3,clear:1};
+  if(c==='C'||c==='D')return std;
+  if(c==='E')return h<10000?std:hi;
+  if(agl<=1200)return night?std:{vis:1,clear:1};
+  if(h<10000)return night?std:{vis:1,b:500,a:1000,hz:'2,000 ft'};
+  return hi;}
+const minsTxt=m=>!m?'VFR not permitted: IFR only':m.vis+' SM · '+(m.clear?'clear of clouds':fmt(m.b)+' below · '+fmt(m.a)+' above · '+m.hz+' horizontal');
+const CLOUD_THICK=2000;
+
+/* ================= State ================= */
+const S={x:-14,y:-2,alt:5500,hdg:90,time:13,vis:10,cloud:null,tfr:false,style:'terrain',zoom:1,vx:0,vy:0,playing:true,speed:1,step:0,t:0,mode:'tour',focus:null};
+const T={x:S.x,y:S.y,alt:S.alt,hdg:S.hdg,zoom:1};
+let drag=null,userStyle='terrain';
+
+/* ================= Lesson ================= */
+const t2=(at,v,a,text,pos)=>({at,v,a,text,pos}); // tag: time, view, anchor, text, label position (fraction of canvas)
+const D35='['+Math.round(DD.ceil/100)+']',CL=Math.round(CC.ceil/100)+'/SFC',CS=Math.round(CC.ceil/100)+'/'+Math.round(CC.shelf/100);
+const STEPS=[
+{title:'The airspace system',dur:14,set:{x:-16,y:-2,alt:5500,hdg:90,time:13,style:'terrain',zoom:1,tfr:false,vis:10,cloud:null},anim:{x:[-16,-6,1,13]},
+ body:'U.S. airspace is a set of 3-D blocks. Classes <b class="A">A</b>, <b class="B">B</b>, <b class="C">C</b>, <b class="D">D</b> and <b class="E">E</b> are <b>controlled</b>: ATC provides IFR service there. <b class="G">Class G</b> is uncontrolled. The map shows where each block sits over the terrain; the side view slices it along your course, 20 NM behind to 50 NM ahead.',
+ tags:[t2(1,'plan',[MET.x,MET.y],'Class B airport',[.72,.62]),t2(3,'plan',[BAY.x,BAY.y],'Class C',[.82,.1]),t2(5,'plan',[RIV.x,RIV.y],'Class D',[.38,.9]),t2(7,'side','plane','You, in Class E',[.3,.3])],
+ refs:['phak15','aim31','p71','acsI_E'],more:`<ul>
+<li><b>Controlled airspace</b> (14 CFR 1.1) is airspace where ATC service is provided to IFR flights, and to VFR flights where the class requires it. Being in controlled airspace does <b>not</b> by itself mean a VFR pilot must talk to anyone.</li>
+<li>The letters roughly track traffic: <b>A</b> high-altitude IFR, <b>B</b> the busiest airports, <b>C</b> busy airports with radar approach control, <b>D</b> towered airports, <b>E</b> all other controlled airspace, <b>G</b> the rest.</li>
+<li>On top of the classes sit <b>special use airspace</b> (14 CFR 73, AIM 3-4) and <b>other airspace areas</b> (AIM 3-5): TFRs, MTRs, TRSAs, parachute areas and more. Open the <b>Airspace guide</b> above the map for every type.</li></ul>`},
+{title:'Terrain, MSL and AGL',dur:16,set:{x:-6,y:-1,alt:8500,hdg:270,style:'terrain',zoom:1},anim:{x:[-6,-36,1,14]},ev:[{at:8,style:'sect'}],
+ body:'Chart altitudes are in feet <b>MSL</b>, like your altimeter. Many floors are in feet <b>AGL</b>, above the ground. Fly west at a steady 8,500 MSL: the ground rises and your height above it shrinks. The map now flips to <b>Sectional</b> style: tints show elevation bands and the big blue numbers are Maximum Elevation Figures.',
+ tags:[t2(2,'side',[35,6000],'Terrain rises west',[.75,.62]),t2(9,'plan',[-37.5,-12.5],'MEF: highest terrain\nor obstacle + margin',[.2,.6])],
+ refs:['phak16','cug','vfrChart','p91_119','p91_159'],more:`<ul>
+<li><b>AGL = MSL − terrain elevation.</b> Sectional altitudes are MSL unless marked AGL. Class C and D ceilings are set in AGL but charted in MSL.</li>
+<li>Each quadrangle (30 minutes of latitude by 30 of longitude) shows a <b>Maximum Elevation Figure</b>, e.g. <span class="k">7<sup>6</sup></span> = 7,600 MSL: the highest known terrain or obstacle in it, with an allowance added, rounded up to the next 100 ft.</li>
+<li>§91.119: <span class="k">1,000 ft</span> above the highest obstacle within 2,000 ft horizontally over congested areas; <span class="k">500 ft</span> from any person, vessel, vehicle or structure elsewhere; always high enough for an emergency landing without undue hazard.</li>
+<li>§91.159 VFR cruising altitudes above 3,000 AGL: magnetic course 000–179° → odd thousands + 500 (3,500, 5,500…); 180–359° → even thousands + 500.</li></ul>`},
+{title:'Class G: uncontrolled',dur:14,set:{x:-9,y:-48,alt:2000,hdg:90,zoom:1.6},anim:{agl:[500,1700,2,11],x:[-9,-6,1,13]},
+ body:'Near the ground, away from busier airports, is <b class="G">Class G</b>. ATC has no authority over it and gives no IFR separation. Here it reaches up to <b>1,200 ft AGL</b>, where <b class="E">Class E</b> begins. Watch the class change as you climb through that floor.',
+ tags:[t2(1,'side',[25,1000],'G: SFC to 1,200 AGL',[.72,.8]),t2(7,'side','plane','Crossing the\nClass E floor',[.5,.3])],
+ refs:['aim33','p91_126','p91_155','phak15'],more:`<ul>
+<li>Class G usually reaches up to <span class="k">700</span> or <span class="k">1,200 ft AGL</span>. In some remote areas it reaches <span class="k">14,500 MSL</span> (next steps).</li>
+<li>§91.126: at a non-towered airport in Class G, make <b>left</b> traffic unless the chart or Chart Supplement shows right traffic.</li>
+<li>No radio, transponder or clearance is needed for VFR in Class G. You still need the weather minimums and must see and avoid other aircraft.</li></ul>`},
+{title:'Class E: 1,200 and 700 ft floors',dur:15,set:{x:-36,y:-13,alt:5000,hdg:0,zoom:1.8},anim:{agl:[900,900,0,1],y:[-13,-1,1,11]},
+ body:'<b class="E">Class E</b> is controlled airspace that is not A, B, C or D. It usually starts at 1,200 ft AGL. Near airports with instrument approaches it starts at <b>700 ft AGL</b>, charted as a faded magenta band. Fly at 900 AGL toward Pine Ridge: G becomes E at the band. A dashed magenta ring is a Class E <b>surface area</b>: E down to the ground.',
+ tags:[t2(1,'plan',[PIN.x+4.2,PIN.y-4.2],'Faded magenta:\nE from 700 AGL',[.12,.36]),t2(7,'side','plane','900 AGL: now in E',[.55,.24])],
+ refs:['aim32','cug','p71','phak15'],more:`<ul>
+<li>Kinds of Class E: <b>surface areas</b> (dashed magenta, a non-towered airport with weather reporting, or a Class D when its tower closes); <b>extensions</b> to a surface area; <b>700 AGL transition areas</b>; <b>1,200 AGL</b> and higher floors; <b>federal airways</b>; <b>14,500 MSL</b> to 17,999 MSL; and everything above <span class="k">FL600</span>.</li>
+<li>A floor that is neither 700 nor 1,200 AGL is charted as an MSL number beside a staggered blue line, e.g. <span class="k">2500</span>.</li>
+<li>A Class E surface area needs <span class="k">1,000 ft</span> ceiling and <span class="k">3 SM</span> for VFR, the same as B, C and D surface areas (§91.155(c)–(d)). Otherwise ask ATC for <b>Special VFR</b>.</li></ul>`},
+{title:'Where Class G goes higher',dur:16,set:{x:-16,y:48,alt:9500,hdg:270,zoom:1.6},anim:{x:[-16,-45,1,9],hdg:[270,180,9.3,10.3],y:[48,37,10,15]},
+ body:'In parts of the West, <b class="G">Class G</b> reaches up to <b>14,500 MSL</b>. A faded blue edge marks where that starts. Cross it at 9,500 and you leave Class E for Class G. Victor airways (light blue lines) carry Class E from 1,200 AGL, <b>4 NM</b> either side of centerline: turn south onto V9 and you are back in E.',
+ tags:[t2(1,'plan',[-27.2,40],'Faded blue: G up\nto 14,500 beyond',[.62,.2]),t2(10,'plan',[-44,41.3],'Airway: E from\n1,200 AGL',[.3,.42])],
+ refs:['aim32','aim33','p71','cug'],more:`<ul>
+<li>Class E at <span class="k">14,500 MSL</span> covers the 48 states and Alaska, but not the airspace within <span class="k">1,500 ft AGL</span> over high terrain (14 CFR 71.71). Over a 14,000 ft peak, G reaches 15,500 MSL.</li>
+<li>Federal airways are Class E from 1,200 AGL to 17,999 MSL, normally 4 NM each side of centerline (wider beyond 51 NM from the VOR).</li>
+<li>Class G above 1,200 AGL and below 10,000 MSL: by day 1 SM and 500 / 1,000 / 2,000 from clouds; at night 3 SM. At or above 10,000 MSL: 5 SM and 1,000 / 1,000 / 1 SM.</li></ul>`},
+{title:'High altitude: E, then A',dur:14,set:{x:6,y:-46,alt:13500,hdg:90,zoom:1},anim:{alt:[13500,19500,1,11]},
+ body:'From <b>14,500 MSL</b> to 18,000 everything is <b class="E">Class E</b>. From <b>18,000 MSL to FL600</b> is <b class="A">Class A</b>: everyone there is on an IFR clearance, so VFR is not allowed. Above FL600 is Class E again.',
+ tags:[t2(1,'side',[30,14500],'14,500 MSL:\nClass E everywhere',[.75,.42]),t2(8,'side','plane','FL180: Class A',[.4,.14])],
+ refs:['p91_135','aim32','p91_215','p91_225'],more:`<ul>
+<li>Class A (§91.135): instrument rating, IFR flight plan and clearance, two-way radio, Mode C transponder and <b>ADS-B Out on 1090 MHz ES</b> (UAT is not allowed there, §91.225(a)).</li>
+<li>At and above <span class="k">18,000 MSL</span> altimeters go to <span class="k">29.92 inHg</span> and altitudes become flight levels. With low local pressure the lowest usable flight level rises above FL180.</li>
+<li>Class A is not charted on sectionals. It overlies the 48 states and Alaska, and coastal waters within 12 NM.</li></ul>`},
+{title:'Class D: towered airport',dur:16,set:{x:-14,y:-32,alt:r100(RIV.fe+1500),hdg:270,time:20.5,zoom:2.4},anim:{x:[-14,-24,1,9],time:[20.5,22.25,10,13]},
+ body:`A towered airport without radar approach control has <b class="D">Class D</b>: a cylinder about 4 NM in radius from the surface to about 2,500 ft AGL. Dashed blue on the chart; <b>${D35}</b> means up to ${fmt(DD.ceil)} MSL. Establish <b>two-way radio communication</b> with the tower before entering. When this tower closes at 2200 it becomes a Class E surface area.`,
+ tags:[t2(1,'plan',[RIV.x+3.2,RIV.y+3.2],D35+': ceiling\n'+fmt(DD.ceil)+' MSL',[.75,.25]),t2(10,'side','plane','Tower closed:\nnow Class E',[.55,.2])],
+ refs:['p91_129','aim32','p91_117','p91_125'],more:`<ul>
+<li><b>Two-way communication</b> is established when the controller answers using your call sign: "Cessna 123AB, standby" counts; "Aircraft calling, standby" does not.</li>
+<li>Speed (§91.117): <span class="k">200 KIAS</span> max at or below 2,500 AGL within 4 NM of the primary airport of a Class C or D.</li>
+<li>Satellite airports inside D: contact the primary tower. Departing a non-towered satellite: contact the tower as soon as practicable.</li>
+<li>Radio failure, light signals (§91.125): steady green = cleared to land; flashing green = return for landing; steady red = give way and keep circling; flashing red = airport unsafe, do not land; flashing white = return to starting point (ground); alternating red/green = exercise extreme caution.</li></ul>`},
+{title:'Class C: radar approach control',dur:16,set:{x:18,y:50,alt:CC.shelf-700,hdg:180,time:14,zoom:2},anim:{y:[50,41,1,7],alt:[CC.shelf-700,CC.shelf+600,8,12]},
+ body:`Busier airports with radar approach control have <b class="C">Class C</b>: a <b>5 NM core</b> from the surface to 4,000 ft AGL and a <b>10 NM shelf</b> from 1,200 ft AGL. Labels give ceiling over floor in hundreds of feet MSL: ${CL}, ${CS}. Under the shelf you are outside it; climb through the floor and you are in. Contact approach first.`,
+ tags:[t2(1,'plan',[BAY.x,BAY.y+7.5],CS+': shelf from\n'+fmt(CC.shelf)+' to '+fmt(CC.ceil),[.6,.12]),t2(9,'side','plane','Above the floor:\nnow in Class C',[.52,.22])],
+ refs:['p91_130','aim32','p91_215','p91_117'],more:`<ul>
+<li>Entry: <b>two-way radio communication</b> with ATC before entering (same test as Class D). No "clearance" is needed. If ATC says "remain outside the Class Charlie," you may not enter.</li>
+<li>Equipment: Mode C and <b>ADS-B Out</b> inside Class C, <b>and above it</b> up to 10,000 MSL within its lateral limits (§91.215, §91.225).</li>
+<li>A procedural <b>outer area</b> to about 20 NM offers radar service; it is not Class C and participation is voluntary.</li>
+<li>VFR minimums: 3 SM; 500 below, 1,000 above, 2,000 horizontal.</li></ul>`},
+{title:'Class B: the upside-down wedding cake',dur:17,set:{x:-17,y:-10,alt:2500,hdg:90,zoom:1.7},anim:{x:[-17,3,1,13]},
+ body:'The busiest airports have <b class="B">Class B</b>, from the surface to 10,000 MSL in shelves. You need an explicit <b>clearance</b>: "cleared into the Class Bravo." Fly in under the shelves at 2,500 MSL: you stay outside it, but you are inside the <b>30 NM Mode C veil</b> and speed is limited to 200 KIAS under a shelf.',
+ tags:[t2(1,'plan',[MET.x-30,MET.y],'Mode C veil: 30 NM',[.18,.3]),t2(5,'side',[12,6500],'100/45: shelf from\n4,500 to 10,000',[.45,.12]),t2(10,'side','plane','Under the shelf',[.3,.7])],
+ refs:['p91_131','p61_95','p91appD','p91_215','p91_117'],more:`<ul>
+<li>Clearance must be explicit. Radar contact, a squawk code or "standby" is <b>not</b> a clearance.</li>
+<li>Pilot: at least a private certificate, or a student, sport or recreational pilot with a §61.95 endorsement. At the primary airports in Part 91 App D, Sec 4, a student may not take off or land.</li>
+<li>Equipment: two-way radio, Mode C and ADS-B Out in the B and within the <span class="k">30 NM veil</span> from the surface to 10,000 MSL. IFR in B also needs a VOR or TACAN receiver (or suitable RNAV).</li>
+<li>Speed: 250 KIAS below 10,000 MSL; <span class="k">200 KIAS</span> under a shelf or in a VFR corridor. VFR minimums: 3 SM and <b>clear of clouds</b>.</li>
+<li>Terminal Area Charts show VFR flyways, corridors and transition routes around and through B.</li></ul>`},
+{title:'Transponder and ADS-B Out',dur:16,set:{x:8,y:30,alt:9500,hdg:180,zoom:1.4},anim:{y:[30,17,1,7],alt:[9500,10500,9,13]},
+ body:'Mode C and ADS-B Out are required in Classes <b class="A">A</b>, <b class="B">B</b> and <b class="C">C</b>; inside the 30 NM <b>Mode C veil</b> up to 10,000 MSL; <b>above</b> a Class C up to 10,000 MSL; and everywhere <b>above 10,000 MSL</b> except at or below 2,500 AGL. Watch the Equipment row as you cross the veil and climb.',
+ tags:[t2(2,'plan',[MET.x-4,MET.y+29.7],'Veil boundary',[.3,.12]),t2(10,'side','plane','Above 10,000 MSL',[.35,.22])],
+ refs:['p91_215','p91_225','aim423','adsb'],more:`<ul>
+<li>§91.215(b) transponder (Mode C) and §91.225 ADS-B Out cover the same airspace, except that Class A needs 1090ES ADS-B, and ADS-B is also required over the Gulf of Mexico at and above 3,000 MSL within 12 NM of the coast.</li>
+<li>Aircraft certificated without an engine-driven electrical system (gliders, balloons, some antiques) may fly in the veil and above Class C without them, outside B and C and below 10,000 MSL.</li>
+<li>Squawk 1200 for VFR unless ATC assigns a code. Emergency 7700, radio failure 7600, hijack 7500. ATC can grant deviations: request at least 1 hour ahead (§91.215(d)).</li></ul>`},
+{title:'Prohibited, restricted and warning',dur:15,set:{x:-20,y:-1,alt:6500,hdg:0,time:6.25,zoom:1.6},anim:{y:[-1,9,1,9],time:[6.25,7.25,3,8]},
+ body:'Blue hatched borders mark areas with hazards you cannot see. <b>Prohibited</b> (P-): no flight at all. <b>Restricted</b> (R-): while active, no entry without permission from the controlling agency. Here R-9901 goes active at 0700. <b>Warning</b> (W-): similar hazards beyond 3 NM offshore, where the U.S. cannot restrict flight.',
+ tags:[t2(1,'plan',[26,6],'P-99: no flight',[.85,.28]),t2(3,'plan',[44,-4],'W-999 offshore',[.86,.58]),t2(8,'side','plane','R-9901 now ACTIVE',[.45,.2])],
+ refs:['aim34','p91_133','p73','sua'],more:`<table><tr><th>Area</th><th>Rule for VFR</th></tr>
+<tr><td>Prohibited</td><td>No flight without permission of the using agency (e.g. P-56 over Washington, DC).</td></tr>
+<tr><td>Restricted</td><td>Active: permission from the controlling agency (§91.133). Not active: ATC may clear you through as joint use; IFR traffic is routed through.</td></tr>
+<tr><td>Warning</td><td>No permission needed, but hazards such as gunnery exist. Avoid when active.</td></tr></table>
+<ul><li>Times, altitudes and controlling agency are in the special use airspace table on the sectional margin. "By NOTAM" means check NOTAMs; live status is at sua.faa.gov.</li></ul>`},
+{title:'MOAs, alert areas and MTRs',dur:15,set:{x:-24,y:-16,alt:10500,hdg:270,time:10,zoom:1.3},anim:{x:[-24,-42,1,11]},
+ body:'Magenta hatched borders mark training areas you may fly through. A <b>MOA</b> separates military training from IFR traffic: VFR is allowed, but check its status and keep looking. An <b>alert area</b> holds heavy pilot training. Gray lines are <b>military training routes</b>, where jets may fly over 250 knots, some below 1,500 ft AGL.',
+ tags:[t2(1,'plan',[27,-41],'A-999: heavy training',[.86,.92]),t2(4,'plan',[-17,-51],'VR1234',[.3,.95]),t2(7,'side','plane','Inside Hawk MOA',[.5,.22])],
+ refs:['aim34','aim35','sua','p91_117'],more:`<ul>
+<li><b>MOA</b>: IFR traffic is kept out while it is active; VFR may enter. Ask FSS or the controlling agency (on the chart margin) for status. Aerobatics and abrupt maneuvers are common.</li>
+<li><b>Alert area</b>: everyone, military and civil, is equally responsible for collision avoidance. No permission needed.</li>
+<li><b>Controlled firing area (CFA)</b>: not charted. Activity stops when a spotter or radar sees an aircraft approach.</li>
+<li><b>MTRs</b> (AIM 3-5-2): <b>IR</b> = flown IFR, <b>VR</b> = flown VFR. A 4-digit number means the whole route is at or below 1,500 AGL; a 3-digit number means some segments are above 1,500 AGL. Route width and altitude are in the DoD Area Planning AP/1B; ask FSS which are hot.</li></ul>`},
+{title:'TFRs and security areas',dur:15,set:{x:-23,y:30,alt:9500,hdg:270,tfr:true,zoom:1},anim:{x:[-23,-33,1,10]},
+ body:'A <b class="w">TFR</b> is not printed on the chart: it is issued by NOTAM for fires, VIP visits, stadiums, space launches and more. Check NOTAMs before every flight. A <b>National Security Area</b> asks you to avoid flight over a sensitive site and can be made prohibited by NOTAM. Offshore, the <b>ADIZ</b> needs a flight plan, radio, transponder and position reports.',
+ tags:[t2(1,'plan',[-40,32],'Fire TFR (NOTAM)',[.18,.12]),t2(4,'plan',[31,-18],'NSA',[.9,.48]),t2(7,'plan',[45,20],'ADIZ',[.92,.2])],
+ refs:['p91_137','p91_141','p91_145','p99_7','aim35','tfr','p99','aim56'],more:`<ul>
+<li>TFR types: disaster/hazard such as fires (§91.137), Hawaii disaster (§91.138), emergency air traffic rules (§91.139), VIP movement (§91.141), space operations (§91.143), aerial demonstrations and major sporting events (§91.145), and special security instructions (§99.7), which include the stadium TFR: 3 NM, up to 3,000 AGL, 1 hour before to 1 hour after qualifying events.</li>
+<li>A §91.137(a)(1) fire TFR excludes everyone except relief aircraft under the official in charge; (a)(2) still lets some aircraft in under conditions; read the NOTAM text.</li>
+<li><b>ADIZ</b> (Part 99): file and activate a DVFR (or IFR) flight plan, keep a two-way radio and Mode C transponder on, and report position before entering.</li>
+<li><b>SFRA</b>: special rules areas such as the DC SFRA (Part 93 Subpart V) need online special awareness training (§91.161), a flight plan, a discrete squawk and radio contact. Its inner Flight Restricted Zone is closed to most GA. Grand Canyon, Los Angeles and Hudson River areas have their own rules.</li></ul>`},
+{title:'Other airspace areas',dur:15,set:{x:-47,y:-40,alt:7500,hdg:90,tfr:false,zoom:1.2},anim:{x:[-47,-30,1,12]},
+ body:'Some areas give advice, not rules. Over <b>national parks</b> and wildlife refuges, stay at least <b>2,000 ft above the surface</b>. A <b>TRSA</b> (gray rings) offers radar sequencing to VFR traffic; participation is voluntary. <b>Parachute</b> and <b>glider</b> symbols warn of that activity: jumpers may be falling through your altitude.',
+ tags:[t2(1,'plan',[-44,-38],'Park: 2,000 AGL',[.12,.66]),t2(4,'plan',[RIV.x+11,RIV.y],'TRSA',[.52,.62]),t2(7,'plan',[OSP.x,OSP.y],'Parachute jumping',[.6,.96]),t2(10,'plan',[CED.x,CED.y],'Glider operations',[.32,.12])],
+ refs:['aim35','aim74','ac91_36','p105','cug'],more:`<ul>
+<li><b>Parks and refuges</b>: the 2,000 ft AGL request (AC 91-36D, AIM 7-4) is advisory, but some areas such as Grand Canyon have binding rules (Part 93).</li>
+<li><b>TRSA</b> (AIM 3-5-6): radar sequencing and separation for participating VFR aircraft around some Class D airports. It is not a class; the underlying class rules (D, E, G) still apply.</li>
+<li><b>Parachute jumping</b> (Part 105, AIM 3-5-4): listed in the Chart Supplement. Jump aircraft usually announce on ATC or CTAF; jumpers can descend through Class E and even B with authorization.</li>
+<li><b>Published VFR routes</b> (AIM 3-5-5): VFR flyways, corridors and Class B transition routes, shown on Terminal Area Charts.</li>
+<li><b>Airport advisory</b> (AIM 3-5-1): where a Flight Service Station is on a non-towered field, Local Airport Advisory is given within 10 SM.</li></ul>`},
+{title:'VFR weather minimums',dur:16,set:{x:2,y:30,alt:5500,hdg:90,time:14,vis:6,cloud:9000,zoom:1.3},anim:{cloud:[9000,5700,1,11]},
+ body:'Each class has its own minimum <b>visibility</b> and <b>distance from clouds</b>. In Class E below 10,000 MSL that is 3 SM and 500 ft below, 1,000 ft above, 2,000 ft horizontal. Watch the cloud base come down: with less than 500 ft below it you no longer meet VFR minimums.',
+ tags:[t2(1,'side','plane','Bracket = required\n500 ft below clouds',[.3,.2]),t2(10,'side','plane','Not legal VFR',[.62,.75])],
+ refs:['p91_155','aim31','p91_157','p91appD'],more:`<table><tr><th>Class</th><th>Vis</th><th>Clouds</th></tr>
+<tr><td>A</td><td colspan=2>IFR only</td></tr>
+<tr><td>B</td><td>3 SM</td><td>Clear of clouds</td></tr>
+<tr><td>C, D, E &lt;10,000 MSL</td><td>3 SM</td><td>500 below · 1,000 above · 2,000 horiz</td></tr>
+<tr><td>E ≥10,000 MSL</td><td>5 SM</td><td>1,000 below · 1,000 above · 1 SM horiz</td></tr>
+<tr><td>G ≤1,200 AGL</td><td>Day 1 SM<br>Night 3 SM</td><td>Day clear of clouds<br>Night 500 · 1,000 · 2,000</td></tr>
+<tr><td>G &gt;1,200 AGL, &lt;10,000 MSL</td><td>Day 1 SM<br>Night 3 SM</td><td>500 · 1,000 · 2,000</td></tr>
+<tr><td>G &gt;1,200 AGL, ≥10,000 MSL</td><td>5 SM</td><td>1,000 · 1,000 · 1 SM</td></tr></table>
+<ul><li>Surface areas of B, C, D and E: no VFR under a ceiling below <span class="k">1,000 ft</span>, and <span class="k">3 SM</span> ground visibility to take off, land or enter the pattern (§91.155(c),(d)).</li>
+<li><b>Special VFR</b> (§91.157): ATC clearance, <span class="k">1 SM</span>, clear of clouds, in a surface area only. At night it needs an instrument rating and an IFR-equipped aircraft. Not available at the Class B airports in Part 91 App D, Sec 3.</li></ul>`},
+{title:'Day versus night in Class G',dur:16,set:{x:-9,y:-48,alt:2000,hdg:90,time:16.5,vis:2,cloud:null,zoom:1.6},anim:{agl:[800,800,0,1],time:[16.5,19.5,1,11]},
+ body:'In <b class="G">Class G</b> the minimums change at <b>night</b>. Near the ground by day you need only 1 SM and to stay clear of clouds. At night you need 3 SM and 500 / 1,000 / 2,000. With 2 SM visibility, this flight stops being legal at the end of evening civil twilight.',
+ tags:[t2(2,'side','plane','Class G below\n1,200 AGL',[.4,.22])],
+ refs:['p91_155','p1','p61_57','p91_209','aim33'],more:`<ul>
+<li>"Night" has three meanings. <b>14 CFR 1.1:</b> end of evening civil twilight to beginning of morning civil twilight (night VFR minimums, night logging). <b>§91.209:</b> position lights from <b>sunset to sunrise</b>. <b>§61.57(b):</b> night passenger currency counts full-stop landings from 1 hr after sunset to 1 hr before sunrise.</li>
+<li>Exception (§91.155(b)(2)): at night in Class G at or below 1,200 AGL you may fly with 1 SM clear of clouds in an airport traffic pattern within ½ mile of the runway.</li>
+<li>This lab uses civil twilight at 0630 and 1830 local.</li></ul>`},
+{title:'Your turn',dur:0,set:{x:-2,y:4,alt:2500,hdg:90,time:10,vis:5,cloud:7000,zoom:1,tfr:false},
+ body:'Tap the map to fly anywhere, set altitude, course, time and weather, and flip between Terrain and Sectional. The rows on the right answer: which airspace, are VFR minimums met, what it takes to enter, what equipment you need, and what else is here. Open the <b>Airspace guide</b> for every type.',
+ refs:['phak15','aim31','aim32','aim34','aim35','p91_155','acsI_E'],more:`<ul>
+<li>Try: Harbor (under the Class B), climb from 2,500 to 3,200 MSL. Why does "Equipment" not change, but "To enter" and "Speed" do?</li>
+<li>Try: Bayport, 7 NM out at ${fmt(CC.ceil+1000)} MSL. You are above Class C: what is still required?</li>
+<li>Try: Riverside at 2300 local, cloud base ${fmt(RIV.fe+900)} MSL. Can you fly VFR in the surface area?</li>
+<li>Model limits: sample terrain and shapes; one 2,000 ft cloud layer; horizontal cloud distance not modelled. Always use the current sectional, Chart Supplement and NOTAMs.</li></ul>`},
+];
+// focus groups for dimming the map during each lesson step
+const FOCUS=[null,null,['G','E'],['E','G'],['E','G','rem','awy'],['A','E'],['D','trsa'],['C'],['B','veil'],['veil','B','C'],['P','R','W'],['MOA','AA','MTR'],['TFR','NSA','ADIZ'],['park','trsa','jump','glider'],null,['G'],null];
+
+/* ================= Canvas setup ================= */
+function setup(id){const cv=$(id),o={cv,ctx:cv.getContext('2d'),w:0,h:0};
+  const fit=()=>{const r=cv.getBoundingClientRect(),d=Math.min(2,devicePixelRatio||1);o.w=r.width;o.h=r.height;cv.width=Math.max(1,Math.round(r.width*d));cv.height=Math.max(1,Math.round(r.height*d));o.ctx.setTransform(d,0,0,d,0,0);sideKey='';};
+  new ResizeObserver(fit).observe(cv);fit();return o;}
+let sideKey='';
+const PL=setup('plan'),SD=setup('side');
+function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function tag(ctx,ax,ay,bx,by,text,a,W2,H2,light){
+  if(a<=0)return;ctx.save();ctx.globalAlpha=a;ctx.font='500 12.5px '+FB;
+  const lines=text.split('\n'),tw=Math.max(...lines.map(l=>ctx.measureText(l).width)),bw=tw+18,bh=lines.length*16+10;
+  const x=clamp(bx-bw/2,4,W2-bw-4),y=clamp(by-bh/2,4,H2-bh-4);const col=light?'#1a1a1a':COL.ink;
+  ctx.strokeStyle=col;ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(x+bw/2,y+bh/2);ctx.stroke();ctx.setLineDash([]);
+  ctx.beginPath();ctx.arc(ax,ay,3,0,TAU);ctx.fillStyle=col;ctx.fill();
+  rr(ctx,x,y,bw,bh,6);ctx.fillStyle=light?'rgba(255,255,255,.94)':'rgba(6,12,15,.92)';ctx.fill();ctx.strokeStyle=col;ctx.stroke();
+  ctx.fillStyle=col;ctx.textBaseline='top';ctx.textAlign='left';lines.forEach((l,i)=>ctx.fillText(l,x+9,y+6+i*16));ctx.restore();}
+const PLN=[[0,-1],[.12,-.72],[.12,-.2],[.95,.22],[.95,.4],[.12,.22],[.09,.68],[.4,.88],[.4,1],[0,.92]];
+function planeIcon(ctx,x,y,hd,s,col,edge){ctx.save();ctx.translate(x,y);ctx.rotate(rad(hd));ctx.beginPath();
+  PLN.forEach(([a,b],i)=>i?ctx.lineTo(a*s,b*s):ctx.moveTo(a*s,b*s));for(let i=PLN.length-2;i>0;i--)ctx.lineTo(-PLN[i][0]*s,PLN[i][1]*s);
+  ctx.closePath();ctx.fillStyle=col;ctx.fill();ctx.lineWidth=1.4;ctx.strokeStyle=edge;ctx.stroke();ctx.restore();}
+const PAT={};
+function hatch(col,a){const k=col+a;if(PAT[k])return PAT[k];const c=document.createElement('canvas');c.width=c.height=8;const x=c.getContext('2d');x.strokeStyle=col;x.globalAlpha=a;x.lineWidth=1.5;
+  x.beginPath();x.moveTo(-2,10);x.lineTo(10,-2);x.moveTo(-2,2);x.lineTo(2,-2);x.moveTo(6,10);x.lineTo(10,6);x.stroke();return PAT[k]=c;}
+
+/* ================= Plan view ================= */
+const PAL={
+ terrain:{B:'#5b9dff',C:'#e063c6',sua:'#6aa6ff',mag:'#e063c6',trsa:'#b4c0c3',mtr:'#a3b1b4',awy:'rgba(92,207,227,.45)',txt:'#e4ece9',dim:'#9fb1b4',halo:'rgba(7,16,20,.78)',tfr:'#ff5a4a',grid:'rgba(150,190,195,.10)',park:'#8fd19e',adiz:'#ffb54a',vblue:'91,157,255',vmag:'224,99,198',plane:'#ffffff',pedge:'rgba(0,0,0,.75)',light:false},
+ sect:{B:'#1d5bbf',C:'#a3247f',sua:'#1d5bbf',mag:'#a3247f',trsa:'#4b4b4b',mtr:'#6d6d6d',awy:'rgba(45,115,205,.6)',txt:'#151515',dim:'#4f4f4f',halo:'rgba(255,255,255,.78)',tfr:'#d0202a',grid:'rgba(0,0,0,.18)',park:'#2c7a3d',adiz:'#151515',vblue:'40,100,200',vmag:'163,36,127',plane:'#111111',pedge:'#ffffff',light:true},
+};
+// Base map: a quick low-res pass from the elevation grid, then a sharp pass computed in the background.
+const BASE={};let BN=300,BE=null,BW=null,hiDone=false;
+function lowField(){BE=new Float32Array(BN*BN);BW=new Uint8Array(BN*BN);const cell=2*W/BN;for(let j=0;j<BN;j++)for(let i=0;i<BN;i++){const wx=-W+(i+.5)*cell,wy=W-(j+.5)*cell;BE[j*BN+i]=elev(wx,wy);BW[j*BN+i]=isWater(wx,wy)?1:0;}}
+(function hiField(){const N=900,E=new Float32Array(N*N),Wt=new Uint8Array(N*N),cell=2*W/N;let j=0;
+  const run=()=>{const t0=performance.now();while(j<N&&performance.now()-t0<12){for(let i=0;i<N;i++){const wx=-W+(i+.5)*cell,wy=W-j*cell-cell/2;E[j*N+i]=elevA(wx,wy);Wt[j*N+i]=isWater(wx,wy)?1:0;}j++;}
+    if(j<N)setTimeout(run,0);else{BN=N;BE=E;BW=Wt;hiDone=true;delete BASE.terrain;delete BASE.sect;}};setTimeout(run,60);})();
+function baseImg(style){if(BASE[style])return BASE[style];if(!BE)lowField();
+  const c=document.createElement('canvas');c.width=c.height=BN;const x=c.getContext('2d'),id=x.createImageData(BN,BN),px=id.data;
+  const cell=2*W/BN,E=BE,Wt=BW;
+  const dark=[[0,[34,50,40]],[1000,[44,58,44]],[2500,[66,68,50]],[4000,[92,84,62]],[5500,[118,108,88]],[7500,[160,152,136]]];
+  const sect=[[0,[200,222,178]],[1000,[220,229,182]],[2000,[236,229,182]],[3000,[234,214,162]],[4000,[226,198,148]],[5000,[216,182,136]],[6000,[204,166,124]],[7000,[190,152,114]]];
+  const ramp=(e)=>{if(style==='sect'){let c=sect[0][1];for(const[a,cc]of sect)if(e>=a)c=cc;return c;}
+    for(let k=1;k<dark.length;k++)if(e<=dark[k][0]){const[a0,c0]=dark[k-1],[a1,c1]=dark[k],u=(e-a0)/(a1-a0);return c0.map((v,n)=>v+(c1[n]-v)*u);}return dark[dark.length-1][1];};
+  const ft=cell*6076,L=[-.5,.5,.707];
+  for(let j=0;j<BN;j++)for(let i=0;i<BN;i++){const k=j*BN+i,o=k*4;
+    if(Wt[k]){const col=style==='sect'?[172,212,234]:[14,32,46];px[o]=col[0];px[o+1]=col[1];px[o+2]=col[2];px[o+3]=255;continue;}
+    const e=E[k],ex=(E[j*BN+Math.min(BN-1,i+1)]-E[j*BN+Math.max(0,i-1)])/(2*ft)*6,ey=(E[Math.max(0,j-1)*BN+i]-E[Math.min(BN-1,j+1)*BN+i])/(2*ft)*6;
+    const nl=Math.hypot(ex,ey,1),sh=(-ex*L[0]-ey*L[1]+L[2])/nl/.707;
+    let col=ramp(e),f=style==='sect'?clamp(.8+.2*sh,.66,1.08):clamp(sh,.5,1.32);
+    const cl=Math.floor(e/1000),cnt=(i<BN-1&&Math.floor(E[k+1]/1000)!==cl)||(j<BN-1&&Math.floor(E[k+BN]/1000)!==cl);
+    if(cnt)f*=style==='sect'?.8:.85;
+    px[o]=clamp(col[0]*f,0,255);px[o+1]=clamp(col[1]*f,0,255);px[o+2]=clamp(col[2]*f,0,255);px[o+3]=255;}
+  x.putImageData(id,0,0);
+  // coastline
+  x.strokeStyle=style==='sect'?'rgba(40,110,170,.8)':'rgba(92,207,227,.35)';x.lineWidth=1.2;x.beginPath();
+  for(let j=0;j<=BN;j+=2){const wy=W-j*cell,X=(coastX(wy)+W)/cell;j?x.lineTo(X,j):x.moveTo(X,j);}x.stroke();
+  return BASE[style]=c;}
+// Maximum Elevation Figures, one per 25 NM block
+const MEF=[];for(let bj=0;bj<4;bj++)for(let bi=0;bi<4;bi++){let m=0;for(let a=0;a<=25;a+=.5)for(let b=0;b<=25;b+=.5)m=Math.max(m,elev(-W+bi*25+a,-W+bj*25+b));MEF.push({x:-W+bi*25+12.5,y:-W+bj*25+12.5,v:Math.ceil((m+300)/100)*100});}
+
+function view(){const w=PL.w,h=PL.h,s=Math.min(w,h)/(2*W)*S.zoom;return{w,h,s,cx:S.vx,cy:S.vy};}
+const P=(g,x,y)=>[g.w/2+(x-g.cx)*g.s,g.h/2-(y-g.cy)*g.s];
+function fa(grp){if(!S.focus||S.mode!=='tour')return 1;return S.focus.includes(grp)?1:.22;}
+function shPath(ctx,g,sh){ctx.beginPath();if(sh.c){const[X,Y]=P(g,sh.c[0],sh.c[1]);ctx.arc(X,Y,sh.c[2]*g.s,0,TAU);}
+  else if(sh.r){const[X0,Y0]=P(g,sh.r[0],sh.r[3]),[X1,Y1]=P(g,sh.r[2],sh.r[1]);ctx.rect(X0,Y0,X1-X0,Y1-Y0);}
+  else if(sh.p){sh.p.forEach(([x,y],i)=>{const[X,Y]=P(g,x,y);i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});ctx.closePath();}}
+function hband(ctx,g,sh,col,a,wd){ctx.save();shPath(ctx,g,sh);ctx.clip();shPath(ctx,g,sh);ctx.lineWidth=wd||12;ctx.strokeStyle=ctx.createPattern(hatch(col,a),'repeat');ctx.stroke();ctx.restore();
+  shPath(ctx,g,sh);ctx.lineWidth=1.4;ctx.strokeStyle=col;ctx.stroke();}
+function vign(ctx,g,pathFn,rgb,inside,wmax){ctx.save();ctx.beginPath();if(!inside){ctx.rect(-10,-10,g.w+20,g.h+20);}pathFn();ctx.clip(inside?'nonzero':'evenodd');
+  const ws=[wmax,wmax*.7,wmax*.45,wmax*.25];ws.forEach(wd=>{ctx.beginPath();pathFn();ctx.lineWidth=wd;ctx.strokeStyle=`rgba(${rgb},.12)`;ctx.stroke();});ctx.restore();}
+function txt(ctx,pal,s,X,Y,font,col,al){ctx.font=font;ctx.textAlign=al||'center';ctx.textBaseline='middle';ctx.lineWidth=3;ctx.strokeStyle=pal.halo;ctx.lineJoin='round';ctx.strokeText(s,X,Y);ctx.fillStyle=col;ctx.fillText(s,X,Y);}
+function stack(ctx,pal,X,Y,top,bot,col){ctx.save();ctx.font='600 14px '+FD;const w=Math.max(ctx.measureText(top).width,ctx.measureText(bot).width)+6;
+  ctx.fillStyle=pal.halo;ctx.fillRect(X-w/2,Y-15,w,30);ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(top,X,Y-7);ctx.fillRect(X-w/2+2,Y,w-4,1.2);ctx.fillText(bot,X,Y+8);ctx.restore();}
+function glyph(ctx,kind,X,Y,col){ctx.save();ctx.translate(X,Y);ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=1.5;
+  if(kind==='jump'){ctx.beginPath();ctx.arc(0,-2,7,Math.PI,0);ctx.closePath();ctx.stroke();ctx.beginPath();ctx.moveTo(-7,-2);ctx.lineTo(0,8);ctx.lineTo(7,-2);ctx.moveTo(0,-2);ctx.lineTo(0,8);ctx.stroke();ctx.beginPath();ctx.arc(0,9.5,1.8,0,TAU);ctx.fill();}
+  else{ctx.beginPath();ctx.moveTo(-11,1);ctx.quadraticCurveTo(0,-3,11,1);ctx.moveTo(0,-1);ctx.lineTo(1,7);ctx.moveTo(-2,6);ctx.lineTo(4,6);ctx.stroke();}
+  ctx.restore();}
+function drawPlan(){
+  const{ctx,w,h}=PL;if(w<10)return;const g=view(),s=g.s,st=S.style,pal=PAL[st];
+  ctx.clearRect(0,0,w,h);ctx.fillStyle=pal.light?'#e9e4d4':COL.screen;ctx.fillRect(0,0,w,h);
+  {const[X0,Y0]=P(g,-W,W),[X1,Y1]=P(g,W,-W);ctx.imageSmoothingEnabled=true;ctx.drawImage(baseImg(st),X0,Y0,X1-X0,Y1-Y0);}
+  const C=(x,y,r)=>{const[X,Y]=P(g,x,y);ctx.beginPath();ctx.arc(X,Y,r*s,0,TAU);};
+  // lat/long grid + MEF (sectional)
+  if(pal.light){ctx.strokeStyle=pal.grid;ctx.lineWidth=1;for(let k=-W;k<=W;k+=25){const[a,b]=P(g,k,k);ctx.beginPath();ctx.moveTo(a,0);ctx.lineTo(a,h);ctx.moveTo(0,b);ctx.lineTo(w,b);ctx.stroke();}
+    ctx.globalAlpha=fa('mef');MEF.forEach(m=>{const[X,Y]=P(g,m.x+6,m.y-6);const th=Math.floor(m.v/1000),hu=Math.round(m.v%1000/100);ctx.fillStyle='rgba(29,91,191,.75)';ctx.textBaseline='middle';
+      ctx.font='700 '+Math.round(clamp(26*S.zoom,26,46))+'px '+FD;ctx.textAlign='right';ctx.fillText(th,X,Y);ctx.font='700 '+Math.round(clamp(15*S.zoom,15,26))+'px '+FD;ctx.textAlign='left';ctx.fillText(hu,X+1,Y-8*Math.min(S.zoom,1.7));});ctx.globalAlpha=1;}
+  else{ctx.strokeStyle=pal.grid;ctx.lineWidth=1;for(let k=-W;k<=W;k+=10){const[a,b]=P(g,k,k);ctx.beginPath();ctx.moveTo(a,0);ctx.lineTo(a,h);ctx.moveTo(0,b);ctx.lineTo(w,b);ctx.stroke();}}
+  const t=S.time;
+  // remote area: faded blue edge (G to 14,500 beyond it)
+  ctx.globalAlpha=fa('rem');vign(ctx,g,()=>{REM.forEach(([x,y],i)=>{const[X,Y]=P(g,x,y);i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});ctx.closePath();},pal.vblue,false,22);
+  // 700 AGL transition areas
+  ctx.globalAlpha=fa('E');E7.forEach(([a,r])=>vign(ctx,g,()=>{const[X,Y]=P(g,a.x,a.y);ctx.arc(X,Y,r*s,0,TAU);},pal.vmag,true,20));
+  // Victor airways
+  ctx.globalAlpha=fa('awy');ctx.strokeStyle=pal.awy;ctx.lineWidth=pal.light?3:2.2;AWY.forEach(a=>{ctx.beginPath();a.p.forEach(([x,y],i)=>{const[X,Y]=P(g,x,y);i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});ctx.stroke();
+    const[ax,ay]=a.p[0],[bx,by]=a.p[1];const[X,Y]=P(g,lerp(ax,bx,.55),lerp(ay,by,.55));txt(ctx,pal,a.n,X,Y,'600 11px '+FM,pal.B);});
+  // MTRs
+  ctx.globalAlpha=fa('MTR');['IR','VR'].forEach(id=>{const o=OVI[id];ctx.strokeStyle=pal.mtr;ctx.lineWidth=1.5;ctx.beginPath();o.sh.l.forEach(([x,y],i)=>{const[X,Y]=P(g,x,y);i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});ctx.stroke();
+    const n=o.sh.l.length,[x1,y1]=o.sh.l[n-2],[x2,y2]=o.sh.l[n-1],[X1,Y1]=P(g,x1,y1),[X2,Y2]=P(g,x2,y2),an=Math.atan2(Y2-Y1,X2-X1);
+    ctx.save();ctx.translate(X2,Y2);ctx.rotate(an);ctx.fillStyle=pal.mtr;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-8,-4);ctx.lineTo(-8,4);ctx.closePath();ctx.fill();ctx.restore();
+    const[mx,my]=o.sh.l[1];const[X,Y]=P(g,mx,my);txt(ctx,pal,o.name,X+(id==='IR'?6:-22),Y+(id==='IR'?12:0),'500 11px '+FM,pal.mtr);});
+  // park
+  ctx.globalAlpha=fa('park');{const o=OVI.park;shPath(ctx,g,o.sh);ctx.setLineDash([2,4]);ctx.lineWidth=2;ctx.strokeStyle=pal.park;ctx.stroke();ctx.setLineDash([]);const[X,Y]=P(g,-49,-38.5);txt(ctx,pal,'STONE PEAKS NP',X,Y,'600 11px '+FM,pal.park,'left');}
+  // special use: blue (P, R, W), magenta (MOA, A)
+  for(const id of['W','R','P','MOA','AA']){const o=OVI[id],on=ovOn(o,t),blue=o.st==='blue',col=blue?pal.sua:pal.mag;ctx.globalAlpha=fa(o.grp)*(on?1:.6);
+    if(!pal.light&&on){shPath(ctx,g,o.sh);ctx.fillStyle=blue?'rgba(91,157,255,.08)':'rgba(224,99,198,.07)';ctx.fill();}
+    hband(ctx,g,o.sh,col,on?.85:.5,o.sh.c?8:12);}
+  // NSA, ADIZ
+  ctx.globalAlpha=fa('NSA');{C(31,-18,2.5);ctx.setLineDash([5,3]);ctx.strokeStyle=pal.sua;ctx.lineWidth=1.6;ctx.stroke();ctx.setLineDash([]);const[X,Y]=P(g,31,-18);txt(ctx,pal,'NSA',X,Y,'600 11px '+FM,pal.sua);}
+  ctx.globalAlpha=fa('ADIZ');{const[X]=P(g,44,0);ctx.setLineDash([10,4,2,4]);ctx.strokeStyle=pal.adiz;ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(X,0);ctx.lineTo(X,h);ctx.stroke();ctx.setLineDash([]);
+    ctx.save();ctx.translate(X+9,P(g,0,20)[1]);ctx.rotate(Math.PI/2);txt(ctx,pal,'ADIZ',0,0,'600 11px '+FM,pal.adiz);ctx.restore();}
+  // TFR (NOTAM only)
+  if(S.tfr){ctx.globalAlpha=fa('TFR');C(-40,32,5);ctx.fillStyle='rgba(226,60,50,.14)';ctx.fill();ctx.strokeStyle=pal.tfr;ctx.lineWidth=2;ctx.setLineDash([6,3]);ctx.stroke();ctx.setLineDash([]);const[X,Y]=P(g,-40,32);txt(ctx,pal,'TFR',X,Y-6,'700 13px '+FD,pal.tfr);txt(ctx,pal,'NOTAM',X,Y+8,'500 10px '+FM,pal.tfr);}
+  // Mode C veil
+  ctx.globalAlpha=fa('veil');C(MET.x,MET.y,30);ctx.strokeStyle=pal.mag;ctx.lineWidth=1.1;ctx.stroke();{const[X,Y]=P(g,MET.x,MET.y+30);txt(ctx,pal,'MODE C 30 NM',X,Y+9,'500 10px '+FM,pal.mag);}
+  // TRSA
+  ctx.globalAlpha=fa('trsa');[TR.r1,TR.r2].forEach(r=>{C(RIV.x,RIV.y,r);ctx.strokeStyle=pal.trsa;ctx.lineWidth=1.6;ctx.stroke();});
+  {const[X,Y]=P(g,RIV.x,RIV.y-(TR.r1+TR.r2)/2);ctx.save();ctx.globalAlpha*=.95;stack(ctx,pal,X,Y,String(TR.ceil/100),String(TR.f2/100),pal.trsa);ctx.restore();const[X2,Y2]=P(g,RIV.x+(DD.r+TR.r1)/2*.7,RIV.y+(DD.r+TR.r1)/2*.7);stack(ctx,pal,X2,Y2,String(TR.ceil/100),String(TR.f1/100),pal.trsa);}
+  // Class E surface areas (Cedar; Riverside when tower closed)
+  ctx.globalAlpha=fa('E');ctx.strokeStyle=pal.mag;ctx.lineWidth=1.6;ctx.setLineDash([6,4]);
+  {const[X,Y]=P(g,CED.x,CED.y),r=4*s,a=Math.asin(1.6/4);ctx.beginPath();ctx.arc(X,Y,r,Math.PI/2+a,Math.PI*2.5-a);const[ex0,ey0]=P(g,CED.x+1.6,CED.y-8),[ex1,ey1]=P(g,CED.x-1.6,CED.y-8);ctx.lineTo(ex0,ey0);ctx.lineTo(ex1,ey1);ctx.closePath();ctx.stroke();}
+  if(!twrOpen(t)){C(RIV.x,RIV.y,DD.r);ctx.stroke();}ctx.setLineDash([]);
+  // Class D
+  ctx.globalAlpha=fa('D');if(twrOpen(t)){C(RIV.x,RIV.y,DD.r);ctx.strokeStyle=pal.B;ctx.lineWidth=2;ctx.setLineDash([6,4]);ctx.stroke();ctx.setLineDash([]);}
+  {const[X,Y]=P(g,RIV.x+DD.r*.75,RIV.y+DD.r*.75+1);txt(ctx,pal,D35,X+10,Y-8,'600 15px '+FD,twrOpen(t)?pal.B:pal.mag);}
+  // Class C
+  ctx.globalAlpha=fa('C');if(!pal.light){C(BAY.x,BAY.y,5);ctx.fillStyle='rgba(224,99,198,.07)';ctx.fill();}[5,10].forEach(r=>{C(BAY.x,BAY.y,r);ctx.strokeStyle=pal.C;ctx.lineWidth=2.4;ctx.stroke();});
+  {const[X,Y]=P(g,BAY.x-2.4,BAY.y+2.4);stack(ctx,pal,X,Y,String(CC.ceil/100),'SFC',pal.C);const[X2,Y2]=P(g,BAY.x,BAY.y+7.5);stack(ctx,pal,X2,Y2,String(CC.ceil/100),String(CC.shelf/100),pal.C);}
+  // Class B
+  ctx.globalAlpha=fa('B');if(!pal.light){C(MET.x,MET.y,6);ctx.fillStyle='rgba(91,157,255,.08)';ctx.fill();}BR.forEach(q=>{C(MET.x,MET.y,q.r);ctx.strokeStyle=pal.B;ctx.lineWidth=2.6;ctx.stroke();});
+  BR.forEach((q,i)=>{const rm=i?(BR[i-1].r+q.r)/2:q.r*.6,b=rad(i===0?320:i===1?235:215);const[X,Y]=P(g,MET.x+rm*Math.sin(b),MET.y+rm*Math.cos(b));stack(ctx,pal,X,Y,'100',q.f?String(q.f/100):'SFC',pal.B);});
+  ctx.globalAlpha=1;
+  // VOR compass roses (sectional) and airports
+  APT.forEach(a=>{const[X,Y]=P(g,a.x,a.y);const tw=a.twr,col=tw?pal.B:pal.mag;
+    if(a.vor){if(pal.light){ctx.save();ctx.strokeStyle='rgba(29,91,191,.55)';ctx.lineWidth=1;const R=Math.min(46,7*s);ctx.beginPath();ctx.arc(X,Y,R,0,TAU);ctx.stroke();
+        for(let d=0;d<360;d+=10){const L=d%30?4:8,an=rad(d);ctx.beginPath();ctx.moveTo(X+Math.sin(an)*R,Y-Math.cos(an)*R);ctx.lineTo(X+Math.sin(an)*(R-L),Y-Math.cos(an)*(R-L));ctx.stroke();}
+        ctx.beginPath();ctx.moveTo(X,Y-R-7);ctx.lineTo(X-3,Y-R);ctx.lineTo(X+3,Y-R);ctx.closePath();ctx.fillStyle='rgba(29,91,191,.7)';ctx.fill();ctx.restore();}
+      ctx.save();ctx.strokeStyle=pal.B;ctx.lineWidth=1.3;ctx.beginPath();for(let k=0;k<6;k++){const an=k*Math.PI/3;const px=X+13+Math.cos(an)*5,py=Y-11+Math.sin(an)*5;k?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();ctx.stroke();ctx.restore();}
+    ctx.beginPath();ctx.arc(X,Y,6.5,0,TAU);ctx.fillStyle=col;ctx.fill();ctx.save();ctx.translate(X,Y);ctx.rotate(rad(-30));ctx.fillStyle=pal.light?'#fff':COL.screen;ctx.fillRect(-1.5,-5,3,10);ctx.restore();
+    txt(ctx,pal,a.name+' '+fmt(a.fe),X+9,Y+13,'600 10.5px '+FM,col,'left');});
+  ctx.globalAlpha=fa('jump');glyph(ctx,'jump',...P(g,OSP.x+3,OSP.y+3),pal.light?'#151515':COL.ink);
+  ctx.globalAlpha=fa('glider');glyph(ctx,'glider',...P(g,CED.x-4,CED.y+3.5),pal.light?'#151515':COL.ink);
+  // SUA labels
+  ctx.globalAlpha=1;[['R',-20,10],['P',26,8.8],['W',46,-4],['MOA',-40,-16],['AA',27,-41]].forEach(([id,x,y])=>{const o=OVI[id],on=ovOn(o,t),[X,Y]=P(g,x,y);ctx.globalAlpha=fa(o.grp);
+    txt(ctx,pal,o.name,X,Y-6,'700 13px '+FD,o.st==='blue'?pal.sua:pal.mag);if(o.on)txt(ctx,pal,on?'ACTIVE':'COLD',X,Y+8,'500 10px '+FM,on?(pal.light?'#b3261e':COL.warn):pal.dim);});
+  ctx.globalAlpha=1;
+  // off-chart edge
+  {const[X0,Y0]=P(g,-W,W),[X1,Y1]=P(g,W,-W);ctx.save();ctx.beginPath();ctx.rect(0,0,w,h);ctx.rect(X0,Y0,X1-X0,Y1-Y0);ctx.clip('evenodd');ctx.fillStyle=pal.light?'#d8d2c0':'#05090b';ctx.fillRect(0,0,w,h);ctx.restore();}
+  // course line (side-view window) and aircraft
+  const hr=rad(S.hdg),sn=Math.sin(hr),cs=Math.cos(hr);const[bx,by]=P(g,S.x+SB*sn,S.y+SB*cs),[fx,fy]=P(g,S.x+SF*sn,S.y+SF*cs),[ax,ay]=P(g,S.x,S.y);
+  ctx.save();ctx.strokeStyle=pal.light?'rgba(0,0,0,.6)':'rgba(228,236,233,.6)';ctx.lineWidth=1.3;ctx.setLineDash([6,5]);ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(fx,fy);ctx.stroke();ctx.setLineDash([]);
+  [[bx,by],[fx,fy]].forEach(([X,Y])=>{ctx.beginPath();ctx.moveTo(X-cs*6,Y-sn*6);ctx.lineTo(X+cs*6,Y+sn*6);ctx.stroke();});ctx.restore();
+  ctx.beginPath();ctx.arc(ax,ay,16,0,TAU);ctx.strokeStyle=pal.light?'rgba(0,0,0,.45)':'rgba(255,255,255,.45)';ctx.lineWidth=1;ctx.stroke();
+  planeIcon(ctx,ax,ay,S.hdg,11,pal.plane,pal.pedge);
+  // north + scale
+  txt(ctx,pal,'N ▲',w-22,14,'700 15px '+FD,pal.txt);
+  {const L=10*s,x0=12,y0=h-14;ctx.strokeStyle=pal.txt;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x0,y0-4);ctx.lineTo(x0,y0);ctx.lineTo(x0+L,y0);ctx.lineTo(x0+L,y0-4);ctx.stroke();txt(ctx,pal,'10 NM',x0+L+6,y0-3,'500 10.5px '+FM,pal.txt,'left');}
+  drawTags('plan',ctx,w,h,a=>a==='plane'?[ax,ay]:P(g,a[0],a[1]),pal.light);
+}
+
+/* ================= Side view ================= */
+const SB=-20,SF=50;
+const AB=[[0,0],[2000,.2],[5000,.41],[10000,.61],[14500,.73],[18000,.81],[60000,.94],[70000,1]];
+function fAlt(hh){for(let i=1;i<AB.length;i++)if(hh<=AB[i][0]){const[a0,f0]=AB[i-1],[a1,f1]=AB[i];return f0+(f1-f0)*(hh-a0)/(a1-a0);}return 1;}
+function invAlt(f){for(let i=1;i<AB.length;i++)if(f<=AB[i][1]){const[a0,f0]=AB[i-1],[a1,f1]=AB[i];return a0+(a1-a0)*(f-f0)/(f1-f0);}return 70000;}
+function sg(){const w=SD.w,h=SD.h;return{x0:46,x1:w-8,top:8,bot:h-20};}
+const SX=(G,d)=>G.x0+(d-SB)/(SF-SB)*(G.x1-G.x0),SY=(G,hh)=>G.bot-fAlt(hh)*(G.bot-G.top);
+const FILL={G:'rgba(201,185,143,.17)',E:'rgba(143,227,181,.07)',D:'rgba(91,157,255,.16)',C:'rgba(224,99,198,.22)',B:'rgba(91,157,255,.24)',A:'rgba(169,155,255,.16)'};
+const off=document.createElement('canvas');
+function runs(cols,get){const out=[];let cur=null;cols.forEach((c,i)=>{const v=get(c);if(v){if(!cur){cur=[];out.push(cur);}cur.push({i,lo:v[0],hi:v[1]});}else cur=null;});return out;}
+function runPath(ctx,G,run,cw,topOnly){ctx.beginPath();run.forEach((p,k)=>{const xa=G.x0+p.i*cw,xb=xa+cw,y=SY(G,p.hi);if(!k)ctx.moveTo(xa,y);else ctx.lineTo(xa,y);ctx.lineTo(xb,y);});
+  if(topOnly)return;for(let k=run.length-1;k>=0;k--){const p=run[k],xa=G.x0+p.i*cw,xb=xa+cw,y=SY(G,p.lo);ctx.lineTo(xb,y);ctx.lineTo(xa,y);}ctx.closePath();}
+const OVSTY={blue:['#6aa6ff',1],mag:['#e063c6',1],nsa:['#6aa6ff',0],park:['#8fd19e',0],mtr:['#a3b1b4',0],act:['#e4ece9',0],adiz:['#ffb54a',0],tfr:['#ff5a4a',0],veil:['#e063c6',0],trsa:['#b4c0c3',0]};
+function renderSide(){
+  const{w,h}=SD,G=sg(),dpr=Math.min(2,devicePixelRatio||1);
+  off.width=Math.round(w*dpr);off.height=Math.round(h*dpr);const ctx=off.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle=COL.screen;ctx.fillRect(0,0,w,h);
+  const hr=rad(S.hdg),sn=Math.sin(hr),cs=Math.cos(hr),N=Math.max(40,Math.round(G.x1-G.x0)),cw=(G.x1-G.x0)/N,t=S.time;
+  const cols=[];for(let i=0;i<N;i++){const d=SB+(i+.5)/N*(SF-SB),x=S.x+d*sn,y=S.y+d*cs,c=column(x,y,t);c.x=x;c.y=y;c.ov=ovCol(x,y,c.g,t);c.off=Math.abs(x)>W||Math.abs(y)>W;cols.push(c);}
+  ctx.save();ctx.beginPath();ctx.rect(G.x0,G.top,G.x1-G.x0,G.bot-G.top);ctx.clip();
+  ctx.fillStyle=FILL.E;ctx.fillRect(G.x0,G.top,G.x1-G.x0,G.bot-G.top);
+  // class bodies
+  const draw=(c,stroke,dash,lw,topOnly)=>{runs(cols,cc=>{const q=cc.iv.find(v=>v.c===c);return q?[q.lo,q.hi]:null;}).forEach(run=>{
+    runPath(ctx,G,run,cw);ctx.fillStyle=FILL[c];ctx.fill();if(stroke){runPath(ctx,G,run,cw,topOnly);ctx.strokeStyle=stroke;ctx.lineWidth=lw||1.6;ctx.setLineDash(dash||[]);ctx.stroke();ctx.setLineDash([]);}});};
+  draw('G','rgba(201,185,143,.55)',null,1.2,true);draw('A','rgba(169,155,255,.55)',null,1);draw('D',COL.D,[5,4],1.6);draw('C',COL.C,null,1.8);draw('B',COL.B,null,1.8);
+  // Class E surface areas (dashed magenta)
+  runs(cols,cc=>{const k=clsAt(cc.x,cc.y,cc.g+5,cc.g,t,cc.d).k;if(k==='sfc')return[cc.g,CED.fe+700];if(k==='sfcD')return[cc.g,DD.ceil];return null;}).forEach(run=>{runPath(ctx,G,run,cw);ctx.strokeStyle='rgba(224,99,198,.85)';ctx.lineWidth=1.4;ctx.setLineDash([5,4]);ctx.stroke();ctx.setLineDash([]);});
+  // overlays
+  const ovIds=[...new Set(cols.flatMap(c=>c.ov.map(q=>q.o.id)))];const ovLab=[];
+  ovIds.forEach(id=>{const o=OVI[id],[col,hat]=OVSTY[o.st];runs(cols,cc=>{const q=cc.ov.find(v=>v.o.id===id);return q?[q.lo,Math.min(q.hi,TOP)]:null;}).forEach(run=>{
+    const on=ovOn(o,t);runPath(ctx,G,run,cw);
+    if(hat){ctx.fillStyle=ctx.createPattern(hatch(col,on?.5:.2),'repeat');ctx.fill();}
+    else if(o.st==='tfr'){ctx.fillStyle='rgba(226,60,50,.16)';ctx.fill();}
+    else if(o.st==='mtr'||o.st==='park'){ctx.fillStyle=o.st==='park'?'rgba(143,209,158,.07)':'rgba(163,177,180,.08)';ctx.fill();}
+    runPath(ctx,G,run,cw);ctx.strokeStyle=col;ctx.globalAlpha=on?.95:.5;ctx.lineWidth=o.st==='veil'||o.st==='trsa'?1.1:1.4;ctx.setLineDash(hat||o.st==='trsa'?[]:o.st==='park'?[2,3]:[6,4]);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+    const m=run[Math.floor(run.length/2)];ovLab.push({o,on,x:G.x0+(m.i+.5)*cw,lo:m.lo,hi:m.hi,len:run.length*cw});});});
+  // terrain
+  ctx.beginPath();ctx.moveTo(G.x0,G.bot+2);cols.forEach((c,i)=>ctx.lineTo(G.x0+(i+.5)*cw,SY(G,c.g)));ctx.lineTo(G.x1,G.bot+2);ctx.closePath();
+  const tg=ctx.createLinearGradient(0,SY(G,7000),0,G.bot);tg.addColorStop(0,'#5a5140');tg.addColorStop(1,'#2a2519');ctx.fillStyle=tg;ctx.fill();
+  ctx.beginPath();cols.forEach((c,i)=>{const X=G.x0+(i+.5)*cw,Y=SY(G,c.g);i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});ctx.strokeStyle='#8a7c5a';ctx.lineWidth=1.3;ctx.stroke();
+  // water
+  cols.forEach((c,i)=>{if(isWater(c.x,c.y)){ctx.fillStyle='#16384d';ctx.fillRect(G.x0+i*cw,SY(G,c.g)-1,cw+.4,3);}});
+  // off-chart columns
+  cols.forEach((c,i)=>{if(c.off){ctx.fillStyle='rgba(5,9,11,.72)';ctx.fillRect(G.x0+i*cw,G.top,cw+.4,G.bot-G.top);}});
+  // class labels: one per region, where it is tallest
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  const lab=(c,col,maxH)=>{runs(cols,cc=>{if(cc.off)return null;let best=null;cc.iv.forEach(v=>{if(v.c===c&&v.lo<(maxH||TOP)){const hi=Math.min(v.hi,maxH||TOP);if(!best||hi-v.lo>best[1]-best[0])best=[v.lo,hi];}});return best;}).forEach(run=>{
+    if(run.length*cw<18)return;const mid=run.reduce((a,p)=>a+p.i,0)/run.length;let pick=null,bs=-1e9;
+    run.forEach(p=>{const hp=SY(G,p.lo)-SY(G,p.hi);if(hp<18)return;const sc=Math.min(hp,50)-Math.abs(p.i-mid)*cw*.12;if(sc>bs){bs=sc;pick=p;}});if(!pick)return;
+    ctx.font='700 '+(c==='E'||c==='G'?16:19)+'px '+FD;ctx.fillStyle=col;ctx.globalAlpha=.9;ctx.fillText(c,G.x0+(pick.i+.5)*cw,(SY(G,pick.lo)+SY(G,pick.hi))/2);ctx.globalAlpha=1;});};
+  lab('B',COL.B);lab('C',COL.C);lab('D',COL.D);lab('A',COL.A);lab('G',COL.G);lab('E',COL.E,18000);
+  // overlay labels
+  ctx.font='500 10.5px '+FM;ovLab.forEach(L=>{if(L.len<30)return;const[col]=OVSTY[L.o.st];const yT=SY(G,Math.min(L.hi,62000)),yB=SY(G,L.lo);let y=yT+9;if(yB-yT<22||L.o.st==='veil')y=yT-7;
+    ctx.fillStyle=col;ctx.globalAlpha=L.on?1:.6;ctx.fillText(L.o.name+(L.o.on?(L.on?'':' · cold'):''),clamp(L.x,G.x0+44,G.x1-44),clamp(y,G.top+7,G.bot-7));ctx.globalAlpha=1;});
+  ctx.restore();
+  // axes
+  ctx.font='400 10.5px '+FM;ctx.fillStyle=COL.dim;ctx.textAlign='right';ctx.textBaseline='middle';
+  [[1000,'1,000'],[2000,'2,000'],[5000,'5,000'],[10000,'10,000'],[14500,'14,500'],[18000,'FL180'],[60000,'FL600']].forEach(([a,l])=>{const y=SY(G,a);ctx.fillText(l,G.x0-5,y);
+    ctx.strokeStyle=a===18000||a===14500||a===10000?'rgba(150,190,195,.2)':'rgba(150,190,195,.07)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(G.x0,y);ctx.lineTo(G.x1,y);ctx.stroke();});
+  {const y=SY(G,32000);ctx.strokeStyle=COL.dim;ctx.beginPath();ctx.moveTo(G.x0-8,y+3);ctx.lineTo(G.x0-4,y-3);ctx.moveTo(G.x0-4,y+3);ctx.lineTo(G.x0,y-3);ctx.stroke();}
+  ctx.textAlign='center';ctx.textBaseline='top';for(let d=-20;d<=50;d+=10)ctx.fillText(d===0?'YOU':(d>0?'+':'')+d,SX(G,d),G.bot+5);
+  ctx.textAlign='right';ctx.fillText('NM',G.x1,G.bot+5);
+}
+function drawSide(A){
+  const{ctx,w,h}=SD;if(w<10)return;
+  const key=[S.x.toFixed(2),S.y.toFixed(2),S.hdg.toFixed(1),twrOpen(S.time),OV.map(o=>ovOn(o,S.time)?1:0).join(''),S.tfr,w,h].join('|');
+  if(key!==sideKey){renderSide();sideKey=key;}
+  ctx.clearRect(0,0,w,h);ctx.drawImage(off,0,0,w,h);const G=sg();
+  if(S.cloud!==null){const y0=SY(G,S.cloud),y1=SY(G,S.cloud+CLOUD_THICK);ctx.fillStyle='rgba(205,215,220,.2)';ctx.fillRect(G.x0,y1,G.x1-G.x0,y0-y1);
+    ctx.strokeStyle='rgba(225,232,235,.5)';ctx.lineWidth=1;ctx.beginPath();for(let x=G.x0;x<=G.x1-14;x+=14){ctx.moveTo(x,y0);ctx.arc(x+7,y0,7,Math.PI,0,true);}ctx.stroke();
+    ctx.font='500 10.5px '+FM;ctx.fillStyle=COL.ink;ctx.textAlign='right';ctx.textBaseline='bottom';ctx.fillText('CLOUD BASE '+fmt(S.cloud),G.x1-4,y1-2);}
+  const X=SX(G,0),Y=SY(G,S.alt),c=A.c;
+  if(S.cloud!==null&&A.m&&!A.m.clear&&S.alt<S.cloud){const yb=SY(G,S.alt+A.m.b);const ok=S.cloud-S.alt>=A.m.b;ctx.strokeStyle=ok?COL.ok:COL.warn;ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(X+16,Y);ctx.lineTo(X+16,yb);ctx.moveTo(X+12,yb);ctx.lineTo(X+20,yb);ctx.stroke();ctx.font='500 10px '+FM;ctx.fillStyle=ctx.strokeStyle;ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(A.m.b,X+23,(Y+yb)/2);}
+  ctx.save();ctx.setLineDash([2,3]);ctx.strokeStyle='rgba(228,236,233,.4)';ctx.beginPath();ctx.moveTo(X,Y);ctx.lineTo(X,SY(G,c.g));ctx.stroke();ctx.restore();
+  ctx.save();ctx.translate(X,Y);ctx.scale(1.5,1.5);ctx.fillStyle='#fff';ctx.strokeStyle='rgba(0,0,0,.75)';ctx.lineWidth=1;ctx.beginPath();
+  ctx.moveTo(-12,-1);ctx.lineTo(9,-2);ctx.quadraticCurveTo(13,0,9,2);ctx.lineTo(-12,1.5);ctx.lineTo(-14,-6);ctx.lineTo(-10,-6);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillRect(-3,-2.5,6,1.6);ctx.restore();
+  ctx.font='600 11px '+FM;ctx.fillStyle=COL.ink;ctx.textAlign='left';ctx.textBaseline='bottom';ctx.fillText(fmt(S.alt)+' MSL',X+14,Y-6);
+  drawTags('side',ctx,w,h,a=>a==='plane'?[X,Y]:[SX(G,a[0]),SY(G,a[1])],false);
+}
+function drawTags(v,ctx,w,h,anchor,light){if(S.mode!=='tour')return;const st=STEPS[S.step];
+  (st.tags||[]).forEach(tg=>{if(tg.v!==v)return;const a=clamp((S.t-tg.at)/.6,0,1);if(!a)return;const[ax,ay]=anchor(tg.a);tag(ctx,ax,ay,tg.pos[0]*w,tg.pos[1]*h,tg.text,a,w,h,light);});}
+
+/* ================= Analysis + readouts ================= */
+const ch=k=>Kit.chip(k);
+const SPAN_K={core:'',shelf:' (shelf)',sfc:' · surface area',sfcD:' · surface area (tower closed)','700':'','1200':'',awy:' · airway','145':'','600':' · above FL600',rem:' · to 14,500'};
+function analyze(){
+  const x=S.x,y=S.y,hh=S.alt,col=column(x,y,S.time),g=col.g,agl=hh-g,d=col.d,night=nightAt(S.time);
+  const q=col.iv.find(v=>hh>=v.lo&&hh<v.hi),k=q?clsAt(x,y,hh,g,S.time,d).k:'';
+  const c={c:q?q.c:'',k,g,agl,span:q?(q.ll+' – '+(q.hl||'up')):'',d};
+  const m=c.c?vfrMins(c.c,agl,hh,night):null;
+  const ovs=ovCol(x,y,g,S.time).filter(o=>hh>=o.lo&&hh<o.hi);
+  // weather
+  let wx;const sfcA=c.c==='B'&&k==='core'?MET:c.c==='C'&&k==='core'?BAY:c.c==='D'||k==='sfcD'?RIV:k==='sfc'?CED:null;
+  if(!c.c)wx={ok:0,t:'On or below the terrain.'};
+  else if(!m)wx={ok:0,t:'✗ VFR not permitted in Class A.'+ch('p91_135')};
+  else{const f=[];if(S.vis<m.vis)f.push(`Visibility ${S.vis} SM is below ${m.vis} SM`);
+    if(S.cloud!==null){const b=S.cloud,tp=b+CLOUD_THICK;
+      if(hh>=b&&hh<=tp)f.push('You are in the clouds');
+      else if(!m.clear){if(hh<b&&b-hh<m.b)f.push(`Only ${fmt(b-hh)} ft below the clouds, need ${fmt(m.b)}`);if(hh>tp&&hh-tp<m.a)f.push(`Only ${fmt(hh-tp)} ft above the clouds, need ${fmt(m.a)}`);}
+      if(sfcA&&b-sfcA.fe<1000)f.push(`Ceiling ${fmt(b-sfcA.fe)} AGL in a surface area: under 1,000 ft, so Special VFR is needed`);}
+    if(sfcA&&S.vis<3&&!f.length)f.push('Under 3 SM in a surface area: Special VFR is needed');
+    wx=f.length?{ok:0,t:'✗ '+f[0]+'.'+(f.length>1?' (+'+(f.length-1)+' more)':'')+ch(f[0].includes('Special')?'p91_157':'p91_155')}:{ok:1,t:'✓ VFR minimums met'+(S.cloud===null?' (no clouds)':'')+'.'+ch('p91_155')};}
+  // entry
+  const ent={A:'IFR flight plan, clearance and instrument rating. No VFR.'+ch('p91_135'),
+    B:'ATC clearance: "cleared into the Class Bravo." Private pilot, or student with a §61.95 endorsement.'+ch('p91_131')+ch('p61_95'),
+    C:'Two-way radio communication with approach before entering.'+ch('p91_130'),
+    D:'Two-way radio communication with the tower before entering.'+ch('p91_129'),
+    E:(k==='sfc'||k==='sfcD'?'No ATC contact needed for VFR. Below 1,000 ft ceiling or 3 SM: Special VFR clearance.'+ch('p91_157'):'No ATC contact needed for VFR.'+ch('aim32')),
+    G:'No ATC contact needed.'+ch('p91_126'),'':'—'}[c.c];
+  // equipment (91.215 / 91.225)
+  const rs=[];if(c.c==='A'||c.c==='B'||c.c==='C')rs.push('in Class '+c.c);
+  if(d.rb<=30&&hh<=10000&&c.c!=='B')rs.push('inside the Mode C veil');
+  if(d.rc<10&&hh>=CC.ceil&&hh<=10000)rs.push('above Class C');
+  if(hh>10000&&agl>2500&&c.c!=='A')rs.push('above 10,000 MSL');
+  let eq=rs.length?'Mode C transponder + ADS-B Out ('+rs[0]+').'+ch('p91_215')+ch('p91_225'):(hh>10000&&c.c!=='A'?'Not required: within 2,500 ft of the ground.':'No transponder or ADS-B required here. Use it if installed.')+ch('p91_215');
+  if(c.c==='A')eq='Mode C + ADS-B Out (1090ES), IFR equipment.'+ch('p91_225');
+  if(ovs.some(o=>o.o.id==='ADIZ'))eq+=' ADIZ: two-way radio and transponder.'+ch('p99');
+  // speed (91.117)
+  let sp;const underB=d.rb<20&&c.c!=='B'&&hh<BCEIL;
+  if(hh>=10000)sp='No §91.117 limit at or above 10,000 MSL.';
+  else if(underB)sp='200 KIAS max beneath the Class B.';
+  else if(agl<=2500&&(d.rc<4||(d.rd<4&&twrOpen(S.time))))sp='200 KIAS max: within 4 NM of a Class '+(d.rc<4?'C':'D')+' primary airport, at or below 2,500 AGL.';
+  else sp='250 KIAS max below 10,000 MSL.';sp+=ch('p91_117');
+  // overlays
+  const OT={veil:()=>'<b class="m">Mode C veil</b>: transponder and ADS-B Out required.'+ch('p91_215'),
+    trsa:()=>'<b>Riverside TRSA</b>: radar sequencing offered; participation voluntary.'+ch('aim35'),
+    P:()=>'<b class="w">P-99 PROHIBITED</b>: no flight without the using agency\'s permission.'+ch('p73'),
+    R:on=>on?'<b class="w">R-9901 ACTIVE</b>: no entry without permission.'+ch('p91_133'):'<b>R-9901 cold</b> (0700–1900): ATC may clear you through.'+ch('p91_133'),
+    W:on=>on?'<b class="cau">W-999 active</b>: hazards offshore; no permission needed, avoid.'+ch('aim34'):'<b>W-999 cold</b> (0800–2000).'+ch('aim34'),
+    MOA:on=>on?'<b class="cau">Hawk MOA active</b>: VFR allowed. Get status, watch for fast military traffic.'+ch('aim34'):'<b>Hawk MOA cold</b> (0800–2200).'+ch('aim34'),
+    AA:()=>'<b class="cau">A-999 alert area</b>: heavy pilot training; extra vigilance.'+ch('aim34'),
+    NSA:()=>'<b>NSA</b>: avoid flight here voluntarily; may be made prohibited by NOTAM.'+ch('p99_7'),
+    park:()=>'<b>Stone Peaks NP</b>: you are below the requested 2,000 ft AGL.'+ch('ac91_36'),
+    IR:()=>'<b>IR123</b>: military route, high-speed jets possible.'+ch('aim35'),
+    VR:()=>'<b>VR1234</b>: military jets possible at or below 1,500 AGL.'+ch('aim35'),
+    jump:()=>'<b class="cau">Parachute jumping</b>: jumpers may be descending. Listen on CTAF/ATC.'+ch('aim35'),
+    glider:()=>'<b>Glider operations</b>: watch for gliders and tow planes.'+ch('cug'),
+    ADIZ:()=>'<b class="cau">ADIZ</b>: DVFR or IFR flight plan, radio, transponder, position report.'+ch('p99'),
+    TFR:()=>'<b class="w">TFR ACTIVE</b>: fire fighting; no entry unless authorized.'+ch('p91_137')};
+  const ov=ovs.length?ovs.map(o=>'<span class="ov">'+OT[o.o.id](o.on)+'</span>').join(''):'Nothing else at your position.';
+  return{c,m,wx,ent,eq,sp,ov,night};}
+let lastRO='';
+function readouts(A){const c=A.c;
+  const cls=c.c?'Class '+c.c+(SPAN_K[c.k]||''):'Terrain';const pos=fmt(S.alt)+' MSL',agl=c.agl>=0?fmt(c.agl)+' AGL · ground '+fmt(c.g):'below ground';
+  const mt=c.c?minsTxt(A.m)+(c.c==='G'?' ('+(A.night?'night':'day')+')':''):'—';
+  const sig=[cls,c.span,pos,agl,mt,A.wx.t,A.ent,A.eq,A.sp,A.ov].join('|');if(sig===lastRO)return;lastRO=sig;
+  $('rCls').textContent=cls;$('rCls').style.color=c.c?COL[c.c]:COL.dim;$('rSpan').textContent=c.span||'';
+  $('rPos').textContent=pos;$('rAgl').textContent=agl;$('rMin').innerHTML=mt+(c.c?ch('p91_155'):'');
+  $('rWx').innerHTML=A.wx.t;$('rWx').className=A.wx.ok?'okc':'badc';$('rEnt').innerHTML=A.ent;$('rEq').innerHTML=A.eq;$('rSpd').innerHTML=A.sp;$('rOv').innerHTML=A.ov;}
+
+/* ================= Controls ================= */
+const hhmm=t=>String(Math.floor(t)).padStart(2,'0')+':'+String(Math.round((t%1)*60)).padStart(2,'0');
+const a2s=a=>a<=20000?a/25:800+(a-20000)/210,s2a=v=>v<=800?Math.round(v*25/100)*100:Math.round((20000+(v-800)*210)/1000)*1000;
+const h3=d=>String(Math.round((d%360+360)%360)).padStart(3,'0')+'°';
+function syncCtl(){
+  const set=(id,v)=>{if(document.activeElement!==$(id))$(id).value=v;};
+  set('alt',a2s(S.alt));$('altOut').textContent=S.alt>=18000?'FL'+String(Math.round(S.alt/100)).padStart(3,'0'):fmt(S.alt)+' ft MSL';
+  set('hdg',Math.round(((S.hdg%360)+360)%360/5)*5%360);$('hdgOut').textContent=h3(S.hdg);
+  set('time',S.time);$('timeOut').textContent=hhmm(S.time)+' · '+(nightAt(S.time)?'Night':'Day');
+  set('vis',S.vis);$('visOut').textContent=S.vis+' SM';
+  set('cloud',S.cloud===null?16000:S.cloud);$('cloudOut').textContent=S.cloud===null?'None':fmt(S.cloud)+' MSL';
+  $('tfrBtn').setAttribute('aria-pressed',S.tfr);
+  document.querySelectorAll('[data-style]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.style===S.style));
+  $('slTxt').textContent='course '+h3(S.hdg)+' true';}
+
+const dots=$('dots');
+STEPS.forEach((s,i)=>{const b=document.createElement('button');b.type='button';b.setAttribute('aria-label','Step '+(i+1)+': '+s.title);b.onclick=()=>goStep(i);dots.appendChild(b);});
+function applyAnim(st,t){if(st.anim)for(const k in st.anim){const[a0,a1,t0,t1]=st.anim[k];const v=a0+(a1-a0)*ss((t-t0)/(t1-t0));
+    if(k==='agl')T.alt=Math.round(elev(T.x,T.y)+v);else if(k==='x'||k==='y'||k==='alt'||k==='hdg')T[k]=v;else if(k==='time')S.time=Math.round(v*4)/4;else if(k==='cloud')S.cloud=Math.round(v/100)*100;}
+  (st.ev||[]).forEach(e=>{if(t>=e.at&&e.style)S.style=e.style;});}
+function applySet(v){['x','y','alt','hdg','zoom'].forEach(k=>{if(v[k]!==undefined)T[k]=v[k];});['time','vis','style','tfr'].forEach(k=>{if(v[k]!==undefined)S[k]=v[k];});if('cloud'in v)S.cloud=v.cloud;}
+function goStep(i){i=clamp(i,0,STEPS.length-1);S.step=i;S.t=0;const st=STEPS[i];S.mode=i===STEPS.length-1?'explore':'tour';S.focus=FOCUS[i]||null;
+  $('stepNum').textContent='Step '+(i+1)+' of '+STEPS.length;$('stepTitle').textContent=st.title;$('stepBody').innerHTML=st.body;
+  [...dots.children].forEach((b,k)=>{b.className=k===i?'on':(k<i?'done':'');b.setAttribute('aria-current',k===i?'step':'false');});
+  $('explore').hidden=S.mode==='explore';$('next').disabled=i===STEPS.length-1;$('prev').disabled=i===0;Kit.step(st);
+  applySet(st.set||{});S.style=(st.set&&st.set.style)||userStyle;applyAnim(st,0);}
+$('prev').onclick=()=>goStep(S.step-1);$('next').onclick=()=>goStep(S.step+1);$('explore').onclick=()=>goStep(STEPS.length-1);
+function setPlay(v){S.playing=v;$('play').textContent=v?'Pause':'Play';}
+$('play').onclick=()=>setPlay(!S.playing);
+$('speed').oninput=e=>{S.speed=+e.target.value;$('speedTxt').textContent=S.speed+'×';};
+Kit.mount({pause:()=>setPlay(false),sources:['phak15','phak16','aim31','aim32','aim33','aim34','aim35','aim423','aim56','aim74','p1','p61_57','p61_95','p71','p73','p91_117','p91_119','p91_125','p91_126','p91_129','p91_130','p91_131','p91_133','p91_135','p91_137','p91_141','p91_145','p91_155','p91_157','p91_159','p91_161','p91_209','p91_215','p91_225','p91appD','p93V','p99','p99_7','p105','ac91_36','cug','vfrChart','adsb','sua','tfr','acsI_E']});
+// user input takes over: switch to explore, keeping the current scene
+function userSet(fn){if(S.mode==='tour'){const keep={...S},kz=T.zoom;goStep(STEPS.length-1);
+    ['time','vis','cloud','tfr','style'].forEach(k=>S[k]=keep[k]);Object.assign(T,{x:keep.x,y:keep.y,alt:keep.alt,hdg:keep.hdg,zoom:kz});}fn();}
+$('alt').oninput=e=>userSet(()=>{T.alt=S.alt=Math.max(s2a(+e.target.value),Math.ceil((elev(S.x,S.y)+100)/100)*100);});
+$('hdg').oninput=e=>userSet(()=>{T.hdg=S.hdg=+e.target.value;});
+$('time').oninput=e=>userSet(()=>{S.time=+e.target.value;});
+$('vis').oninput=e=>userSet(()=>{S.vis=+e.target.value;});
+$('cloud').oninput=e=>userSet(()=>{const v=+e.target.value;S.cloud=v>=16000?null:v;});
+$('tfrBtn').onclick=()=>userSet(()=>{S.tfr=!S.tfr;});
+document.querySelectorAll('[data-style]').forEach(b=>b.onclick=()=>{S.style=userStyle=b.dataset.style;if(S.mode==='tour'){const st=STEPS[S.step];if(st.ev)setPlay(false);}});
+const ZL=[1,1.4,2,2.8,4];
+$('zIn').onclick=()=>{T.zoom=ZL.find(z=>z>T.zoom+.01)||4;};$('zOut').onclick=()=>{T.zoom=[...ZL].reverse().find(z=>z<T.zoom-.01)||1;};
+document.addEventListener('keydown',e=>{if(e.target.closest('input,button,dialog,details'))return;
+  if(e.key===' '){e.preventDefault();setPlay(!S.playing);}else if(e.key==='ArrowRight')goStep(S.step+1);else if(e.key==='ArrowLeft')goStep(S.step-1);});
+// map: tap or drag anywhere moves the aircraft; course follows drag direction
+const loc=(e,cv)=>{const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];};
+let lastPt=null;
+function mapTo(e){const[x,y]=loc(e,PL.cv),g=view();return[clamp(g.cx+(x-g.w/2)/g.s,-W,W),clamp(g.cy-(y-g.h/2)/g.s,-W,W)];}
+PL.cv.addEventListener('pointerdown',e=>{userSet(()=>{});drag='plan';PL.cv.setPointerCapture(e.pointerId);const[x,y]=mapTo(e);T.x=x;T.y=y;lastPt=[x,y];});
+PL.cv.addEventListener('pointermove',e=>{if(drag!=='plan')return;const[x,y]=mapTo(e);S.x=T.x=x;S.y=T.y=y;
+  const dx=x-lastPt[0],dy=y-lastPt[1];if(Math.hypot(dx,dy)>1.2/S.zoom){T.hdg=S.hdg=deg(Math.atan2(dx,dy));lastPt=[x,y];}keepAbove();});
+SD.cv.addEventListener('pointerdown',e=>{const[x,y]=loc(e,SD.cv),G=sg();if(Math.abs(x-SX(G,0))>40&&Math.abs(y-SY(G,S.alt))>30)return;userSet(()=>{});drag='side';SD.cv.setPointerCapture(e.pointerId);lastPt=[x,y];SD.cv.style.cursor='grabbing';});
+SD.cv.addEventListener('pointermove',e=>{if(drag!=='side')return;const[x,y]=loc(e,SD.cv),G=sg();
+  const dd=(x-lastPt[0])/(G.x1-G.x0)*(SF-SB);lastPt=[x,y];const hr=rad(S.hdg);S.x=T.x=clamp(S.x+dd*Math.sin(hr),-W,W);S.y=T.y=clamp(S.y+dd*Math.cos(hr),-W,W);
+  const a=invAlt((G.bot-y)/(G.bot-G.top));S.alt=T.alt=a<20000?Math.round(a/100)*100:Math.round(a/1000)*1000;S.alt=T.alt=clamp(S.alt,0,66000);keepAbove();});
+function keepAbove(){const g=elev(S.x,S.y)+100;if(S.alt<g)T.alt=S.alt=Math.ceil(g/100)*100;}
+const endDrag=()=>{drag=null;SD.cv.style.cursor='grab';};
+['pointerup','pointercancel'].forEach(ev=>{PL.cv.addEventListener(ev,endDrag);SD.cv.addEventListener(ev,endDrag);});
+
+/* ================= Airspace guide ================= */
+const SW=(bg,bd,dash)=>`<span class="sw" style="background:${bg};border:2px ${dash?'dashed':'solid'} ${bd}"></span>`;
+const HB=c=>`repeating-linear-gradient(45deg,${c} 0 2px,transparent 2px 5px)`;
+const GUIDE=[
+ ['Controlled airspace',[
+  {n:'Class A',sw:SW('rgba(169,155,255,.25)','#a99bff'),lim:'18,000 MSL–FL600',what:'High-altitude airspace for IFR traffic. Not charted on sectionals.',vfr:'VFR not permitted.',ent:'Instrument rating, IFR flight plan and clearance.',eq:'Two-way radio, Mode C, ADS-B Out (1090ES). Altimeter 29.92.',refs:['p91_135','aim32'],go:{x:6,y:-46,alt:20000,hdg:90}},
+  {n:'Class B',sw:SW('rgba(91,157,255,.25)','#5b9dff'),lim:'SFC–10,000 MSL',what:'Busiest airports. Layered shelves, tailored to each airport. Solid blue lines, labels ceiling/floor in hundreds MSL.',vfr:'3 SM, clear of clouds.',ent:'ATC clearance. Private pilot, or student/sport/recreational with §61.95 endorsement (some primaries forbid students, Part 91 App D).',eq:'Two-way radio, Mode C, ADS-B Out (also within 30 NM veil). IFR: VOR/TACAN or RNAV.',x:'Speed 250 KIAS; 200 KIAS under a shelf or in a VFR corridor.',refs:['p91_131','p61_95','p91appD','p91_117'],go:{x:MET.x+3,y:MET.y+3,alt:3000,hdg:0,zoom:2}},
+  {n:'Class C',sw:SW('rgba(224,99,198,.25)','#e063c6'),lim:'SFC–4,000 AGL',what:'Busy airports with radar approach control. Core 5 NM from the surface, shelf 5–10 NM from 1,200 AGL. Solid magenta.',vfr:'3 SM · 500 below, 1,000 above, 2,000 horizontal.',ent:'Two-way radio communication with ATC before entering.',eq:'Two-way radio, Mode C, ADS-B Out in C and above it up to 10,000 MSL.',x:'200 KIAS within 4 NM at or below 2,500 AGL. Outer area ~20 NM: radar service, voluntary.',refs:['p91_130','p91_215','p91_117'],go:{x:BAY.x,y:BAY.y-7,alt:CC.shelf+500,hdg:0,zoom:2}},
+  {n:'Class D',sw:SW('rgba(91,157,255,.12)','#5b9dff',1),lim:'SFC–2,500 AGL',what:'Towered airports. Usually ~4 NM radius. Dashed blue; ceiling in brackets, e.g. [35]. Becomes E or G when the tower closes.',vfr:'3 SM · 500 below, 1,000 above, 2,000 horizontal.',ent:'Two-way radio communication with the tower before entering.',eq:'Two-way radio.',x:'200 KIAS within 4 NM at or below 2,500 AGL.',refs:['p91_129','p91_117','p91_125'],go:{x:RIV.x+2,y:RIV.y,alt:r100(RIV.fe+1200),hdg:270,zoom:2.4,time:12}},
+  {n:'Class E: surface area',sw:SW('transparent','#e063c6',1),lim:'SFC up',what:'Controlled to the ground at a non-towered airport with weather reporting, or a Class D when the tower closes. Dashed magenta; extensions shown the same way.',vfr:'3 SM, 500/1,000/2,000; ceiling at least 1,000 ft, ground visibility 3 SM.',ent:'None for VFR. Below VFR minimums: Special VFR clearance (§91.157).',eq:'None.',refs:['p91_155','p91_157','aim32'],go:{x:CED.x,y:CED.y-2,alt:r100(CED.fe+600),hdg:0,zoom:2.4}},
+  {n:'Class E: other',sw:`<span class="sw" style="background:radial-gradient(circle at 50% 50%,transparent 45%,rgba(224,99,198,.6))"></span>`,lim:'700 / 1,200 AGL up',what:'700 AGL transition areas (faded magenta), 1,200 AGL default, MSL floors (staggered blue + number), federal airways (1,200 AGL, 4 NM each side), 14,500 MSL to FL180 everywhere (except within 1,500 AGL), above FL600.',vfr:'Below 10,000 MSL: 3 SM, 500/1,000/2,000. At or above 10,000: 5 SM, 1,000/1,000/1 SM.',ent:'None for VFR.',eq:'Mode C and ADS-B above 10,000 MSL (not within 2,500 AGL).',refs:['aim32','p71','p91_155'],go:{x:PIN.x,y:PIN.y-3,alt:r100(PIN.fe+900),hdg:0,zoom:2}},
+ ]],
+ ['Uncontrolled airspace',[
+  {n:'Class G',sw:SW('rgba(201,185,143,.2)','#c9b98f'),lim:'SFC–700/1,200 AGL',what:'Everything not controlled. Usually to 700 or 1,200 AGL; up to 14,500 MSL in remote areas (faded blue edge).',vfr:'≤1,200 AGL: day 1 SM clear of clouds, night 3 SM 500/1,000/2,000. Above 1,200 AGL: day 1 SM, night 3 SM, 500/1,000/2,000. ≥10,000 MSL: 5 SM, 1,000/1,000/1 SM.',ent:'None.',eq:'None.',x:'Night traffic pattern exception: 1 SM clear of clouds within ½ mile of the runway.',refs:['aim33','p91_126','p91_155'],go:{x:-9,y:-48,alt:r100(elev(-9,-48)+800),hdg:90,zoom:1.6}},
+ ]],
+ ['Special use airspace',[
+  {n:'Prohibited area (P-)',sw:SW(HB('rgba(91,157,255,.7)'),'#5b9dff'),lim:'charted',what:'Flight prohibited for security or national welfare, e.g. P-56 (Washington, DC), P-40 (Camp David).',vfr:'—',ent:'No flight without permission of the using agency.',eq:'—',refs:['aim34','p73'],go:{x:25.5,y:6,alt:3000,hdg:90,zoom:2}},
+  {n:'Restricted area (R-)',sw:SW(HB('rgba(91,157,255,.7)'),'#5b9dff'),lim:'charted',what:'Invisible hazards: artillery, guided missiles, aerial gunnery. Times and altitudes on the chart margin.',vfr:'—',ent:'Active: permission from the controlling agency. Not active: ATC may clear you through (joint use).',eq:'—',refs:['p91_133','aim34','sua'],go:{x:-20,y:9,alt:6500,hdg:0,zoom:1.6,time:9}},
+  {n:'Warning area (W-)',sw:SW(HB('rgba(91,157,255,.7)'),'#5b9dff'),lim:'beyond 3 NM offshore',what:'Same kinds of hazard as restricted areas, over domestic and international waters.',vfr:'—',ent:'No permission needed; avoid when active.',eq:'—',refs:['aim34'],go:{x:46,y:0,alt:3500,hdg:90,zoom:1.6,time:10}},
+  {n:'Military operations area (MOA)',sw:SW(HB('rgba(224,99,198,.7)'),'#e063c6'),lim:'charted',what:'Military training separated from IFR traffic. Floors and times on the chart margin.',vfr:'Normal class minimums.',ent:'VFR allowed, no permission. Check status with FSS or the controlling agency.',eq:'—',refs:['aim34','sua'],go:{x:-36,y:-16,alt:10500,hdg:270,zoom:1.3,time:10}},
+  {n:'Alert area (A-)',sw:SW(HB('rgba(224,99,198,.7)'),'#e063c6'),lim:'charted',what:'High volume of pilot training or unusual aerial activity.',vfr:'Normal class minimums.',ent:'No permission. Everyone is responsible for collision avoidance.',eq:'—',refs:['aim34'],go:{x:27,y:-41,alt:3500,hdg:90,zoom:1.6}},
+  {n:'Controlled firing area (CFA)',sw:SW('transparent','#8ea2a5',1),lim:'not charted',what:'Activities that would be hazardous to aircraft, suspended when a spotter or radar sees an aircraft approaching.',vfr:'—',ent:'No action needed by pilots.',eq:'—',refs:['aim34']},
+  {n:'National Security Area (NSA)',sw:SW('transparent','#5b9dff',1),lim:'charted',what:'Increased security over sensitive ground sites.',vfr:'—',ent:'Voluntarily avoid. May be made temporarily prohibited by NOTAM (§99.7).',eq:'—',refs:['aim34','p99_7'],go:{x:31,y:-18,alt:2000,hdg:0,zoom:2.4}},
+ ]],
+ ['Other airspace areas',[
+  {n:'Temporary flight restriction (TFR)',sw:SW('rgba(226,60,50,.25)','#ff5a4a',1),lim:'NOTAM only',what:'Fires and disasters (§91.137), VIPs (§91.141), space ops (§91.143), airshows and major sporting events (§91.145), stadiums and security (§99.7). Not on paper charts.',vfr:'—',ent:'Per NOTAM: usually no entry unless authorized.',eq:'Per NOTAM.',refs:['p91_137','p91_141','p91_145','p99_7','tfr'],go:{x:-38,y:32,alt:9500,hdg:270,zoom:1.6,tfr:true}},
+  {n:'Mode C veil',sw:SW('transparent','#e063c6'),lim:'SFC–10,000 MSL',what:'30 NM around Class B primary airports. Thin magenta circle.',vfr:'Underlying class.',ent:'None.',eq:'Mode C and ADS-B Out (except aircraft without engine-driven electrical systems, outside B/C).',refs:['p91_215','p91_225'],go:{x:-14,y:-10,alt:2500,hdg:90,zoom:1.4}},
+  {n:'TRSA',sw:SW('transparent','#b4c0c3'),lim:'charted',what:'Terminal radar service area around some Class D airports. Gray lines. Not a class of airspace.',vfr:'Underlying class.',ent:'Radar sequencing offered; participation voluntary but urged.',eq:'—',refs:['aim35'],go:{x:RIV.x+9,y:RIV.y,alt:r100(RIV.fe+2800),hdg:270,zoom:1.8}},
+  {n:'Military training route (MTR)',sw:SW('#a3b1b4','#a3b1b4'),lim:'IR / VR',what:'Low, fast military flying, often above 250 KIAS. 4-digit: at or below 1,500 AGL; 3-digit: some segments above. Gray line.',vfr:'—',ent:'None. Ask FSS which routes are active.',eq:'—',refs:['aim35'],go:{x:-14,y:-40,alt:r100(elev(-14,-40)+800),hdg:20,zoom:1.6}},
+  {n:'Parachute jump area',sw:SW('transparent','#e4ece9'),lim:'Chart Supplement',what:'Parachute symbol. Jump times and altitudes in the Chart Supplement.',vfr:'—',ent:'None. Listen to ATC/CTAF for "jumpers away."',eq:'—',refs:['aim35','p105'],go:{x:OSP.x,y:OSP.y,alt:3500,hdg:90,zoom:2}},
+  {n:'Glider, ultralight, hang glider areas',sw:SW('transparent','#e4ece9'),lim:'symbol',what:'Chart symbols warn of concentrated activity. Advisory.',vfr:'—',ent:'None. Extra vigilance.',eq:'—',refs:['cug'],go:{x:CED.x-2,y:CED.y+2,alt:4500,hdg:0,zoom:2}},
+  {n:'National parks and refuges',sw:SW('transparent','#8fd19e',1),lim:'2,000 AGL request',what:'Noise-sensitive areas. Pilots are asked to stay at least 2,000 ft above the surface.',vfr:'—',ent:'Advisory (AC 91-36D). Some areas have binding Part 93 rules.',eq:'—',refs:['aim74','ac91_36'],go:{x:-46,y:-40,alt:7500,hdg:90,zoom:1.4}},
+  {n:'ADIZ',sw:SW('transparent','#ffb54a',1),lim:'coastal / border',what:'Air defense identification zone over the coasts and borders.',vfr:'—',ent:'DVFR or IFR flight plan filed and activated; position report before entry.',eq:'Two-way radio, Mode C transponder (Part 99).',refs:['p99','aim56'],go:{x:47,y:10,alt:4500,hdg:90,zoom:1.4}},
+  {n:'SFRA / SATR',sw:SW('transparent','#ffb54a'),lim:'Part 93',what:'Special flight rules areas: DC SFRA and its Flight Restricted Zone, Grand Canyon, LA, Hudson River and others.',vfr:'—',ent:'DC SFRA: special awareness training (§91.161), flight plan, discrete code, radio contact. FRZ: mostly closed to GA.',eq:'Transponder, radio.',refs:['p93V','p91_161','aim56']},
+  {n:'Published VFR routes',sw:SW('transparent','#5b9dff',1),lim:'TAC charts',what:'VFR flyways, corridors and Class B transition routes for getting around or through busy airspace.',vfr:'Underlying class.',ent:'Transition routes need a clearance; flyways and corridors do not.',eq:'Per area.',refs:['aim35']},
+  {n:'Airport advisory area',sw:SW('transparent','#8ea2a5'),lim:'10 SM',what:'Local Airport Advisory from an FSS on a non-towered airport.',vfr:'Underlying class.',ent:'None; advisory only.',eq:'—',refs:['aim35']},
+ ]],
+];
+function buildGuide(){const b=$('guideBody');b.innerHTML=GUIDE.map(([grp,items],gi)=>`<h3>${grp}</h3>`+items.map((it,ii)=>`<details><summary>${it.sw}<span class="nm">${it.n}</span><span class="lm">${it.lim}</span></summary><div class="gb">
+  <p class="gx">${it.what}</p><dl><dt>VFR mins</dt><dd>${it.vfr}</dd><dt>To enter</dt><dd>${it.ent}</dd><dt>Equipment</dt><dd>${it.eq}</dd>${it.x?`<dt>Also</dt><dd>${it.x}</dd>`:''}</dl>
+  <div class="gf">${it.go?`<button type="button" data-g="${gi}.${ii}">Show me</button>`:''}${it.refs.map(ch).join('')}</div></div></details>`).join('')).join('');
+  b.querySelectorAll('[data-g]').forEach(btn=>btn.onclick=()=>{const[gi,ii]=btn.dataset.g.split('.').map(Number),go=GUIDE[gi][1][ii].go;
+    userSet(()=>{});Object.assign(T,{x:go.x,y:go.y,alt:go.alt,hdg:go.hdg,zoom:go.zoom||1.4});if(go.time!==undefined)S.time=go.time;if(go.tfr!==undefined)S.tfr=go.tfr;$('guide').close();});}
+buildGuide();
+$('guideBtn').onclick=()=>{setPlay(false);$('guide').showModal();};
+$('guide').querySelector('.kh button').onclick=()=>$('guide').close();
+$('guide').addEventListener('click',e=>{if(e.target===$('guide'))$('guide').close();});
+
+/* ================= Loop ================= */
+let prev=performance.now();
+function frame(now){const dt=Math.min(.05,(now-prev)/1000);prev=now;const st=STEPS[S.step];
+  if(S.playing&&S.mode==='tour'){S.t+=dt*S.speed;applyAnim(st,S.t);if(st.dur&&S.t>=st.dur)goStep(S.step+1);}
+  const k=1-Math.exp(-dt*3.5*Math.max(1,S.speed));
+  if(drag!=='plan'){S.x+=(T.x-S.x)*k;S.y+=(T.y-S.y)*k;}
+  if(drag!=='side'){S.alt+=(T.alt-S.alt)*k;if(Math.abs(T.alt-S.alt)<8)S.alt=T.alt;}
+  const dh=((T.hdg-S.hdg+540)%360)-180;S.hdg=(S.hdg+dh*k+360)%360;if(Math.abs(dh)<.05)S.hdg=T.hdg%360;
+  S.zoom+=(T.zoom-S.zoom)*k;
+  // map view follows the aircraft when zoomed in
+  const half=W/S.zoom,tx=clamp(S.x,-W+half,W-half),ty=clamp(S.y,-W+half,W-half);
+  if(drag!=='plan'){S.vx+=(tx-S.vx)*k;S.vy+=(ty-S.vy)*k;}else{S.vx=clamp(S.vx,-W+half,W-half);S.vy=clamp(S.vy,-W+half,W-half);}
+  if(S.alt<elev(S.x,S.y))S.alt=Math.ceil(elev(S.x,S.y)/100)*100;
+  S.alt=Math.round(S.alt);
+  $('stepBar').style.width=(st.dur?clamp(S.t/st.dur,0,1)*100:100)+'%';
+  const A=analyze();drawPlan();drawSide(A);readouts(A);syncCtl();
+  requestAnimationFrame(frame);}
+if(matchMedia('(prefers-reduced-motion: reduce)').matches)S.playing=false;
+goStep(0);Object.assign(S,{x:T.x,y:T.y,alt:T.alt,hdg:T.hdg,zoom:T.zoom});setPlay(S.playing);requestAnimationFrame(frame);
+})();
+</script>
+<script>document.getElementById("home").addEventListener("click",e=>{if(history.length>1&&document.referrer){e.preventDefault();history.back();}});</script>
+</body></html>
