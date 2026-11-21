@@ -324,13 +324,6 @@
       "date": "2017-08-29"
     },
     {
-      "id": "doc-saib-ce-11-17",
-      "short": "SAIB CE-11-17",
-      "title": "FAA Special Airworthiness Information Bulletin CE-11-17: Airplane maneuvering speed",
-      "url": "https://www.safepilots.org/library/contributed/Aerodynamics_SAIBManeuveringSpeed_2-02-11.pdf",
-      "type": "pdf"
-    },
-    {
       "id": "phak-10",
       "short": "PHAK",
       "title": "PHAK Chapter 10: Weight and Balance",
@@ -422,10 +415,10 @@
       }
     },
     {
-      "id": "doc-caa-safetysense-7c",
-      "short": "CAA SafetySense",
-      "title": "UK CAA SafetySense Leaflet 7c: Aeroplane Performance (surface, slope and tailwind factors; ×1.33 takeoff, ×1.43 landing)",
-      "url": "https://caa.co.uk/publication/download/13044",
+      "id": "ac-91-79b",
+      "short": "AC 91-79B",
+      "title": "AC 91-79B: Aircraft Landing Performance and Runway Excursion Mitigation",
+      "url": "https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_91-79B_FAA.pdf",
       "type": "pdf"
     }
   ]

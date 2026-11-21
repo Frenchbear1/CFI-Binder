@@ -55,7 +55,8 @@ function loadStatus(L,s,util){
    Engine power ∝ (σ − 0.12)/0.88 (Gagg-Ferrar). The sample charts are made from a simple model calibrated to a
    C172S-class trainer (about 960 / 1,690 ft takeoff and 575 / 1,335 ft landing at sea level, 15 °C, 2,550 lb):
    ground roll ∝ W² / (σ·φ^1.2). They are not POH data. Corrections follow typical light-airplane POH notes
-   (wind, dry grass) and UK CAA SafetySense 7c (wet grass, slope, ×1.33 / ×1.43). */
+   (wind, dry grass). Wet grass and slope factors are this model's own illustrative values (PHAK 11 explains the effects).
+   Landing margin: ×1.15, the FAA's recommended 15% (AC 91-79B). The FAA sets no takeoff factor, so takeoff shows the spare runway. */
 function atm(pa,oat){const d=Math.pow(1-6.8756e-6*pa,5.2559),th=(oat+273.15)/288.15,sg=d/th;
   return{sg,phi:(sg-0.12)/0.88,da:145442*(1-Math.pow(sg,0.235)),isa:15-1.98*pa/1000};}
 const r5=x=>Math.round(x/5)*5;
@@ -85,15 +86,16 @@ function perf(mode,W,p,surf){
   else rows.push({k:'Paved',gr,tot});
   const sl=p.slope,bad=ld?-sl:sl;if(bad>0){const k=1+0.05*bad;gr*=k;tot*=k;}
   rows.push({k:bad>0?(ld?'Downslope':'Upslope'):'Slope · no credit',gr,tot});
-  const fac=ld?1.43:1.33,req=tot*fac;
+  const fac=ld?1.15:1,req=tot*fac;
   return{blk,c,gr,tot,req,fac,rows,tail10:hw<-10};
 }
 function perfStatus(P,rw){
   if(P.err)return['r',P.err];
   if(P.tail10)return['r','TAILWIND OVER 10 KT · NO DATA'];
   if(P.tot>rw)return['r','WILL NOT FIT · '+fmt(P.tot-rw)+' FT SHORT'];
-  if(P.req>rw)return['a','FITS · MARGIN UNDER ×'+P.fac.toFixed(2)];
-  return['g','FITS WITH ×'+P.fac.toFixed(2)+' MARGIN'];
+  if(P.fac===1)return['g','FITS · '+fmt(r5(rw-P.tot))+' FT SPARE'];
+  if(P.req>rw)return['a','FITS · UNDER THE FAA 15% MARGIN'];
+  return['g','FITS WITH THE FAA 15% MARGIN'];
 }
 
 /* ================= State ================= */
@@ -230,7 +232,7 @@ function drawRwy(P,stat){
       const air=P.tot-P.gr;
       if(ld){m+=mk(air,'TOUCHDOWN','#8ea2a5',0);m+=mk(P.tot,'STOP '+fmt(r5(P.tot)),'#e4ece9',1);}
       else{m+=mk(P.gr,'LIFTOFF '+fmt(r5(P.gr)),'#8ea2a5',0);m+=mk(P.tot,'50 FT '+fmt(r5(P.tot)),'#e4ece9',1);}
-      m+=mk(P.req,'×'+P.fac.toFixed(2)+' '+fmt(r5(P.req)),P.req>rw?'#e2574a':'#7fd98a',2);
+      if(P.fac>1)m+=mk(P.req,'×'+P.fac.toFixed(2)+' '+fmt(r5(P.req)),P.req>rw?'#e2574a':'#7fd98a',2);
       m+=`<text x="${X(rw)}" y="${RG+48}" class="ml" fill="#ffb54a" text-anchor="end">RUNWAY ${fmt(rw)} FT</text>`;
       // flight path
       let d='';for(let k=0;k<=40;k++){const u=k/40;let x,h;
@@ -265,7 +267,7 @@ function drawChart(P){
   // corrections waterfall
   const wf=$('wf');
   if(P.err){wf.innerHTML=`<text x="220" y="70" class="ml" fill="#e2574a" text-anchor="middle">${P.err}</text>`;return;}
-  const rows=[...P.rows,{k:'×'+P.fac.toFixed(2)+' margin',gr:null,tot:P.req}];
+  const rows=P.fac>1?[...P.rows,{k:'+15% margin',gr:null,tot:P.req}]:P.rows;
   const mx=Math.max(S.rwy,P.req)*1.05,L0=150,Wd=440-L0-50,X=d=>L0+d/mx*Wd;let g='';
   rows.forEach((r,i)=>{const y=6+i*21,last=i===rows.length-1,col=last?(P.req>S.rwy?'#e2574a':'#7fd98a'):(i===0?'#9fb3b5':'#5ccfe3');
     g+=`<text x="${L0-8}" y="${y+11}" class="tk" text-anchor="end">${r.k.toUpperCase()}</text>`;
@@ -291,7 +293,7 @@ function readouts(L,stat,P,pst){
   if(P.err){for(const id of['rGr','rTot','rReq','rMg'])setT(id,'—');}
   else{setT('rGr',U(fmt(r5(P.gr)),'ft'));setT('rTot',U(fmt(r5(P.tot)),'ft'),P.tot>s.rwy?'warnc':'');setT('rReq',U(fmt(r5(P.req)),'ft'),P.req>s.rwy?(P.tot>s.rwy?'warnc':'ambc'):'');
     const mg=s.rwy/P.tot;setT('rMg',U('×'+mg.toFixed(2),''),mg<1?'warnc':mg<P.fac?'ambc':'okc');}
-  $('rReqL').textContent='With ×'+(ld?'1.43':'1.33');setT('rRw',U(fmt(s.rwy),'ft'));
+  $('rReqL').textContent='With +15%';$('rReqL').parentElement.hidden=!ld;setT('rRw',U(fmt(s.rwy),'ft'));
   // slider outputs
   const o=(id,t,w)=>{const e=$(id);if(e.textContent!==t)e.textContent=t;e.classList.toggle('warnc',!!w);};
   o('frontO',fmt(s.front)+' lb');o('rearO',fmt(s.rear)+' lb');o('bagAO',fmt(s.bagA)+' lb',s.bagA>AC.bagA||s.bagA+s.bagB>AC.bag);o('bagBO',fmt(s.bagB)+' lb',s.bagB>AC.bagB||s.bagA+s.bagB>AC.bag);
@@ -335,7 +337,7 @@ const STEPS=[
 {title:'Landing distance',dur:12,view:'ldg',set:{pa:2500,oat:25,wind:{kf:[[0,0],[5,0],[8,-4]]}},
  body:'Landing has its own chart, often at max weight only. It is less sensitive to weight and altitude, but tailwind, wet grass and a downslope still bite. Most of the real-world spread is <b>technique</b>: 10% fast on final adds about 20%.'},
 {title:'Leave a margin',dur:14,view:'to',set:{pa:[2500,5000,1,5],oat:[25,32,1,5],front:340,rear:170,bagA:40,fuel:53,rwy:4000},surf:'dry',
- body:'Hot afternoon, 5,000 ft, full load, dry grass, 4,000 ft strip. The chart says about <b>3,500 ft</b> to 50 ft. It "fits", but the recommended <b class="t">×1.33</b> margin needs 4,600 ft. Wait for cooler air, take less, or go elsewhere.'},
+ body:'Hot afternoon, 5,000 ft, full load, dry grass, 4,000 ft strip. The chart says about <b>3,500 ft</b> to 50 ft. It "fits" by only 500 ft, and that chart was flown by a test pilot in a new airplane (PHAK 11). Wait for cooler air, take less, or go elsewhere.'},
 {title:'Your turn',dur:0,
  body:'Load the airplane with the sliders, then switch to <b>Takeoff</b> and <b>Landing</b> to check your runway on today\'s weather. Open <b>Empty weight</b> to enter your own airplane\'s numbers from its weight and balance record.'},
 ];
@@ -392,25 +394,25 @@ const DEEP=[
 <li>Ground roll <span class="k">s ≈ V<sub>LOF</sub>² / (2a)</span>. Liftoff speed grows with √W, so V² ∝ W; acceleration falls with 1/W: so <span class="k">s ∝ W²</span>.</li>
 <li>Use the next heavier chart weight, or interpolate between weight blocks if the POH allows it. Never use a lighter block.</li>
 <li>Many POHs use lower liftoff and 50 ft speeds at lower weights. Use the speeds printed with the chart.</li></ul>`},
-{refs:['phak11','afh6','caaSS7'],more:`<ul>
+{refs:['phak11','afh6'],more:`<ul>
 <li>Wind rules here are typical POH notes. Use only the <b>component along the runway</b>; many pilots use half the reported headwind and 150% of any tailwind.</li>
-<li>UK CAA: a tailwind of 10% of liftoff speed adds about <b>20%</b>.</li>
+<li>A tailwind lengthens both takeoff and landing a lot: typical POH notes add 10% for every 2 kt (PHAK 11).</li>
 <li>Gusty winds: add half the gust factor to the approach speed, which lengthens landing distance.</li></ul>`},
-{refs:['phak11','afh6','caaSS7'],more:`<ul>
-<li>Dry grass here follows a typical POH note: add 15% of the <b>ground roll</b> to both distances. UK CAA SafetySense 7c factors: dry grass ×1.20, wet grass <b>×1.30</b>, soft ground or snow ×1.25 or more, 2% upslope ×1.10.</li>
+{refs:['phak11','afh6'],more:`<ul>
+<li>Dry grass here follows a typical POH note: add 15% of the <b>ground roll</b> to both distances. Wet grass, soft ground and upslope add more. This sim uses wet grass <b>×1.30</b> and about 5% per 1% of upslope: illustrative values, so use your POH's (PHAK 11 explains the rolling friction and gravity behind them).</li>
 <li>Factors <b>multiply</b>: grass and slope and heat compound.</li>
 <li>Soft-field technique (AFH 6) keeps weight off the wheels, but plan the distance first. Long wet grass can be far worse than any factor.</li></ul>`},
-{refs:['phak11','afh9','caaSS7'],more:`<ul>
+{refs:['phak11','afh9','ac91_79'],more:`<ul>
 <li>Landing distance is measured from <b>50 ft</b> over the threshold at the chart approach speed, with maximum braking. Typical POH notes: −10% per 9 kt headwind, +10% per 2 kt tailwind, dry grass +45% of ground roll.</li>
-<li>CAA factors: wet paved ×1.15, wet grass <b>×1.35</b>, 2% downslope ×1.10. Very short wet grass can be ×1.6.</li>
+<li>Wet grass brakes poorly and a downslope keeps you rolling (PHAK 11). This sim uses wet grass <b>×1.35</b> and about 5% per 1% of downslope: illustrative values, so use your POH's.</li>
 <li>Lighter airplane: shorter landing, but take no credit unless the POH gives data.</li>
 <li>ACS: compute both distances and compare them with the runway available before flight (<b>14 CFR 91.103</b>).</li></ul>`},
-{refs:['phak11','p91_103','caaSS7','acsI_F'],more:`<ul>
-<li>UK CAA recommends <b>×1.33</b> on takeoff and <b>×1.43</b> on landing, on top of the condition factors, because charts are flown by test pilots in new airplanes.</li>
+{refs:['phak11','p91_103','ac91_79','acsI_F'],more:`<ul>
+<li>FAA AC 91-79B: add at least <b>15%</b> to the landing distance you work out, on top of the condition corrections, because charts are flown by test pilots in new airplanes. The FAA sets no takeoff factor: compare the distance to 50 ft with the runway and leave room.</li>
 <li>Set a personal rule too: many instructors use "abort if not at 70% of liftoff speed by 50% of the runway".</li>
 <li><b>14 CFR 91.103</b>: before every flight, become familiar with runway lengths and the takeoff and landing distance data for your airplane at the expected conditions.</li></ul>`},
-{refs:['phak10','phak11','wbh4','afh6','afh9','acsI_F','caaSS7'],more:`<ul>
-<li>Try: four adults, legal weight, at 6,000 ft and 35 °C. Which runway lengths still give ×1.33?</li>
+{refs:['phak10','phak11','wbh4','afh6','afh9','acsI_F','ac91_79'],more:`<ul>
+<li>Try: four adults, legal weight, at 6,000 ft and 35 °C. Which runway lengths still leave the 15% landing margin?</li>
 <li>Find a loading that is legal at takeoff but aft of the limit at landing.</li>
 <li>Turn on Utility category: what loading allows intentional spins in this airplane?</li>
 <li>Model: sample C172S-class stations and envelope; charts from a calibrated model, not POH data.</li></ul>`},
@@ -466,7 +468,7 @@ $('play').onclick=()=>setPlay(!L_.playing);
 $('speed').addEventListener('input',e=>{L_.speed=+e.target.value;$('speedTxt').textContent=L_.speed+'×';});
 document.addEventListener('keydown',e=>{if(e.target.closest('input,select,textarea,dialog'))return;
   if(e.key==='ArrowRight')goStep(L_.step+1,true);else if(e.key==='ArrowLeft')goStep(L_.step-1,true);});
-Kit.mount({pause:()=>setPlay(false),sources:['acsI_F','phak10','phak11','wbh2','wbh4','afh6','afh9','afh5','phak8','p91_9','p91_103','p91_151','p23_23','caaSS7','nwsDa']});
+Kit.mount({pause:()=>setPlay(false),sources:['acsI_F','phak10','phak11','wbh2','wbh4','afh6','afh9','afh5','phak8','p91_9','p91_103','p91_151','p23_23','ac91_79','nwsDa']});
 if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)setPlay(false);
 
 /* ================= Explore controls ================= */

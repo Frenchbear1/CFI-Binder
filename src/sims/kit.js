@@ -127,7 +127,7 @@ const REFS={
   afh6:{lab:'AFH 6',t:'AFH Ch 6: Takeoffs and Departure Climbs (normal, crosswind, short-field and soft-field takeoffs)',u:AFH+'07_afh_ch6.pdf',faa:1},
   afh9:{lab:'AFH 9',t:'AFH Ch 9: Approaches and Landings (stabilized approach, short-field and soft-field landings)',u:AFH+'10_afh_ch9.pdf',faa:1},
   p91_9:{lab:'§91.9',t:'14 CFR 91.9: Civil aircraft flight manual, marking, and placard requirements (operating limitations)',u:CFR('91.9'),faa:1},
-  caaSS7:{lab:'CAA SafetySense 7c',t:'UK CAA SafetySense Leaflet 7c: Aeroplane Performance (surface, slope and tailwind factors; ×1.33 takeoff, ×1.43 landing)',u:'https://caa.co.uk/publication/download/13044'},
+  ac91_79:{lab:'AC 91-79B',t:'AC 91-79B: Aircraft Landing Performance and Runway Excursion Mitigation (add at least a 15% safety margin to landing distance)',u:'https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_91-79B_FAA.pdf',faa:1},
   nwsDa:{lab:'NWS DA calculator',t:'National Weather Service: density altitude calculator',u:'https://www.weather.gov/epz/wxcalc_densityaltitude'},
   vorWiki:{lab:'VOR overview',t:'Wikipedia: VHF omnidirectional range (signal structure, DVOR)',u:'https://en.wikipedia.org/wiki/VHF_omnidirectional_range'},
 };
@@ -147,6 +147,7 @@ const FIND={acs:[ACS_PA,'Private Pilot|Airplane|Airman Certification Standards']
   awh11:[AWH,'Air Masses, Fronts, and the Wave Cyclone Model'],awh18:[AWH,'Weather and Obstructions to Visibility'],awh19:[AWH,'Turbulence|Introduction'],awh22:[AWH,'Thunderstorms|Introduction'],
   awh24:[AWH,'Observations|Introduction'],awh26:[AWH,'Advisories|Introduction'],awh27:[AWH,'Forecasts|Introduction'],
   p91appD:['https://www.ecfr.gov/current/title-14/part-91','Appendix D to Part 91'],
+  ac91_79:['https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_91-79B_FAA.pdf','15 percent'],
   ac91_36:['https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_91-36D.pdf','']};
 function where(k){
   const r=REFS[k],u=r.u;let m;
