@@ -73,11 +73,11 @@ export function treeHtml(areas: Folder[], o: TreeOpts): string {
     return `<li class="row" data-node="${at}" data-for="${lv}"><a class="pg" href="${href(p.slug)}"><span class="ico">${PAGE}</span><span class="pg-t">${esc(p.title)}</span>${tag ? `<small class="is-local">${esc(tag)}</small>` : ''}</a>${MORE(at, p.title)}</li>`;
   };
   const folder = (f: Folder, at: string, path: string[]): string => {
-    const all = pagesIn(f.topics), ready = all.filter((p) => p.slug).length;
+    const all = pagesIn(f.topics);
     const lv = [...new Set(all.flatMap((p) => p.levels || []))].join(' ') || LV_ALL;
     const key = [...path, f.title].join(' / ');
     const items = f.topics.map((n, i) => (isFolder(n) ? `<li class="sub" data-for="${[...new Set(pagesIn(n.topics).flatMap((p) => p.levels || []))].join(' ') || LV_ALL}">${folder(n, `${at}.${i}`, [...path, f.title])}</li>` : page(n, `${at}.${i}`, [...path, f.title]))).join('');
-    return `<details class="fold" data-node="${at}" data-fold="${esc(key)}" data-for="${lv}"${ready ? ' open' : ''}><summary><span class="chev" aria-hidden="true"></span><span class="ico">${FOLDER}</span><span class="fold-t">${esc(f.title)}</span>${MORE(at, f.title)}</summary><ul>${items || '<li class="pg-empty">Empty</li>'}</ul></details>`;
+    return `<details class="fold" data-node="${at}" data-fold="${esc(key)}" data-for="${lv}"><summary><span class="chev" aria-hidden="true"></span><span class="ico">${FOLDER}</span><span class="fold-t">${esc(f.title)}</span>${MORE(at, f.title)}</summary><ul>${items || '<li class="pg-empty">Empty</li>'}</ul></details>`;
   };
   return areas.map((a, i) => folder(a, String(i), [])).join('');
 }

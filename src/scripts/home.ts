@@ -41,14 +41,20 @@ const saveOutline = (data: Outline, note: string, files: { path: string; content
   stage([...files, { path: OUTLINE, content: JSON.stringify(data, null, 2) + '\n' }], note, extra);
 
 /* ---------- folders remember whether they're open ---------- */
-const folds = store.get<Record<string, boolean>>('cfi.folds', {});
+// Folders start closed each time the app opens; within one visit (this tab) they stay as you left them.
+const session = {
+  get<T>(k: string, d: T): T { try { return JSON.parse(sessionStorage.getItem(k) || 'null') ?? d; } catch { return d; } },
+  set(k: string, v: unknown) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+try { localStorage.removeItem('cfi.folds'); } catch {}
+const folds = session.get<Record<string, boolean>>('cfi.folds', {});
 const bindFolds = () => tree.querySelectorAll<HTMLDetailsElement>('details.fold').forEach((d) => {
   if (d.dataset.bound) return;
   d.dataset.bound = '1';
   if (d.dataset.fold! in folds) d.open = folds[d.dataset.fold!];
-  d.addEventListener('toggle', () => { folds[d.dataset.fold!] = d.open; store.set('cfi.folds', folds); });
+  d.addEventListener('toggle', () => { folds[d.dataset.fold!] = d.open; session.set('cfi.folds', folds); });
 });
-const openFold = (key: string) => { folds[key] = true; store.set('cfi.folds', folds); };
+const openFold = (key: string) => { folds[key] = true; session.set('cfi.folds', folds); };
 
 /* ---------- Interactives: David's sims, one folder, each opens full screen ---------- */
 const sims = document.createElement('details');
@@ -330,7 +336,7 @@ async function rename(at: string, old: string, name: string) {
       if (sibs.some((x) => x !== n && isFolder(x) && x.title.toLowerCase() === name.toLowerCase()) || (!at.includes('.') && name === 'Interactives')) throw new Error('There’s already a folder with that name here.');
       const oldKey = foldPath(data.areas, n);
       n.title = name;
-      if (folds[oldKey] !== undefined) { folds[foldPath(data.areas, n)] = folds[oldKey]; store.set('cfi.folds', folds); }
+      if (folds[oldKey] !== undefined) { folds[foldPath(data.areas, n)] = folds[oldKey]; session.set('cfi.folds', folds); }
     } else {
       n.title = name;
       if (n.slug) {
