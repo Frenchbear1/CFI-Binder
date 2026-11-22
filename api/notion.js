@@ -222,6 +222,10 @@ export async function POST(req) {
   let url, input;
   try { input = await req.json(); ({ url } = input); } catch { return json({ error: 'input', message: 'Send {"url": "<a Notion link>"}.' }, 400); }
   if (input?.action === 'sync') return sync(token, input);
+  return importPage(token, url);
+}
+
+async function importPage(token, url) {
   const id = notionId(url);
   if (!id) return json({ error: 'input', message: 'That doesn’t look like a Notion page link. In Notion use ••• → Copy link.' }, 400);
   const r = run(token);
@@ -369,6 +373,9 @@ function writeError(e) {
 const okHost = (h) => FILE_HOSTS.some((d) => h === d || h.endsWith('.' + d));
 
 export async function GET(req) {
+  // GET ?url=<Notion link> reads a page too (the app falls back to it if a POST is refused).
+  const link = new URL(req.url).searchParams.get('url');
+  if (link) { const token = process.env.NOTION_TOKEN; return token ? importPage(token, link) : json(SETUP, 501); }
   const raw = new URL(req.url).searchParams.get('file');
   let u;
   try { u = new URL(raw || ''); } catch { return json({ error: 'input', message: 'Missing ?file=' }, 400); }
