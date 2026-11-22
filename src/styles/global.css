@@ -154,34 +154,17 @@ html[data-panel="glass"] [data-panel-only="analog"]:not([data-keep]), html[data-
 .pnl[data-panel-only="glass"] .pnl-tag { color: #2a8fb0; }
 .pnl > :last-child { margin-bottom: 0; }
 
-/* ===== Desktop / large tablet ===== */
+/* ===== Desktop / large tablet =====
+   Same layout as the phone, just roomier: one reading column, the floating dock for contents, search and
+   settings, and everything else in sheets. No side menus or rows of toggles. */
 @media (min-width: 1100px) {
-  .dock { display: none; }
-  .topbar { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); padding: 10px 24px; }
-  .searchfield { display: flex; align-items: center; gap: 8px; margin-left: 24px; width: 280px; padding: 7px 10px; background: var(--surface-2); border: 0; border-radius: 9px; color: var(--ink-3); }
-  .searchfield span { flex: 1; text-align: left; }
-  .searchfield kbd { border: 1px solid var(--line); border-radius: 5px; padding: 0 6px; font-size: .75rem; }
-  .prefs-inline { display: flex; gap: 10px; margin-left: auto; }
-  .shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); }
-  .sidenav { display: block; position: sticky; top: 57px; height: calc(100vh - 57px); overflow: auto; padding: 20px 16px 40px 24px; border-right: 1px solid var(--line); font-size: .9rem; }
-  .nav-area-title { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); font-weight: 650; margin: 18px 0 4px; }
-  .nav-area:first-child .nav-area-title { margin-top: 0; }
-  .sidenav ul { list-style: none; margin: 0; padding: 0; }
-  .sidenav li { padding: 3px 0; line-height: 1.35; }
-  .sidenav a { color: var(--ink); text-decoration: none; }
-  .sidenav a[aria-current] { color: var(--accent); font-weight: 600; }
-  main { padding: 32px 48px 80px; }
+  .topbar { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 10px 24px; }
+  main { padding: 24px 48px calc(var(--dock-h) + 60px); }
   .sheet { margin: 12vh auto auto; max-width: 620px; border-radius: 16px; max-height: 72vh; }
   .sheet .grab { display: none; }
   .sheet-search { height: auto; min-height: 200px; }
   @keyframes up { from { transform: translateY(-8px); opacity: 0; } }
 }
-@media (min-width: 1360px) {
-  .shell:has(.toc-rail) { grid-template-columns: 260px minmax(0, 1fr) 240px; }
-  .toc-rail { display: block; position: sticky; top: 57px; height: calc(100vh - 57px); overflow: auto; padding: 32px 24px 40px 0; }
-  .toc-title { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); font-weight: 650; margin: 0 0 8px; }
-}
-
 /* ===== Article typography (Notion-like) ===== */
 .article { max-width: var(--read); margin: 0 auto; }
 .article h1 { font-size: clamp(1.9rem, 5vw, 2.5rem); line-height: 1.15; letter-spacing: -.02em; margin: .4em 0 .25em; }
@@ -503,7 +486,7 @@ html.editing.kb-up main { padding-bottom: 55vh; }
   border-bottom: 1px solid var(--line);
 }
 .edit-head[hidden], .eh-menu[hidden], .blk-panel[hidden], .eb-view[hidden] { display: none; }
-html.editing .topbar { visibility: hidden; }
+html.editing .topbar { display: none; }
 .eh-done { border: 0; background: none; color: var(--accent); font-weight: 650; font-size: .95rem; padding: 6px 4px; }
 .eh-more { border: 0; background: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: var(--ink); }
 .eh-more:hover, .eh-more[aria-expanded="true"] { background: var(--surface-2); }
@@ -648,7 +631,7 @@ html.editing [data-ed], html.editing [data-src], html.editing [data-new] { scrol
 body.home .sidenav { display: none !important; }
 body.home .shell { display: block !important; }
 body.home main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
-@media (max-width: 1099px) { body.home .topbar { display: none; } }
+body.home .topbar { display: none; }
 .nhome { max-width: 46rem; margin: 0 auto; }
 .nh-head { display: flex; align-items: center; gap: 10px; padding: max(14px, env(safe-area-inset-top)) 0 6px; }
 .nh-head h1 { flex: 1; font-size: 1.35rem; margin: 0; letter-spacing: -.01em; }
@@ -656,7 +639,7 @@ body.home main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .nh-mark svg { width: 20px; height: 20px; transform: rotate(45deg); }
 .nh-chip { border: 0; background: var(--surface-2); border-radius: 999px; padding: 6px 12px; font-size: .78rem; font-weight: 650; letter-spacing: .02em; color: var(--ink); }
 .nh-chip .dot { color: var(--ink-3); margin: 0 3px; }
-@media (min-width: 1100px) { .nh-chip { display: none; } .nh-head { padding-top: 22px; } }
+@media (min-width: 1100px) { .nh-head { padding-top: 22px; } }
 .nh-label { margin: 22px 4px 6px; font-size: .8rem; font-weight: 600; color: var(--ink-3); }
 .nh-notice { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); color: var(--ink); font-size: .9rem; }
 .nh-notice[hidden] { display: none; }
@@ -746,7 +729,6 @@ body.home main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 @keyframes fade { from { opacity: 0; } }
 .top-edit { margin-left: auto; border: 0; background: none; width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; color: var(--ink-2); }
 .top-edit:active { background: var(--surface-2); }
-@media (min-width: 1100px) { .top-edit { display: none; } }
 .brand { white-space: nowrap; }
 
 /* No focus rings from taps or from a sheet opening; keyboard users still get one. */
@@ -855,7 +837,7 @@ html:not(.scr-paired) .cast-btn, html:not(.scr-paired) .cast-row, html.editing .
 .screen-btn { color: var(--ink-2); }
 .screen-btn.on { color: var(--accent); }
 .topbar .screen-btn { margin-left: auto; }
-.topbar .screen-btn + .prefs-inline { margin-left: 10px; }
+.topbar .top-edit + .screen-btn { margin-left: -8px; }
 .scr-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #34c759; vertical-align: middle; box-shadow: 0 0 0 3px color-mix(in srgb, #34c759 25%, transparent); }
 .scr-code { display: flex; gap: 8px; margin: 10px 0 6px; }
 .scr-code input { flex: 1; min-width: 0; height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; font-family: var(--mono); font-size: 18px; letter-spacing: .2em; text-transform: uppercase; }
