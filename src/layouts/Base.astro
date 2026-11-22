@@ -59,10 +59,15 @@ const href = (slug: string) => base + slug + '/';
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" fill="currentColor"/></svg>
       <span>Aviation Binder</span>
     </a>
-    <button class="searchfield" type="button" data-open="search" aria-label="Search the binder">
+    {!guest && !isHome && <button class="top-contents" type="button" data-open="nav" aria-label="Contents" title="Contents"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Contents</span></button>}
+    <span class="top-spacer" aria-hidden="true"></span>
+    <button class="searchfield" type="button" data-open="search" aria-label="Search the binder" title="Search (Ctrl K)">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <span>Search</span><kbd>/</kbd>
+      <span>Search</span><kbd data-kbd>Ctrl K</kbd>
     </button>
+    {!guest && <button class="top-chip" type="button" data-open="prefs" aria-label="Level and aircraft" title="Level, aircraft and theme">
+      <span data-chip-level>PVT</span><span class="dot">·</span><span data-chip-ac>Both</span><span data-chip-panel></span>
+    </button>}
     {isLesson && <button class="top-edit" type="button" data-edit-toggle aria-label="Edit this lesson" title="Edit this lesson"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg></button>}
     {isLesson && <button class="icon-btn top-practice" type="button" data-practice aria-label="Practice this lesson out loud" title="Practice this lesson out loud"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M10 3h4M19 6l1.5-1.5"/></svg></button>}
     {guest && <div class="guest-tools">

@@ -112,6 +112,14 @@ function renderRecents() {
   }).join('');
 }
 
+/* ---------- on a computer the search + new-page bar lives in the top bar (no bottom bar) ---------- */
+{
+  const bar = document.querySelector<HTMLElement>('.nh-bar'), top = document.querySelector<HTMLElement>('.topbar');
+  const desk = matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)');
+  const place = () => { if (!bar || !top) return; if (desk.matches) { if (bar.parentElement !== top) top.append(bar); } else if (bar.parentElement === top) document.body.append(bar); };
+  place(); desk.addEventListener?.('change', place);
+}
+
 /* ---------- compose button: New page / New folder ---------- */
 const compose = document.querySelector<HTMLButtonElement>('[data-compose]')!;
 const menu = document.querySelector<HTMLElement>('[data-compose-menu]')!;
