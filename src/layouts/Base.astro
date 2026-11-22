@@ -64,6 +64,7 @@ const href = (slug: string) => base + slug + '/';
       <span>Search</span><kbd>/</kbd>
     </button>
     {isLesson && <button class="top-edit" type="button" data-edit-toggle aria-label="Edit this lesson" title="Edit this lesson"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg></button>}
+    {isLesson && <button class="icon-btn top-practice" type="button" data-practice aria-label="Practice this lesson out loud" title="Practice this lesson out loud"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M10 3h4M19 6l1.5-1.5"/></svg></button>}
     {guest && <div class="guest-tools">
       <button class="icon-btn" type="button" data-open="prefs" aria-label="Settings and theme" title="Settings and theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg></button>
       {!signin && <a class="signin-pill" href={base + 'login/'}>Sign in</a>}
@@ -293,6 +294,7 @@ const href = (slug: string) => base + slug + '/';
     import '../scripts/reader.ts';
     import '../scripts/editor.ts';
     import '../scripts/screen.ts';
+    import '../scripts/practice.ts';
   </script>
 </body>
 </html>
