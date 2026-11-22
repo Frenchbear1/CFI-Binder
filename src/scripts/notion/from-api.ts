@@ -29,13 +29,20 @@ export async function readNotionLink(url: string, progress: Progress): Promise<I
   } catch {
     throw new Error('Couldn’t reach the binder’s server. Check the connection and try again.');
   }
+  // Some setups refuse the POST before it reaches the route (405): ask again the plain way.
+  if (r.status === 405) {
+    try { r = await fetch(`${endpoint}?url=${encodeURIComponent(url)}`, { credentials: 'same-origin' }); } catch { /* keep the 405 */ }
+  }
   let j: any = null;
+  const raw = await r.clone().text().catch(() => '');
   try { j = await r.json(); } catch { /* not JSON */ }
   if (!r.ok || !j?.root) {
     if (r.status === 401 || r.redirected) throw new Error('Sign in first, then try again.');
     if (j?.message) throw new Error(j.message);
     if (r.status === 404) throw new Error('The binder’s Notion connection isn’t on the site yet. Redeploy the site on Vercel, then try again.');
-    throw new Error(`Reading Notion failed (${r.status}).`);
+    // Say exactly what came back, so a failure can be traced.
+    const why = r.headers.get('x-vercel-error') || raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
+    throw new Error(`Reading Notion failed (${r.status}${why ? `: ${why}` : ''}).`);
   }
   const n = countNodes(j.root);
   progress(`Converting ${n} Notion page${n === 1 ? '' : 's'}…`);
