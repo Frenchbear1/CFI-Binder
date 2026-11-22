@@ -205,7 +205,7 @@ function snapMark(d: Document, q: string) {
     for (const [s0, e0] of [...r].sort((a, b) => b[0] - a[0])) {
       const hit = t.splitText(s0); hit.splitText(e0 - s0);
       const mk = d.createElement('mark'); mk.className = 'cfi-hl'; hit.replaceWith(mk); mk.append(hit);
-      if (++made > 600) return;
+      if (++made > 3000) return;
     }
   }
 }
@@ -216,10 +216,13 @@ function snapTarget(d: Document, doc: DocData, n: number): Element | null {
   if (!label || label === 'Intro') return d.querySelector('mark.cfi-hl');
   const want = plain(label), sec = /^\d/.test(label) ? new RegExp(`^(§\\s*)?${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`) : null;
   let at: Element | null = null;
-  for (const el of d.body.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, dt, strong, b, a[name], [id], div')) {
-    const t = (el.textContent || '').replace(/\s+/g, ' ').trim();
-    if (!t || t.length > 4000) continue;
-    if (sec ? sec.test(t) : plain(t).startsWith(want)) { at = el; if (!/^(DIV|SECTION)$/.test(el.tagName) || !el.children.length) break; }
+  // Headings first, then paragraphs (a big regulation has thousands of elements, so no walking every box).
+  for (const sel of ['h1, h2, h3, h4, h5, h6', 'p, li, dt, strong, b, a[name]']) {
+    for (const el of d.body.querySelectorAll(sel)) {
+      const t = (el.textContent || '').slice(0, 300).replace(/\s+/g, ' ').trim();
+      if (t && (sec ? sec.test(t) : plain(t).startsWith(want))) { at = el; break; }
+    }
+    if (at) break;
   }
   if (!at) return d.querySelector('mark.cfi-hl');
   const marks = [...d.querySelectorAll('mark.cfi-hl')];
