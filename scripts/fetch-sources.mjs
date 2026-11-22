@@ -292,6 +292,7 @@ mark.cfi-hl.cfi-cur{background:rgba(255,150,0,.75)!important}
 [data-aos],.aos-init,.wow,.reveal,.fade-in,.lazyload,.lazyloading{opacity:1!important;transform:none!important;visibility:visible!important}
 html,body{overflow-x:hidden}`;
 function snapshot(html, finalUrl) {
+  if (html.length > 2_500_000) throw new Error('page too big to copy');
   const { document } = parseHTML(html);
   const abs = (u) => { try { return new URL(u, finalUrl).href; } catch { return ''; } };
   // Pictures written by an inline script (Boldmethod) go back where the script was.
@@ -355,7 +356,13 @@ async function ecfrSnapshot(doc) {
   if (!res.ok) throw new Error(`renderer HTTP ${res.status}`);
   const body = await Promise.race([res.text(), new Promise((_, no) => setTimeout(() => no(new Error('renderer too slow')), 25000))]);
   if (!/<(div|p|h\d)\b/i.test(body)) throw new Error('renderer gave no HTML');
-  return snapshot(`<!doctype html><html><head><title>${doc.title || ''}</title><style>${ECFR_CSS}</style></head><body><div class="cfi-ecfr"><div class="cfi-ecfr-top">eCFR · Title ${doc.title_no} · Part ${doc.part}${doc.date ? ` (as of ${doc.date})` : ''}</div>${body}</div></body></html>`, doc.url);
+  // A whole Part is several megabytes: too big to walk element by element, so it's cleaned with plain text rules
+  // (it's the government's own markup, with no scripts in it anyway).
+  const clean = body.replace(/<(script|iframe|object|style|noscript|template)\b[\s\S]*?<\/\1\s*>/gi, '').replace(/<\/?(script|iframe|object|embed|style|link|meta|base|noscript|template)\b[^>]*>/gi, '')
+    .replace(/\s(on\w+|srcdoc|formaction)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/(href|src)\s*=\s*(["'])\s*javascript:[^"']*\2/gi, '$1="#"');
+  const csp = `<meta http-equiv="Content-Security-Policy" content="script-src 'none'; object-src 'none'; frame-src 'none'">`;
+  return `<!doctype html>\n<html><head><meta charset="utf-8">${csp}<base href="${doc.url}" target="_blank"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${doc.title || ''}</title><style>${ECFR_CSS}\n${SNAP_CSS}</style></head><body><div class="cfi-ecfr"><div class="cfi-ecfr-top">eCFR · Title ${doc.title_no} · Part ${doc.part}${doc.date ? ` (as of ${doc.date})` : ''}</div>${clean}</div></body></html>`;
 }
 
 const index = [];
