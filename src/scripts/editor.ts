@@ -6,7 +6,7 @@
 // device (with a copy of the page as you see it); Upload on the home page sends everything to GitHub.
 import { pagesIn, isFolder, type Folder } from '../data/tree';
 import { kebab } from './gh';
-import { stage, readLocal, savePage, loadPage, hasPage, expire, dropPage, index as outboxIndex } from './outbox';
+import { stage, readLocal, savePage, loadPage, hasPage, expire, dropPage, isStaged, index as outboxIndex } from './outbox';
 
 const article = document.querySelector<HTMLElement>('[data-article]')!; // may be null off lesson pages; checked below
 const bar = document.querySelector<HTMLElement>('.editbar')!;
@@ -70,6 +70,11 @@ if (article && bar) {
       if (hasPage(slug) && !(await expire(slug))) {
         const h = await loadPage(slug);
         if (h) { article.innerHTML = h; article.dataset.local = ''; document.dispatchEvent(new CustomEvent('cfi:article')); }
+      }
+      // Renamed on Home and not uploaded yet: show the new name.
+      if (isStaged(file)) {
+        const m = (await readLocal(file))?.match(/^title:[ \t]*(.*)$/m), h1 = article.querySelector<HTMLElement>('[data-fm="title"]');
+        if (m && h1) { let v = m[1].trim(); try { v = JSON.parse(v); } catch { v = v.replace(/^'(.*)'$/, '$1'); } if (v && h1.textContent !== v) h1.textContent = v; }
       }
     } catch {}
     html.classList.remove('local-wait');
@@ -949,6 +954,9 @@ if (article && bar) {
         catch (e: any) {
           if (e.message !== stale || srcEdited()) throw e;
           ({ text, ops } = rebuild(built)); rebuilt = true;
+          // Keep the title and other header lines as they stand on this device (e.g. renamed from Home).
+          const fm = /^---\n[\s\S]*?\n---\n/, head = cur.text.match(fm);
+          if (head) text = text.replace(fm, () => head[0]);
         }
         function patch() {
           let text = cur.text;

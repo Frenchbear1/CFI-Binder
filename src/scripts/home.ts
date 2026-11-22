@@ -4,7 +4,7 @@
 // to reorder. Everything is kept on this device; the Upload button under the folders sends it all to
 // GitHub in one commit (the site rebuilds in about 2 minutes).
 import { withKey, kebab } from './gh';
-import { stage, readLocal, index as outboxIndex, isStaged, upload, type LocalPage } from './outbox';
+import { stage, readLocal, index as outboxIndex, isStaged, upload, dropPage, hasPage, loadPage, savePage, type LocalPage } from './outbox';
 import interactives from '../data/interactives.json';
 import { initNotionImport } from './notion/import';
 import { syncToNotion } from './notion/sync';
@@ -55,7 +55,7 @@ const sims = document.createElement('details');
 sims.className = 'fold'; sims.dataset.fold = 'Interactives';
 {
   const SIM = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5z"/></svg>';
-  sims.innerHTML = `<summary><span class="chev" aria-hidden="true"></span><span class="ico">${FOLDER}</span><span class="fold-t">Interactives</span><span class="fold-n">${interactives.items.length}</span></summary><ul>${interactives.items.map((s) => `<li><a class="pg" href="${base}interactives/${s.id}/"><span class="ico">${SIM}</span><span class="pg-t">${esc(s.name)}</span><small>${esc(s.tag.split(' · ')[0])}</small></a></li>`).join('')}</ul>`;
+  sims.innerHTML = `<summary><span class="chev" aria-hidden="true"></span><span class="ico">${FOLDER}</span><span class="fold-t">Interactives</span></summary><ul>${interactives.items.map((s) => `<li><a class="pg" href="${base}interactives/${s.id}/"><span class="ico">${SIM}</span><span class="pg-t">${esc(s.name)}</span><small>${esc(s.tag.split(' · ')[0])}</small></a></li>`).join('')}</ul>`;
 }
 
 /* ---------- the folder list ---------- */
@@ -158,8 +158,9 @@ menu.addEventListener('click', (e) => {
 });
 tree.addEventListener('click', (e) => {
   const t = e.target as HTMLElement;
-  const add = t.closest<HTMLElement>('[data-new-in]');
-  if (add) { e.preventDefault(); openNew('page', { at: add.dataset.newIn }); return; }
+  const more = t.closest<HTMLElement>('[data-more]');
+  if (more) { e.preventDefault(); e.stopPropagation(); rowMenu.open(more); return; }
+  if (t.closest('.row-rename')) { e.preventDefault(); return; }
   const plan = t.closest<HTMLElement>('[data-plan]');
   if (plan) openNew('page', { title: plan.dataset.plan, at: plan.dataset.in, levels: plan.dataset.levels!.split(' '), plan: true });
 });
@@ -199,7 +200,7 @@ async function create() {
       render();
       dlg.close();
       tree.querySelector<HTMLElement>(`[data-fold="${CSS.escape([...path, title].join(' / '))}"]`)?.scrollIntoView({ block: 'nearest' });
-      toast(`Folder “${title}” added on this device. Use + on it to add pages or more folders.`);
+      toast(`Folder “${title}” added on this device. Use ••• on it to add pages or more folders.`);
       refreshUpload();
       return;
     }
@@ -238,6 +239,145 @@ initNotionImport(menu, {
   },
 });
 
+/* ---------- ••• on each folder and page: rename, delete, add inside ---------- */
+// Everything here is saved on this device only; Upload sends it.
+const I = {
+  page: PAGE, folder: FOLDER,
+  rename: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+};
+const fileOf = (slug: string) => `src/content/lessons/${slug}.mdx`;
+const rowMenu = (() => {
+  const el = document.createElement('div');
+  el.className = 'nh-pop row-menu'; el.setAttribute('role', 'menu'); el.hidden = true;
+  document.body.append(el);
+  let at = '', btn: HTMLElement | null = null, armed = 0;
+  const close = () => { el.hidden = true; btn?.classList.remove('on'); btn = null; armed = 0; };
+  function open(b: HTMLElement) {
+    if (btn === b) { close(); return; }
+    close();
+    at = b.dataset.more!; btn = b; b.classList.add('on');
+    const n = nodeAt(areas, at); if (!n) return;
+    const f = isFolder(n);
+    const count = f ? pagesIn(n.topics).filter((p) => p.slug).length : 0;
+    el.innerHTML = (f ? `<button type="button" data-act="new-page"><span class="ico">${I.page}</span>New page here</button><button type="button" data-act="new-folder"><span class="ico">${I.folder}</span>New folder here</button>` : '')
+      + `<button type="button" data-act="rename"><span class="ico">${I.rename}</span>Rename</button>`
+      + `<button type="button" class="danger" data-act="delete"><span class="ico">${I.trash}</span><span data-del-t>Delete${f ? (count ? ` folder and its ${count} page${count === 1 ? '' : 's'}` : ' folder') : ' page'}</span></button>`;
+    el.hidden = false;
+    const r = b.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+    el.style.left = `${Math.max(8, Math.min(r.right - w, innerWidth - w - 8)) + scrollX}px`;
+    const below = r.bottom + 4 + h <= innerHeight - 76;
+    el.style.top = `${(below ? r.bottom + 4 : Math.max(8, r.top - 4 - h)) + scrollY}px`;
+  }
+  el.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-act]'); if (!b) return;
+    e.stopPropagation();
+    const a = b.dataset.act, where = at;
+    if (a === 'delete' && !armed) {
+      armed = window.setTimeout(() => { armed = 0; close(); }, 4000);
+      b.querySelector('[data-del-t]')!.textContent = 'Tap again to delete'; b.classList.add('armed');
+      return;
+    }
+    clearTimeout(armed); close();
+    if (a === 'new-page') openNew('page', { at: where });
+    else if (a === 'new-folder') openNew('folder', { at: where });
+    else if (a === 'rename') startRename(where);
+    else if (a === 'delete') removeNode(where);
+  });
+  document.addEventListener('click', (e) => { if (!el.hidden && !el.contains(e.target as Node)) close(); });
+  document.addEventListener('keydown', (e) => { if (!el.hidden && e.key === 'Escape') close(); });
+  addEventListener('resize', close);
+  return { open, close };
+})();
+
+// Rename in place: the name turns into a text box. Enter or tapping away saves, Escape keeps the old name.
+function startRename(at: string) {
+  const row = tree.querySelector<HTMLElement>(`[data-node="${CSS.escape(at)}"]`);
+  const t = row?.querySelector<HTMLElement>(':scope > summary > .fold-t, :scope > .pg > .pg-t');
+  const n = nodeAt(areas, at);
+  if (!row || !t || !n) return;
+  const old = n.title;
+  const inp = document.createElement('input');
+  inp.className = 'row-rename'; inp.value = old; inp.setAttribute('aria-label', 'New name'); inp.enterKeyHint = 'done';
+  t.replaceChildren(inp);
+  inp.focus(); inp.select();
+  let done = false;
+  const finish = (keep: boolean) => {
+    if (done) return; done = true;
+    const v = inp.value.replace(/\s+/g, ' ').trim();
+    if (keep || !v || v === old) { t.textContent = old; return; }
+    t.textContent = v;
+    rename(at, old, v);
+  };
+  inp.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter') { e.preventDefault(); finish(false); }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(true); }
+  });
+  inp.addEventListener('keyup', (e) => { e.stopPropagation(); e.preventDefault(); }); // a space here doesn't fold the folder
+  inp.addEventListener('blur', () => finish(false));
+}
+
+async function rename(at: string, old: string, name: string) {
+  try {
+    const data = await current();
+    const n = nodeAt(data.areas, at);
+    if (!n || n.title !== old) throw new Error('The list changed. Try again.');
+    const files: { path: string; content: string }[] = [];
+    const extra: { news?: LocalPage[] } = {};
+    if (isFolder(n)) {
+      const sibs = listOf(data.areas, at)!;
+      if (sibs.some((x) => x !== n && isFolder(x) && x.title.toLowerCase() === name.toLowerCase()) || (!at.includes('.') && name === 'Interactives')) throw new Error('There’s already a folder with that name here.');
+      const oldKey = foldPath(data.areas, n);
+      n.title = name;
+      if (folds[oldKey] !== undefined) { folds[foldPath(data.areas, n)] = folds[oldKey]; store.set('cfi.folds', folds); }
+    } else {
+      n.title = name;
+      if (n.slug) {
+        // The page's own title line too, so the page and the list agree.
+        const file = fileOf(n.slug), text = await readLocal(file);
+        if (text && /^title:.*$/m.test(text)) files.push({ path: file, content: text.replace(/^title:.*$/m, () => `title: ${yaml(name)}`) });
+        const np = outboxIndex().news.find((x) => x.slug === n.slug);
+        if (np) extra.news = [{ ...np, title: name }];
+        // A page edited on this device shows its saved copy: give that copy the new name as well.
+        if (hasPage(n.slug)) {
+          const h = await loadPage(n.slug);
+          if (h) {
+            const d = document.createElement('div'); d.innerHTML = h;
+            const h1 = d.querySelector('[data-fm="title"]');
+            if (h1) { h1.textContent = name; await savePage(n.slug, d.innerHTML); }
+          }
+        }
+      }
+    }
+    await saveOutline(data, `Rename “${old}” to “${name}”`, files, extra);
+    areas = data.areas;
+    render(); renderRecents(); refreshUpload();
+    toast(`Renamed on this device. Tap Upload to put it on the site.`);
+  } catch (err: any) { render(); toast(err.message || 'Couldn’t rename that.'); }
+}
+
+async function removeNode(at: string) {
+  try {
+    const data = await current();
+    const n = nodeAt(data.areas, at), list = listOf(data.areas, at);
+    if (!n || !list) throw new Error('The list changed. Try again.');
+    const pages = (isFolder(n) ? pagesIn(n.topics) : [n]).filter((p) => p.slug);
+    const local = new Set(outboxIndex().news.map((x) => x.slug));
+    list.splice(list.indexOf(n), 1);
+    // Pages made on this device and never uploaded are simply forgotten; the rest are removed from GitHub on Upload.
+    for (const p of pages) if (local.has(p.slug!)) await dropPage(p.slug!, fileOf(p.slug!));
+    const gone = pages.filter((p) => !local.has(p.slug!)).map((p) => ({ path: fileOf(p.slug!), content: null }));
+    await stage([...gone, { path: OUTLINE, content: JSON.stringify(data, null, 2) + '\n' }], `Delete ${isFolder(n) ? 'folder ' : ''}“${n.title}”`);
+    const slugs = new Set(pages.map((p) => p.slug));
+    store.set('cfi.recent', store.get<{ slug: string }[]>('cfi.recent', []).filter((r) => !slugs.has(r.slug)));
+    areas = data.areas;
+    render(); renderRecents(); refreshUpload();
+    if (!store.get<unknown[]>('cfi.recent', []).length) document.querySelector<HTMLElement>('[data-recents]')!.hidden = true;
+    toast(`Deleted “${n.title}” on this device. Tap Upload to remove it from the site.`);
+  } catch (err: any) { toast(err.message || 'Couldn’t delete that.'); }
+}
+
 /* ---------- drag to move: onto a folder puts it inside, between rows reorders ---------- */
 // Mouse: press and move. Touch: hold for a moment, then drag (a quick swipe still scrolls).
 type Where = 'before' | 'after' | 'into' | 'start';
@@ -252,7 +392,7 @@ const labelOf = (t: EventTarget | null) => {
   return l && row && tree.contains(row) ? { label: l, at: row.dataset.node! } : null;
 };
 tree.addEventListener('pointerdown', (e) => {
-  if (e.button > 0 || (e.target as HTMLElement).closest('.fold-add')) return;
+  if (e.button > 0 || (e.target as HTMLElement).closest('.row-more, .row-rename')) return;
   const hit = labelOf(e.target); if (!hit) return;
   press = { x: e.clientX, y: e.clientY, ...hit, touch: e.pointerType !== 'mouse' };
   if (press.touch) press.timer = window.setTimeout(() => press && startDrag(press.x, press.y), 380);

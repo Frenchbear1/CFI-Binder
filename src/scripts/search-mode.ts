@@ -44,11 +44,16 @@ function listHtml() {
 }
 function place() {
   if (!open) return;
-  const r = open.anchor.getBoundingClientRect(), m = open.el, vh = innerHeight, vw = innerWidth;
+  // Fit the part of the screen that's actually showing: with the keyboard up, that's only the part above it
+  // (Android browsers don't shrink the page for the keyboard, so innerHeight would put the list under it).
+  const v = window.visualViewport, top = v ? v.offsetTop : 0, bottom = v ? v.offsetTop + v.height : innerHeight, vw = v ? v.width : innerWidth;
+  const r = open.anchor.getBoundingClientRect(), m = open.el;
+  m.style.maxHeight = '';
   m.style.left = `${Math.max(8, Math.min(r.left, vw - m.offsetWidth - 8))}px`;
-  // Below the pill if it fits, else above it (the phone's search box sits at the bottom).
-  const below = r.bottom + 6 + m.offsetHeight <= vh - 8;
-  m.style.top = below ? `${r.bottom + 6}px` : `${Math.max(8, r.top - 6 - m.offsetHeight)}px`;
+  const h = m.offsetHeight, roomBelow = bottom - 8 - (r.bottom + 6), roomAbove = r.top - 6 - (top + 8);
+  // Below the pill if it fits, else above it (the phone's search box sits at the bottom), else wherever there's more room.
+  if (h <= roomBelow || (h > roomAbove && roomBelow >= roomAbove)) { m.style.top = `${r.bottom + 6}px`; if (h > roomBelow) m.style.maxHeight = `${roomBelow}px`; }
+  else { m.style.maxHeight = h > roomAbove ? `${roomAbove}px` : ''; m.style.top = `${r.top - 6 - Math.min(h, roomAbove)}px`; }
 }
 export function closeList() {
   if (!open) return;
@@ -83,6 +88,8 @@ function openList(anchor: HTMLElement) {
 document.addEventListener('pointerdown', (e) => { if (open && !open.el.contains(e.target as Node) && !open.anchor.contains(e.target as Node)) closeList(); }, true);
 document.addEventListener('keydown', (e) => { if (open && e.key === 'Escape') { e.stopPropagation(); closeList(); } }, true);
 addEventListener('resize', () => place());
+window.visualViewport?.addEventListener('resize', () => place());
+window.visualViewport?.addEventListener('scroll', () => place());
 
 /* ---------- the pill: tap, or press-slide-release ---------- */
 export function bindModePill(pill: HTMLElement) {

@@ -62,22 +62,22 @@ export interface TreeOpts {
 }
 
 /** The home page's folder list as HTML: folders open and close; each row knows its place (data-node) for dragging. */
+const MORE = (at: string, name: string) => `<button type="button" class="row-more" data-more="${at}" aria-label="More for ${esc(name)}" aria-haspopup="menu"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>`;
 export function treeHtml(areas: Folder[], o: TreeOpts): string {
   const href = o.href || ((s: string) => `${o.base}${s}/`);
   const page = (p: Page, at: string, path: string[]) => {
     const lv = (p.levels || []).join(' ');
-    if (!p.slug) return `<li data-node="${at}" data-for="${lv}"><button type="button" class="pg planned" data-plan="${esc(p.title)}" data-in="${at.split('.').slice(0, -1).join('.')}" data-levels="${lv}"><span class="ico">${PAGE}</span><span class="pg-t">${esc(p.title)}</span><small>Planned</small></button></li>`;
+    if (!p.slug) return `<li class="row" data-node="${at}" data-for="${lv}"><button type="button" class="pg planned" data-plan="${esc(p.title)}" data-in="${at.split('.').slice(0, -1).join('.')}" data-levels="${lv}"><span class="ico">${PAGE}</span><span class="pg-t">${esc(p.title)}</span><small>Planned</small></button>${MORE(at, p.title)}</li>`;
     const tag = o.tag?.(p.slug) || '';
-    if (tag === 'building') return `<li data-node="${at}" data-for="${lv}"><span class="pg building" data-slug="${esc(p.slug)}"><span class="ico">${PAGE}</span><span class="pg-t">${esc(p.title)}</span><small>Publishing…</small></span></li>`;
-    return `<li data-node="${at}" data-for="${lv}"><a class="pg" href="${href(p.slug)}"><span class="ico">${PAGE}</span><span class="pg-t">${esc(p.title)}</span>${tag ? `<small class="is-local">${esc(tag)}</small>` : ''}</a></li>`;
+    if (tag === 'building') return `<li class="row" data-node="${at}" data-for="${lv}"><span class="pg building" data-slug="${esc(p.slug)}"><span class="ico">${PAGE}</span><span class="pg-t">${esc(p.title)}</span><small>Publishing…</small></span>${MORE(at, p.title)}</li>`;
+    return `<li class="row" data-node="${at}" data-for="${lv}"><a class="pg" href="${href(p.slug)}"><span class="ico">${PAGE}</span><span class="pg-t">${esc(p.title)}</span>${tag ? `<small class="is-local">${esc(tag)}</small>` : ''}</a>${MORE(at, p.title)}</li>`;
   };
   const folder = (f: Folder, at: string, path: string[]): string => {
     const all = pagesIn(f.topics), ready = all.filter((p) => p.slug).length;
     const lv = [...new Set(all.flatMap((p) => p.levels || []))].join(' ') || LV_ALL;
     const key = [...path, f.title].join(' / ');
     const items = f.topics.map((n, i) => (isFolder(n) ? `<li class="sub" data-for="${[...new Set(pagesIn(n.topics).flatMap((p) => p.levels || []))].join(' ') || LV_ALL}">${folder(n, `${at}.${i}`, [...path, f.title])}</li>` : page(n, `${at}.${i}`, [...path, f.title]))).join('');
-    const count = all.length ? (ready === all.length ? String(ready) : `${ready} of ${all.length}`) : '';
-    return `<details class="fold" data-node="${at}" data-fold="${esc(key)}" data-for="${lv}"${ready ? ' open' : ''}><summary><span class="chev" aria-hidden="true"></span><span class="ico">${FOLDER}</span><span class="fold-t">${esc(f.title)}</span><span class="fold-n">${count}</span><button type="button" class="fold-add" data-new-in="${at}" aria-label="Add to ${esc(f.title)}" title="Add a page or folder here">+</button></summary><ul>${items || '<li class="pg-empty">Empty</li>'}</ul></details>`;
+    return `<details class="fold" data-node="${at}" data-fold="${esc(key)}" data-for="${lv}"${ready ? ' open' : ''}><summary><span class="chev" aria-hidden="true"></span><span class="ico">${FOLDER}</span><span class="fold-t">${esc(f.title)}</span>${MORE(at, f.title)}</summary><ul>${items || '<li class="pg-empty">Empty</li>'}</ul></details>`;
   };
   return areas.map((a, i) => folder(a, String(i), [])).join('');
 }
