@@ -340,3 +340,6 @@ document.addEventListener('click', (e) => {
     if (a && this.contains(a) && !a.matches('input, textarea, select, [contenteditable="true"]')) a.blur();
   };
 }
+
+// The search field's shortcut, as this computer writes it.
+if (/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)) document.querySelectorAll('[data-kbd]').forEach((k) => (k.textContent = '⌘K'));
