@@ -1,0 +1,23 @@
+name: Weekly source refresh
+
+# Every Monday, ask Vercel to rebuild the binder so the FAA handbooks, AIM, eCFR and saved web pages are current.
+# Needs a Vercel Deploy Hook saved as the repo secret VERCEL_DEPLOY_HOOK (Vercel > Project > Settings > Git >
+# Deploy Hooks). Without it this does nothing; the sources still refresh on every upload.
+on:
+  schedule:
+    - cron: '17 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rebuild on Vercel
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then echo "No VERCEL_DEPLOY_HOOK secret yet; skipping."; exit 0; fi
+          curl -fsS -X POST "$HOOK" > /dev/null && echo "Rebuild started."

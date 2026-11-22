@@ -1,10 +1,12 @@
-name: Build and publish the binder
+name: Old GitHub Pages address forwards to the binder
 
+# The binder itself now lives on Vercel (cfi-binder-coral.vercel.app), which builds on every push.
+# GitHub Pages no longer has a copy of the binder: it only serves a small page that sends the old address
+# (and any old link to a lesson) to the same page on Vercel.
 on:
   push:
     branches: [main]
-  schedule:
-    - cron: '17 9 * * 1'   # every Monday morning: check the FAA for new editions
+    paths: ['.github/pages-redirect/**', '.github/workflows/deploy.yml']
   workflow_dispatch:
 
 permissions:
@@ -17,41 +19,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      # Keep last run's downloads so unchanged handbooks aren't downloaded again.
-      - uses: actions/cache@v4
-        with:
-          path: public/library
-          key: library-${{ github.run_id }}
-          restore-keys: library-
-      - name: Download the latest handbooks and index their text
-        run: node scripts/fetch-sources.mjs
-      - name: Check video stats (views, likes, comments, channel)
-        run: node scripts/video-stats.mjs
-        env:
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-      - name: Build
-        run: npm run build
-        env:
-          SITE: https://${{ github.repository_owner }}.github.io
-          BASE: /${{ github.event.repository.name }}/
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
   deploy:
-    needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/checkout@v4
+      - run: cp .github/pages-redirect/index.html .github/pages-redirect/404.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .github/pages-redirect
       - id: deployment
         uses: actions/deploy-pages@v4
