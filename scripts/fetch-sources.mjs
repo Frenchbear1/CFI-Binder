@@ -348,12 +348,12 @@ h1{font-size:1.5rem}h2{font-size:1.25rem}h3{font-size:1.1rem}h4,h5{font-size:1re
 p{margin:0 0 .8em}.indent-1{margin-left:1.5em}.indent-2{margin-left:3em}.indent-3{margin-left:4.5em}.indent-4{margin-left:6em}
 .citation,.source,.authority{font-size:.85em;color:#565c65}table{border-collapse:collapse}td,th{border:1px solid #a9aeb1;padding:4px 6px}`;
 async function ecfrSnapshot(doc) {
-  const titles = await (await fetch('https://www.ecfr.gov/api/versioner/v1/titles.json', { headers: { 'user-agent': UA } })).json();
+  const titles = await (await fetch('https://www.ecfr.gov/api/versioner/v1/titles.json', { headers: { 'user-agent': UA }, signal: AbortSignal.timeout(20000) })).json();
   const t = titles.titles.find((x) => x.number === doc.title_no);
   const date = doc.date || t.up_to_date_as_of || t.latest_issue_date;
-  const res = await fetch(`https://www.ecfr.gov/api/renderer/v1/content/enhanced/${date}/title-${doc.title_no}?part=${doc.part}`, { headers: { 'user-agent': UA, accept: 'text/html' } });
+  const res = await fetch(`https://www.ecfr.gov/api/renderer/v1/content/enhanced/${date}/title-${doc.title_no}?part=${doc.part}`, { headers: { 'user-agent': UA, accept: 'text/html' }, signal: AbortSignal.timeout(25000) });
   if (!res.ok) throw new Error(`renderer HTTP ${res.status}`);
-  const body = await res.text();
+  const body = await Promise.race([res.text(), new Promise((_, no) => setTimeout(() => no(new Error('renderer too slow')), 25000))]);
   if (!/<(div|p|h\d)\b/i.test(body)) throw new Error('renderer gave no HTML');
   return snapshot(`<!doctype html><html><head><title>${doc.title || ''}</title><style>${ECFR_CSS}</style></head><body><div class="cfi-ecfr"><div class="cfi-ecfr-top">eCFR · Title ${doc.title_no} · Part ${doc.part}${doc.date ? ` (as of ${doc.date})` : ''}</div>${body}</div></body></html>`, doc.url);
 }
