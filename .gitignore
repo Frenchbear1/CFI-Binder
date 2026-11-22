@@ -3,3 +3,4 @@ dist
 .astro
 public/library/*.pdf
 public/library/*.json
+public/library/*.html

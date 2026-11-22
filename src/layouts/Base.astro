@@ -285,7 +285,7 @@ const href = (slug: string) => base + slug + '/';
       <li>Generate, copy it, and paste it here.</li>
     </ol>
     <form data-token-form class="token-form"><input type="password" placeholder="github_pat_…" data-token-input autocomplete="off" /><button type="submit" class="eb-save">Save key</button></form>
-    <p class="muted small">The key stays on this device only.</p>
+    <p class="muted small" data-token-note>The key is saved to your binder (locked, on its server), so every device you sign in on can upload without asking again.</p>
   </dialog>
 
   <script type="application/json" id="outline-data" set:html={JSON.stringify(nav)} />

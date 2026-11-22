@@ -3,7 +3,7 @@
 // a new page or folder. Drag a folder or page to move it: onto a folder to put it inside, or between rows
 // to reorder. Everything is kept on this device; the Upload button under the folders sends it all to
 // GitHub in one commit (the site rebuilds in about 2 minutes).
-import { withKey, kebab } from './gh';
+import { withKey, kebab, syncKey } from './gh';
 import { stage, readLocal, index as outboxIndex, isStaged, upload, dropPage, hasPage, loadPage, savePage, type LocalPage } from './outbox';
 import interactives from '../data/interactives.json';
 import { initNotionImport } from './notion/import';
@@ -521,6 +521,9 @@ async function doUpload() {
 upBtn.addEventListener('click', doUpload);
 window.addEventListener('cfi:outbox', refreshUpload);
 refreshUpload();
+
+/* ---------- a device that already has the GitHub key shares it with your other devices ---------- */
+syncKey();
 
 /* ---------- start: the built list first, then this device's version ---------- */
 render();

@@ -10,7 +10,7 @@ import { bindModePill, onModeChange, compileOpts } from './search-mode';
 import { renderPdfPage } from '../lib/is/pdf.js';
 
 type Ref = { doc: string; page: number; at?: string; find?: string; label: string; href: string; q: string };
-type DocData = { id: string; title: string; short: string; url: string; kind?: 'text'; labels: string[]; pages: string[] };
+type DocData = { id: string; title: string; short: string; url: string; kind?: 'text'; snap?: boolean; labels: string[]; pages: string[] };
 type Drawn = { frame: HTMLElement; cleanup: () => void };
 
 const base = new URL(document.body.dataset.base || '/', document.baseURI).href;
@@ -170,6 +170,82 @@ function textPage(doc: DocData, n: number, q: string): Drawn {
   frame.innerHTML = `${web ? `<p class="rd-src">From ${esc(doc.short)}. Saved copy, refreshed weekly.</p>` : ''}${html.split(/\n{2,}/).map(para).join('')}`;
   return { frame, cleanup: () => frame.remove() };
 }
+/* ---------- web sources: the saved copy of the real page, shown as the site shows it ---------- */
+// One frame per source, kept while you move between its sections. It's sandboxed: no scripts can run in it,
+// but the reader can still mark words in it and scroll it. Links in it open the site in a new tab.
+let snapEl: { id: string; frame: HTMLElement; iframe: HTMLIFrameElement; ready: Promise<boolean>; q: string } | null = null;
+function snapFor(doc: DocData) {
+  if (snapEl?.id === doc.id && snapEl.frame.isConnected) return snapEl;
+  const frame = document.createElement('div');
+  frame.className = 'rd-snap';
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox');
+  iframe.setAttribute('referrerpolicy', 'no-referrer');
+  iframe.title = doc.title;
+  iframe.src = new URL(`library/${doc.id}.html`, base).href;
+  const ready = new Promise<boolean>((ok) => {
+    iframe.addEventListener('load', () => ok(!!iframe.contentDocument?.body?.childElementCount), { once: true });
+    setTimeout(() => ok(!!iframe.contentDocument?.body?.childElementCount), 12000);
+  });
+  frame.append(iframe);
+  snapEl = { id: doc.id, frame, iframe, ready, q: '\u0000' };
+  return snapEl;
+}
+function snapMark(d: Document, q: string) {
+  d.querySelectorAll('mark.cfi-hl').forEach((m) => m.replaceWith(...m.childNodes));
+  d.body.normalize();
+  const m = q ? compile(q, { mode: 'any', wholeWord: false }) : null;
+  if (!m || 'error' in m) return;
+  const walk = d.createTreeWalker(d.body, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement?.closest('script, style, noscript, textarea, title') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
+  const nodes: Text[] = []; for (let n = walk.nextNode(); n; n = walk.nextNode()) if ((n.textContent || '').trim().length > 2) nodes.push(n as Text);
+  let made = 0;
+  for (const t of nodes) {
+    const r = m.soft(t.data) as number[][];
+    if (!r.length) continue;
+    for (const [s0, e0] of [...r].sort((a, b) => b[0] - a[0])) {
+      const hit = t.splitText(s0); hit.splitText(e0 - s0);
+      const mk = d.createElement('mark'); mk.className = 'cfi-hl'; hit.replaceWith(mk); mk.append(hit);
+      if (++made > 600) return;
+    }
+  }
+}
+// The cited part of the page: the element whose text starts with the section's label (an AIM number, a § number,
+// or a heading), then the first marked word from there on.
+function snapTarget(d: Document, doc: DocData, n: number): Element | null {
+  const label = doc.labels[n] || '';
+  if (!label || label === 'Intro') return d.querySelector('mark.cfi-hl');
+  const want = plain(label), sec = /^\d/.test(label) ? new RegExp(`^(§\\s*)?${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`) : null;
+  let at: Element | null = null;
+  for (const el of d.body.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, dt, strong, b, a[name], [id], div')) {
+    const t = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (!t || t.length > 4000) continue;
+    if (sec ? sec.test(t) : plain(t).startsWith(want)) { at = el; if (!/^(DIV|SECTION)$/.test(el.tagName) || !el.children.length) break; }
+  }
+  if (!at) return d.querySelector('mark.cfi-hl');
+  const marks = [...d.querySelectorAll('mark.cfi-hl')];
+  const after = marks.find((mk) => at!.compareDocumentPosition(mk) & (Node.DOCUMENT_POSITION_FOLLOWING | Node.DOCUMENT_POSITION_CONTAINED_BY));
+  return after && after.getBoundingClientRect().top - at.getBoundingClientRect().top < 900 ? after : at;
+}
+async function showSnap(doc: DocData, n: number, q: string, my: number) {
+  const s = snapFor(doc);
+  put({ frame: s.frame, cleanup: () => {} });
+  stage.classList.add('snap');
+  const ok = await s.ready;
+  if (my !== renderSeq) return true;
+  const d = s.iframe.contentDocument;
+  if (!ok || !d?.body) { snapEl = null; return false; }
+  if (s.q !== q) { snapMark(d, q); s.q = q; }
+  d.querySelectorAll('.cfi-cur').forEach((x) => x.classList.remove('cfi-cur'));
+  const el = snapTarget(d, doc, n);
+  const win = s.iframe.contentWindow!;
+  if (el) {
+    if (el.matches('mark')) el.classList.add('cfi-cur');
+    const top = el.getBoundingClientRect().top + win.scrollY;
+    win.scrollTo({ top: Math.max(0, top - win.innerHeight * 0.3), behavior: 'instant' as ScrollBehavior });
+  } else win.scrollTo(0, 0);
+  return true;
+}
+
 // sharp = full resolution; otherwise a quick 1x draw that shows sooner.
 function draw(docId: string, n: number, q: string, sharp = true, width = pageWidth()): Promise<Drawn | null> {
   const k = keyOf(docId, n, q, width, sharp);
@@ -205,7 +281,7 @@ function later(job: () => Promise<unknown>) {
   next();
 }
 async function warmRef(r: Ref) {
-  try { const doc = await getDoc(r.doc); await draw(r.doc, pageIndex(doc, r), r.q); } catch {}
+  try { const doc = await getDoc(r.doc); if (doc.snap) { fetch(new URL(`library/${doc.id}.html`, base)).catch(() => {}); return; } await draw(r.doc, pageIndex(doc, r), r.q); } catch {}
 }
 
 /* ---------- showing a page ---------- */
@@ -246,6 +322,12 @@ async function show(i: number, pageOverride?: number) {
     prev.hidden = page === 0; next.hidden = page >= doc.pages.length - 1;
     prev.textContent = page > 0 ? `‹ ${unit}${doc.labels[page - 1]}` : '';
     next.textContent = page < doc.pages.length - 1 ? `${unit}${doc.labels[page + 1]} ›` : '';
+    stage.classList.remove('snap');
+    if (doc.snap && (await showSnap(doc, page, ref.q, my))) {
+      for (const r of [refs[idx + 1], refs[idx - 1]]) if (r) later(() => warmRef(r));
+      return;
+    }
+    if (my !== renderSeq) return;
     const sharp = draw(ref.doc, page, ref.q, true);
     let early = false;
     if (!(await isDone(sharp)) && doc.kind !== 'text') {
@@ -376,6 +458,7 @@ function bindGestures() {
   };
   const clearPeek = () => { peek?.remove(); peek = null; };
   stage.addEventListener('touchstart', (e) => {
+    if (stage.classList.contains('snap')) { s = null; return; } // a web page scrolls and zooms by itself
     if (e.touches.length === 2) {
       s = null; clearPeek(); host.style.transform = ''; host.style.opacity = '';
       const t = e.touches, r = host.getBoundingClientRect();

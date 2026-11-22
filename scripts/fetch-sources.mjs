@@ -60,13 +60,13 @@ const decode = (t) => t.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/
 const htmlText = (h) => decode(h.replace(/<(script|style|nav|header|footer)[\s\S]*?<\/\1>/gi, ' ').replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|li|h\d|tr|table|section|ol|ul)>/gi, '\n').replace(/<[^>]+>/g, ' ')).replace(/[ \t]+/g, ' ').replace(/\n\s*\n\s*/g, '\n\n').trim();
 async function textDoc(doc) {
   const file = local[doc.id] || local[doc.url];
-  if (file && doc.type === 'web') return webDoc(doc, readFileSync(file, 'utf8'), doc.url);
+  if (file && doc.type === 'web') { const raw = readFileSync(file, 'utf8'); return { ...webDoc(doc, raw, doc.url), raw, finalUrl: doc.url }; }
   const ua = doc.type === 'web' ? 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36' : UA;
   const res = await fetch(doc.type === 'ecfr' ? await ecfrUrl(doc) : doc.url, { headers: { 'user-agent': ua, accept: 'text/html,application/xhtml+xml,*/*' } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const body = await res.text();
   const labels = [], pages = [];
-  if (doc.type === 'web') return webDoc(doc, body, res.url || doc.url);
+  if (doc.type === 'web') return { ...webDoc(doc, body, res.url || doc.url), raw: body, finalUrl: res.url || doc.url };
   if (doc.type === 'aim') {
     const text = htmlText(body);
     const parts = text.split(/\n(?=\s*(?:\d+-\d+-\d+)\.\s)/);
@@ -86,7 +86,7 @@ async function textDoc(doc) {
     }
   }
   if (!pages.length) throw new Error('no paragraphs found');
-  return { labels, pages };
+  return { labels, pages, raw: doc.type === 'aim' ? body : null, finalUrl: res.url || doc.url };
 }
 // A web article becomes one "page" per heading. Everything visual is kept as a marker line the reader draws:
 // [[img url|caption]] for photos, figures and diagrams, [[embed url|caption]] for YouTube/Vimeo players,
@@ -283,14 +283,96 @@ async function ecfrUrl(doc) {
   return `https://www.ecfr.gov/api/versioner/v1/full/${date}/title-${doc.title_no}.xml?part=${doc.part}`;
 }
 
+// ---- The page as it looks on its own site ----
+// Besides the text (for search), each web source is saved as a copy of the real page: its own HTML, styles and
+// pictures (still loaded from the site), so the reader shows it exactly as the site does. Scripts are taken out
+// (the reader also shows it in a sandbox that can't run any), lazy pictures are woken up, and links open the site.
+const SNAP_CSS = `mark.cfi-hl{background:rgba(255,210,0,.55)!important;color:inherit!important;border-radius:2px;padding:0 1px}
+mark.cfi-hl.cfi-cur{background:rgba(255,150,0,.75)!important}
+[data-aos],.aos-init,.wow,.reveal,.fade-in,.lazyload,.lazyloading{opacity:1!important;transform:none!important;visibility:visible!important}
+html,body{overflow-x:hidden}`;
+function snapshot(html, finalUrl) {
+  const { document } = parseHTML(html);
+  const abs = (u) => { try { return new URL(u, finalUrl).href; } catch { return ''; } };
+  // Pictures written by an inline script (Boldmethod) go back where the script was.
+  for (const sc of document.querySelectorAll('script')) {
+    const strs = [...(sc.textContent || '').matchAll(/(['"])((?:\\.|(?!\1).)*<img\b(?:\\.|(?!\1).)*)\1/g)].map((m) => m[2].replace(/\\(['"\/])/g, '$1'));
+    if (strs.length) { const t = document.createElement('span'); t.innerHTML = strs[strs.length - 1]; sc.replaceWith(...t.childNodes); }
+  }
+  // <noscript> often holds the real picture behind a lazy loader: keep its pictures, drop the rest.
+  for (const ns of document.querySelectorAll('noscript')) {
+    const t = document.createElement('div'); t.innerHTML = ns.innerHTML.includes('<') ? ns.innerHTML : ns.textContent;
+    const imgs = [...t.querySelectorAll('img')];
+    const prev = ns.previousElementSibling;
+    if (imgs.length && prev?.tagName === 'IMG' && !/^https?:/.test(prev.getAttribute('src') || '')) prev.replaceWith(imgs[0]);
+    else if (imgs.length && !(prev?.tagName === 'IMG')) ns.replaceWith(...imgs);
+    ns.remove();
+  }
+  document.querySelectorAll('script, iframe[src*="googletagmanager"], object, embed, applet, base, link[rel="preload"], link[rel="modulepreload"], link[rel="prefetch"], link[rel="manifest"], link[rel="serviceworker"], meta[http-equiv]').forEach((n) => n.remove());
+  // Players and other frames can't run in the reader: a plain link to the video instead.
+  for (const f of document.querySelectorAll('iframe')) {
+    const src = abs(f.getAttribute('src') || f.getAttribute('data-src') || '');
+    const a = document.createElement('a');
+    a.setAttribute('href', src || finalUrl); a.setAttribute('style', 'display:block;padding:14px;border:1px solid #ccc;border-radius:8px;text-align:center;font:600 15px system-ui,sans-serif;color:#1d5fd1');
+    a.textContent = /youtu|vimeo|wistia|loom/i.test(src) ? '▶ Play this video on the original site' : 'Open this part on the original site';
+    f.replaceWith(a);
+  }
+  for (const el of document.querySelectorAll('*')) {
+    for (const at of [...el.attributes]) {
+      const n = at.name.toLowerCase();
+      if (n.startsWith('on') || n === 'srcdoc' || n === 'formaction' || (/^(href|src|action|xlink:href|data)$/.test(n) && /^\s*(javascript|vbscript|data:text\/html)/i.test(at.value))) el.removeAttribute(at.name);
+    }
+    if (el.tagName === 'IMG' || el.tagName === 'SOURCE') {
+      const src = ['data-src', 'data-lazy-src', 'data-original', 'data-url', 'data-hi-res-src', 'data-full-src', 'data-lazy'].map((a) => el.getAttribute(a)).find((v) => v && !v.startsWith('data:'));
+      if (src) el.setAttribute(el.tagName === 'IMG' ? 'src' : 'srcset', src);
+      const set = el.getAttribute('data-srcset') || el.getAttribute('data-lazy-srcset');
+      if (set) el.setAttribute('srcset', set);
+      if (el.tagName === 'IMG') { el.removeAttribute('loading'); el.classList.remove('lazyload', 'lazy'); }
+    }
+  }
+  for (const f of document.querySelectorAll('form')) f.removeAttribute('action');
+  const head = document.head || document.documentElement;
+  const meta = (h) => { const t = document.createElement('div'); t.innerHTML = h; head.prepend(...t.childNodes); };
+  if (!document.querySelector('meta[name="viewport"]')) meta('<meta name="viewport" content="width=device-width, initial-scale=1">');
+  meta(`<meta charset="utf-8"><base href="${finalUrl.replace(/"/g, '&quot;')}" target="_blank"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="script-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'self' ${new URL(finalUrl).origin}">`);
+  const st = document.createElement('style'); st.textContent = SNAP_CSS; head.append(st);
+  return '<!doctype html>\n' + document.documentElement.outerHTML;
+}
+// eCFR: the regulation's own reading view (the HTML ecfr.gov shows), with a stylesheet close to the site's.
+const ECFR_CSS = `body{margin:0;background:#fff;color:#1b1b1b;font:17px/1.6 "Source Serif Pro",Georgia,"Times New Roman",serif}
+.cfi-ecfr{max-width:46rem;margin:0 auto;padding:18px 16px 60px}
+.cfi-ecfr-top{font:600 13px/1.3 system-ui,sans-serif;color:#fff;background:#112e51;margin:-18px -16px 18px;padding:12px 16px}
+h1,h2,h3,h4,h5{font-family:"Public Sans",system-ui,sans-serif;line-height:1.25;color:#112e51}
+h1{font-size:1.5rem}h2{font-size:1.25rem}h3{font-size:1.1rem}h4,h5{font-size:1rem}
+.section{margin:0 0 2em;padding-top:.5em;border-top:1px solid #dfe1e2}
+p{margin:0 0 .8em}.indent-1{margin-left:1.5em}.indent-2{margin-left:3em}.indent-3{margin-left:4.5em}.indent-4{margin-left:6em}
+.citation,.source,.authority{font-size:.85em;color:#565c65}table{border-collapse:collapse}td,th{border:1px solid #a9aeb1;padding:4px 6px}`;
+async function ecfrSnapshot(doc) {
+  const titles = await (await fetch('https://www.ecfr.gov/api/versioner/v1/titles.json', { headers: { 'user-agent': UA } })).json();
+  const t = titles.titles.find((x) => x.number === doc.title_no);
+  const date = doc.date || t.up_to_date_as_of || t.latest_issue_date;
+  const res = await fetch(`https://www.ecfr.gov/api/renderer/v1/content/enhanced/${date}/title-${doc.title_no}?part=${doc.part}`, { headers: { 'user-agent': UA, accept: 'text/html' } });
+  if (!res.ok) throw new Error(`renderer HTTP ${res.status}`);
+  const body = await res.text();
+  if (!/<(div|p|h\d)\b/i.test(body)) throw new Error('renderer gave no HTML');
+  return snapshot(`<!doctype html><html><head><title>${doc.title || ''}</title><style>${ECFR_CSS}</style></head><body><div class="cfi-ecfr"><div class="cfi-ecfr-top">eCFR · Title ${doc.title_no} · Part ${doc.part}${doc.date ? ` (as of ${doc.date})` : ''}</div>${body}</div></body></html>`, doc.url);
+}
+
 const index = [];
 for (const doc of docs) {
   if (doc.type !== 'pdf') {
     try {
-      const { labels, pages } = await textDoc(doc);
+      const { labels, pages, raw, finalUrl } = await textDoc(doc);
       const old = meta[doc.id];
       if (old?.pages && pages.length < old.pages * 0.5) throw new Error(`only ${pages.length} sections, had ${old.pages}; keeping the old copy`);
-      const json = JSON.stringify({ id: doc.id, title: doc.title, short: doc.short, url: doc.url, kind: 'text', labels, pages });
+      // The real page too; if that fails the reader falls back to the text.
+      let snap = false;
+      try {
+        const page = doc.type === 'ecfr' ? await ecfrSnapshot(doc) : raw ? snapshot(raw, finalUrl) : '';
+        if (page) { writeFileSync(join(OUT, `${doc.id}.html`), page); snap = true; }
+      } catch (e) { console.warn(`no page copy for ${doc.id}: ${e.message}`); }
+      if (!snap && existsSync(join(OUT, `${doc.id}.html`))) snap = true; // keep last week's copy
+      const json = JSON.stringify({ id: doc.id, title: doc.title, short: doc.short, url: doc.url, kind: 'text', snap, labels, pages });
       const prevJson = existsSync(join(OUT, `${doc.id}.json`)) ? readFileSync(join(OUT, `${doc.id}.json`), 'utf8') : '';
       const changed = json !== prevJson;
       writeFileSync(join(OUT, `${doc.id}.json`), json);
