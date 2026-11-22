@@ -16,7 +16,7 @@ import Lesson from '../layouts/Lesson.astro';
       a.querySelector('h1').textContent = n ? n.title : 'Page not found on this device';
       a.querySelector('.crumbs').lastChild.textContent = ' / ' + (n ? n.area : '');
       a.querySelector('.meta-line').textContent = 'Not uploaded yet';
-      document.title = (n ? n.title : 'Draft') + ' · CFI Binder';
+      document.title = (n ? n.title : 'Draft') + ' · Aviation Binder';
       var cur = document.querySelector('[data-current]'); if (cur && n) cur.textContent = n.title;
       // a page you just made opens ready to type in, like Notion
       if (n && /[?&]new=1/.test(location.search)) addEventListener('load', function () {

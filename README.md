@@ -1,4 +1,4 @@
-# CFI Binder
+# Aviation Binder
 
 Static site (Astro + MDX) for teaching Private, Instrument and Commercial students in the C172 and PA-28-181.
 

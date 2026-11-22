@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "CFI Binder",
-  "short_name": "CFI Binder",
+  "name": "Aviation Binder",
+  "short_name": "Aviation Binder",
   "description": "A CFI teaching binder for Private, Instrument and Commercial students in the Cessna 172 and Piper PA-28-181.",
   "start_url": "./",
   "scope": "./",

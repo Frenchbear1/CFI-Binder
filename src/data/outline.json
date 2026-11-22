@@ -2,7 +2,7 @@
   "_about": "The binder's folders (areas) and pages (topics). A topic with a slug has a lesson file at src/content/lessons/<slug>.mdx; without one it's planned. levels: pa = Private, ir = Instrument, ca = Commercial. The in-app editor adds pages and folders here.",
   "areas": [
     {
-      "title": "CFI Binder",
+      "title": "Aviation Binder",
       "topics": [
         {
           "title": "Preflight Preparation",

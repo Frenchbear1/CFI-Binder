@@ -36,7 +36,7 @@ for (const u of linked) if (!known.has(u)) docs.push({ id: webId(u), url: u, typ
 const metaPath = join(OUT, 'meta.json');
 const meta = existsSync(metaPath) ? JSON.parse(readFileSync(metaPath, 'utf8')) : {};
 const local = Object.fromEntries((process.env.LIBRARY_LOCAL || '').split(',').filter(Boolean).map((p) => { const i = p.indexOf('='); return [p.slice(0, i), p.slice(i + 1)]; }));
-const UA = 'Mozilla/5.0 (compatible; CFI-Binder source updater)';
+const UA = 'Mozilla/5.0 (compatible; Aviation Binder source updater)';
 
 async function get(doc) {
   if (local[doc.id]) return { bytes: readFileSync(local[doc.id]), changed: true, info: { source: 'local' } };
