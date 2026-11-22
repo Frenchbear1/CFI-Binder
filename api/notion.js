@@ -21,7 +21,7 @@ const FILE_HOSTS = ['amazonaws.com', 'notion.so', 'notion-static.com', 'notionus
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 const SETUP = { error: 'setup', message: 'Add NOTION_TOKEN in Vercel → Settings → Environment Variables, then redeploy.' };
-const SHARE = { error: 'share', message: 'Notion can’t see that page. In Notion open the page → ••• → Connections → add your binder integration.' };
+const SHARE = { error: 'share', message: 'Notion can’t see that page yet. In Notion, open the page → ••• → Connections (or the integration’s Access tab) and add the binder’s integration, then try again.' };
 
 class NotionError extends Error {
   constructor(status, code, message) { super(message || code || `Notion answered ${status}`); this.status = status; this.code = code; }
@@ -242,7 +242,10 @@ export async function POST(req) {
   } catch (e) {
     if (e instanceof Friendly) return json({ error: 'limit', message: e.message }, 413);
     if (e instanceof NotionError) {
-      if (e.status === 404 || e.code === 'object_not_found') return json(SHARE, 404);
+      // Logged without the token, so a failed import can be traced in Vercel's logs.
+      console.log(`notion import failed: ${e.status} ${e.code || ''}`);
+      // Not 404: a 404 from here would look like the route itself was missing.
+      if (e.status === 404 || e.code === 'object_not_found') return json(SHARE, 422);
       if (e.status === 401 || e.code === 'unauthorized') return json({ error: 'token', message: 'Notion refused the NOTION_TOKEN. Copy the integration secret again into Vercel, then redeploy.' }, 502);
       return json({ error: 'notion', message: `Notion: ${e.message}` }, 502);
     }
