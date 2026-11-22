@@ -259,7 +259,6 @@ const href = (slug: string) => base + slug + '/';
       <button type="button" data-cmd="underline" aria-label="Underline" title="Underline"><u>U</u></button>
       <button type="button" data-cmd="strikeThrough" aria-label="Strikethrough" title="Strikethrough"><s>S</s></button>
       <button type="button" data-cmd="link" aria-label="Link" title="Link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7L11.5 6.8"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.5-1.5"/></svg></button>
-      <button type="button" data-cmd="code" aria-label="Inline code" title="Inline code"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg></button>
       <button type="button" data-cmd="ref" aria-label="Add a reference" title="Reference (PHAK 5-15, AIM 1-2-3, 14 CFR 91.3)" class="eb-ref">§</button>
     </div>
     <div class="eb-view eb-find" data-view="find" hidden>
@@ -282,6 +281,8 @@ const href = (slug: string) => base + slug + '/';
     <label data-eb-label>Link to</label>
     <input data-eb-input autocomplete="off" />
     <button type="submit" class="eb-save">Add</button>
+    <button type="button" class="eb-unlink" data-eb-unlink hidden>Remove link</button>
+    <button type="button" class="eb-x" data-eb-close aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
   </form>
 
   <dialog class="sheet source-sheet" id="sheet-source" aria-label="Edit lesson source">

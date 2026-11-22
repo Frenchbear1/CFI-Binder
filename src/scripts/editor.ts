@@ -217,6 +217,21 @@ if (article && bar) {
   head.addEventListener('pointerdown', (e) => { if ((e.target as HTMLElement).closest('[data-cmd]')) e.preventDefault(); });
 
   let popMode: 'link' | 'ref' = 'link';
+  let popLink: HTMLAnchorElement | null = null; // the link being changed, when the cursor was in one
+  const unlinkBtn = pop.querySelector<HTMLButtonElement>('[data-eb-unlink]')!;
+  const closePop = () => { pop.hidden = true; popLink = null; restoreSel(); };
+  pop.querySelector('[data-eb-close]')!.addEventListener('click', closePop);
+  // Remove the link but keep its words.
+  unlinkBtn.addEventListener('click', () => {
+    const a = popLink; closePop();
+    if (!a) return;
+    const host = a.parentElement;
+    a.replaceWith(...a.childNodes);
+    host?.normalize();
+    markDirty(host); pushText();
+  });
+  // Tapping back into the text closes it too.
+  article.addEventListener('pointerdown', () => { if (!pop.hidden) { pop.hidden = true; popLink = null; } });
   function openPop(mode: 'link' | 'ref') {
     keepSel();
     if (!saved) { say('Tap into the text first'); return; }
@@ -225,6 +240,9 @@ if (article && bar) {
     popInput.placeholder = mode === 'link' ? 'https://…' : 'PHAK 5-15; AIM 1-2-3; 14 CFR 91.3';
     const a = mode === 'link' ? (saved.startContainer.parentElement?.closest('a') as HTMLAnchorElement | null) : null;
     popInput.value = a ? a.getAttribute('href') || '' : '';
+    popLink = a && article.contains(a) && !a.closest('.r') ? a : null;
+    unlinkBtn.hidden = !popLink;
+    pop.querySelector<HTMLButtonElement>('[type=submit]')!.textContent = popLink ? 'Update' : 'Add';
     pop.hidden = false;
     popInput.focus();
   }
@@ -235,7 +253,11 @@ if (article && bar) {
     if (!restoreSel()) return;
     const host = saved!.startContainer.parentElement;
     if (popMode === 'link') {
-      if (!v) document.execCommand('unlink');
+      if (popLink && article.contains(popLink)) {
+        if (!v) popLink.replaceWith(...popLink.childNodes);
+        else popLink.setAttribute('href', /^(https?:|mailto:|\/|#)/.test(v) ? v : `https://${v}`);
+        popLink = null;
+      } else if (!v) document.execCommand('unlink');
       else {
         const url = /^(https?:|mailto:|\/|#)/.test(v) ? v : `https://${v}`;
         if (saved!.collapsed) document.execCommand('insertHTML', false, `<a href="${attr(url)}">${esc(v)}</a>`);
@@ -246,7 +268,7 @@ if (article && bar) {
     }
     markDirty(host); pushText();
   });
-  pop.addEventListener('keydown', (e) => { if (e.key === 'Escape') { pop.hidden = true; restoreSel(); } });
+  pop.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePop(); });
 
   const fmt = (cmd: string) => {
     restoreSel();
@@ -848,7 +870,56 @@ if (article && bar) {
     for (let n = el.nextElementSibling as HTMLElement | null; n && (n.dataset.new !== undefined || n.dataset.deleted !== undefined && n.dataset.src === undefined); n = n.nextElementSibling as HTMLElement | null) if (n.dataset.new !== undefined) out.push(n);
     return out;
   };
-  const stale = 'The site is still updating from your last save. Try again in a minute, or use Edit page source.';
+  const stale = 'This page was changed in Edit page source, so this edit can’t be placed automatically. Make it in Edit page source too.';
+
+  // Was this page changed in Edit page source? Then the blocks on screen may be behind the file, and a
+  // rebuild from them would undo those changes.
+  const SRC_KEY = `cfi.srcEdited.${slug}`;
+  const srcEdited = () => { try { return !!localStorage.getItem(SRC_KEY); } catch { return false; } };
+  const isOrig = (n: Element | null): n is HTMLElement => !!n && /^\d+-\d+$/.test((n as HTMLElement).dataset.src || '');
+  // The current markdown of a block: as typed if changed, else as last saved, else as built.
+  const mdNowOf = (el: HTMLElement, built: string) => {
+    if (dirty.has(el) || el.dataset.new !== undefined) return toMdx(el);
+    if (el.dataset.mdNow !== undefined) return el.dataset.mdNow;
+    const [s, e] = el.dataset.src!.split('-').map(Number); return built.slice(s, e);
+  };
+  // The whole file again: the built version with every block on screen put back in, in order.
+  function rebuild(built: string) {
+    type Op = { el: HTMLElement; key: number; s: number; e: number; orig: string; md: string; ins: boolean; run?: HTMLElement[] };
+    const ops: Op[] = [];
+    // Make sure the page on screen came from this same built version (a fresh deploy moves every offset):
+    // the start of each untouched paragraph's words must be where its offsets say.
+    const letters = (t: string) => t.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/<[^>]+>/g, '').replace(/[^A-Za-z0-9]/g, '').toLowerCase();
+    let checked = 0, off = 0;
+    for (const el of article.querySelectorAll<HTMLElement>('p[data-src], li[data-src], h2[data-src], h3[data-src]')) {
+      if (!isOrig(el) || dirty.has(el) || el.dataset.mdNow !== undefined || el.dataset.deleted !== undefined) continue;
+      const w = letters(el.textContent || '').slice(0, 24);
+      if (w.length < 8) continue;
+      const [s, e] = el.dataset.src!.split('-').map(Number);
+      checked++; if (!letters(built.slice(s, e)).includes(w)) off++;
+      if (checked >= 12) break;
+    }
+    if (checked && off / checked > 0.25) throw new Error('The site just updated. Reload the page, then make this change again.');
+    for (const el of article.querySelectorAll<HTMLElement>('[data-src]')) {
+      if (!isOrig(el)) continue;
+      // Inside a block that's being replaced as a whole: that block's markdown already has it.
+      const up = el.parentElement?.closest<HTMLElement>('[data-src]');
+      if (up && isOrig(up) && (up.dataset.deleted !== undefined || dirty.has(up) || up.dataset.mdNow !== undefined)) continue;
+      const [s, e] = el.dataset.src!.split('-').map(Number);
+      const orig = built.slice(s, e);
+      if (el.dataset.deleted !== undefined) ops.push({ el, key: s, s, e, orig, md: '', ins: false });
+      else if (dirty.has(el) || el.dataset.mdNow !== undefined) ops.push({ el, key: s, s, e, orig, md: mdNowOf(el, built), ins: false });
+      const run: HTMLElement[] = [];
+      for (let n = el.nextElementSibling as HTMLElement | null; n && !isOrig(n); n = n.nextElementSibling as HTMLElement | null) {
+        if (n.dataset.deleted === undefined && (n.dataset.new !== undefined || n.dataset.src === 'x') && !(n.tagName === 'P' && !(n.textContent || '').trim())) run.push(n);
+      }
+      if (run.length) ops.push({ el, key: e + 0.5, s, e, orig, md: run.map((n) => mdNowOf(n, built)).filter(Boolean).join('\n\n'), ins: true, run });
+    }
+    ops.sort((a, b) => b.key - a.key);
+    let text = built;
+    for (const op of ops) text = op.ins ? text.slice(0, op.e) + '\n\n' + op.md + text.slice(op.e) : text.slice(0, op.s) + op.md + text.slice(op.e);
+    return { text, ops };
+  }
 
   async function save() {
     if (!pending()) return;
@@ -868,42 +939,55 @@ if (article && bar) {
           extra.push({ path: `public/${name}`, content: { base64: el.dataset.upload!.split(',')[1] } });
           el.dataset.url = basePath + name;
         }
-        let text = cur.text;
-        const same = cur.text === built;
+        // Quick way: patch only the blocks that changed into the file as it is on this device.
+        // If a block can't be found there any more (the same text twice, or saved in a different shape),
+        // rebuild the whole file from the version the page was built from plus everything on screen.
+        // Either way the edit is saved; nothing waits for the site to update.
         type Op = { el: HTMLElement; key: number; s: number; e: number; orig: string; md: string; ins: boolean; run?: HTMLElement[] };
-        const ops: Op[] = [];
-        for (const el of article.querySelectorAll<HTMLElement>('[data-src]')) {
-          if (el.parentElement?.closest('[data-deleted]')) continue; // inside something being deleted
-          const [s, e] = el.dataset.src!.split('-').map(Number);
-          const orig = el.dataset.mdNow ?? built.slice(s, e);
-          const b = { el, s, e, orig };
-          if (el.dataset.deleted !== undefined) ops.push({ ...b, key: s, md: '', ins: false });
-          else if (was.has(el)) ops.push({ ...b, key: s, md: toMdx(el), ins: false });
-          const run = runAfter(el);
-          if (run.length) { run.forEach((n) => mdOf.set(n, toMdx(n))); ops.push({ ...b, key: e + 0.5, md: run.map((n) => mdOf.get(n)!).filter(Boolean).join('\n\n'), ins: true, run }); }
+        let text = cur.text, ops: Op[] = [], rebuilt = false;
+        try { ({ text, ops } = patch()); }
+        catch (e: any) {
+          if (e.message !== stale || srcEdited()) throw e;
+          ({ text, ops } = rebuild(built)); rebuilt = true;
         }
-        for (const op of ops) if (!(same && op.el.dataset.mdNow === undefined)) {
-          const at = cur.text.indexOf(op.orig);
-          op.key = at < 0 ? -1 : op.ins ? at + op.orig.length + 0.5 : at;
-        }
-        // Apply from the end of the file backwards so earlier offsets stay right.
-        ops.sort((a, b) => b.key - a.key);
-        for (const op of ops) {
-          let s0 = op.s, e0 = op.e;
-          if (!(same && op.el.dataset.mdNow === undefined)) {
-            const at = text.indexOf(op.orig);
-            if (!op.orig || at < 0 || text.indexOf(op.orig, at + 1) >= 0) throw new Error(stale);
-            s0 = at; e0 = at + op.orig.length;
+        function patch() {
+          let text = cur.text;
+          const same = cur.text === built;
+          const ops: Op[] = [];
+          for (const el of article.querySelectorAll<HTMLElement>('[data-src]')) {
+            if (el.parentElement?.closest('[data-deleted]')) continue; // inside something being deleted
+            const [s, e] = el.dataset.src!.split('-').map(Number);
+            const orig = el.dataset.mdNow ?? built.slice(s, e);
+            const b = { el, s, e, orig };
+            if (el.dataset.deleted !== undefined) ops.push({ ...b, key: s, md: '', ins: false });
+            else if (was.has(el)) ops.push({ ...b, key: s, md: toMdx(el), ins: false });
+            const run = runAfter(el);
+            if (run.length) { run.forEach((n) => mdOf.set(n, toMdx(n))); ops.push({ ...b, key: e + 0.5, md: run.map((n) => mdOf.get(n)!).filter(Boolean).join('\n\n'), ins: true, run }); }
           }
-          if (op.ins) text = text.slice(0, e0) + '\n\n' + op.md + text.slice(e0);
-          else text = text.slice(0, s0) + op.md + text.slice(e0);
+          for (const op of ops) if (!(same && op.el.dataset.mdNow === undefined)) {
+            const at = cur.text.indexOf(op.orig);
+            op.key = at < 0 ? -1 : op.ins ? at + op.orig.length + 0.5 : at;
+          }
+          // Apply from the end of the file backwards so earlier offsets stay right.
+          ops.sort((a, b) => b.key - a.key);
+          for (const op of ops) {
+            let s0 = op.s, e0 = op.e;
+            if (!(same && op.el.dataset.mdNow === undefined)) {
+              const at = text.indexOf(op.orig);
+              if (!op.orig || at < 0 || text.indexOf(op.orig, at + 1) >= 0) throw new Error(stale);
+              s0 = at; e0 = at + op.orig.length;
+            }
+            if (op.ins) text = text.slice(0, e0) + '\n\n' + op.md + text.slice(e0);
+            else text = text.slice(0, s0) + op.md + text.slice(e0);
+          }
+          return { text, ops };
         }
         // New blocks above the first saved block (e.g. on a brand-new, empty page) go right after the
         // frontmatter and imports.
         const lead: HTMLElement[] = [];
         for (const c of article.children as unknown as HTMLElement[]) {
-          if (c.matches('[data-src]')) break;
-          if (c.dataset.new !== undefined && !(c.tagName === 'P' && !(c.textContent || '').trim())) lead.push(c);
+          if (c.matches('[data-src]') && !(rebuilt && c.dataset.src === 'x')) break;
+          if ((c.dataset.new !== undefined || c.dataset.src === 'x') && c.dataset.deleted === undefined && !(c.tagName === 'P' && !(c.textContent || '').trim())) lead.push(c);
         }
         lead.forEach((n) => mdOf.set(n, toMdx(n)));
         const leadMd = lead.map((n) => mdOf.get(n)!).filter(Boolean).join('\n\n');
@@ -1013,6 +1097,7 @@ if (article && bar) {
       srcNote.textContent = 'Saving…';
       try {
         await stage([{ path: file, content: srcText.value }], `Edit “${document.querySelector('h1')?.textContent?.trim() || slug}” source`);
+        try { localStorage.setItem(SRC_KEY, '1'); } catch {}
         srcNote.textContent = 'Saved on this device. Tap Upload on the home page to put it on the site; the page shows it after that.';
       } catch (err: any) { srcNote.textContent = err.message; }
     };

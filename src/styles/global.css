@@ -910,3 +910,8 @@ body.screen-page .shell { display: block !important; }
 .scr-nav svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .scr-nav span { min-width: 48px; text-align: center; font-size: .82rem; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .scr-offline { position: absolute; top: 12px; right: 16px; margin: 0; font-size: .8rem; color: var(--ink-3); }
+.eb-pop .eb-x { flex: none; width: 34px; height: 34px; border: 0; background: none; border-radius: 9px; display: grid; place-items: center; color: var(--ink-3); }
+.eb-pop .eb-x svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.eb-pop .eb-unlink { flex: none; border: 0; background: none; color: #d0453a; font: inherit; font-size: .85rem; font-weight: 600; padding: 0 4px; white-space: nowrap; }
+.eb-pop .eb-unlink[hidden] { display: none; }
+@media (max-width: 420px) { .eb-pop:has(.eb-unlink:not([hidden])) [data-eb-label] { display: none; } }
