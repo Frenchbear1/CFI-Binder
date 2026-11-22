@@ -691,6 +691,17 @@ body.home .topbar { display: none; }
 .sim { margin: 1.4em 0; }
 .sim-root { display: block; border: 1px solid var(--line); border-radius: 14px; background: var(--doc-page); color: var(--doc-ink); min-height: 320px; overflow: hidden; }
 .sim-root[data-mounted] { min-height: 0; }
+.sim-root[hidden], .sim-start[hidden] { display: none; }
+.sim-start { display: flex; align-items: center; gap: 14px; width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.sim-start:hover { border-color: color-mix(in srgb, var(--ink) 25%, var(--line)); box-shadow: 0 6px 20px rgba(0,0,0,.07); }
+.sim-start-art { flex: none; width: 112px; aspect-ratio: 16 / 10; border-radius: 9px; background: #0a1418; display: grid; place-items: center; overflow: hidden; }
+.sim-start-art svg { width: 72%; height: auto; }
+.sim-start-txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.sim-start-txt small { font-family: var(--mono); font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+.sim-start-txt b { font-weight: 650; font-size: 1.02rem; line-height: 1.2; }
+.sim-start-go { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 0 14px 0 11px; border-radius: 999px; background: var(--ink); color: var(--surface); font-size: .85rem; font-weight: 600; }
+.sim-start-go svg { width: 14px; height: 14px; fill: currentColor; stroke: none; }
+@media (max-width: 480px) { .sim-start { gap: 10px; padding: 8px; } .sim-start-art { width: 84px; } .sim-start-go { padding: 0 12px 0 9px; } }
 .sim-full .sim-root { border: 0; border-radius: 0; background: none; }
 .sim-err { padding: 16px; color: var(--ink-3); }
 .sim figcaption { font-size: .8rem; color: var(--ink-3); margin-top: 6px; }

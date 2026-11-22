@@ -169,7 +169,7 @@ export async function mountSim(root) {
 
 /** Start every sim on the page as it comes near the screen. */
 export function bootSims(scope = document) {
-  const roots = scope.querySelectorAll('.sim-root:not([data-mounted])');
+  const roots = scope.querySelectorAll('.sim-root:not([data-mounted]):not([data-wait])');
   if (!roots.length) return;
   const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { io.unobserve(e.target); mountSim(e.target); } }), { rootMargin: '600px 0px' });
   roots.forEach((r) => io.observe(r));

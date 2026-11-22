@@ -1,7 +1,9 @@
 ---
 // One of the binder's sims (src/sims/<id>/), running right in the page: it uses the reading theme and fonts,
-// and starts when it comes near the screen. full: the sim's own page (its keyboard shortcuts always work there).
+// In a lesson it waits behind a Start card (nothing runs until you tap it); full: the sim's own page, which starts
+// straight away (its keyboard shortcuts always work there).
 import data from '../data/interactives.json';
+import { THUMBS } from '../data/thumbs';
 import '../sims/palette.css';
 import '../sims/kit.css';
 interface Props { id: string; title?: string; full?: boolean }
@@ -15,7 +17,14 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
 {sim && (
   <figure class:list={['sim', { 'sim-full': full }]} data-sim-box={id} data-pagefind-ignore>
     <template data-sim-tpl={id} set:html={html} />
-    <div class={`sim-root sim-${id}`} data-sim={id} data-sim-full={full ? '' : undefined} aria-label={title || sim.name}></div>
+    {!full && (
+      <button type="button" class="sim-start" data-sim-start>
+        <span class="sim-start-art" set:html={THUMBS[id] || ''} />
+        <span class="sim-start-txt"><small>{sim.tag.split(' · ')[0]}</small><b>{title || sim.name}</b></span>
+        <span class="sim-start-go"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>Start</span>
+      </button>
+    )}
+    <div class={`sim-root sim-${id}`} data-sim={id} data-sim-full={full ? '' : undefined} data-wait={full ? undefined : ''} hidden={!full} aria-label={title || sim.name}></div>
     {!full && <figcaption><span>{title || sim.name}</span> · <a href={`${base}interactives/${id}/`}>Full screen</a></figcaption>}
   </figure>
 )}
@@ -23,4 +32,14 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
   import { bootSims } from '../sims/runtime.js';
   bootSims();
   document.addEventListener('cfi:article', () => bootSims());
+  // Start: open the interactive up and run it.
+  document.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-sim-start]');
+    if (!b || b.closest('[contenteditable="true"]')) return;
+    const fig = b.closest<HTMLElement>('figure.sim'), root = fig?.querySelector<HTMLElement>('.sim-root');
+    if (!fig || !root) return;
+    e.preventDefault();
+    b.hidden = true; root.hidden = false; root.removeAttribute('data-wait');
+    bootSims(fig);
+  });
 </script>

@@ -63,6 +63,8 @@ if (article && bar) {
     // A running interactive is saved as it was before it started; it starts afresh when the page is shown again.
     c.querySelectorAll('.cast-btn, .cast-row').forEach((x) => x.remove());
     c.querySelectorAll('.sim-root[data-mounted]').forEach((r) => { r.replaceChildren(); r.removeAttribute('data-mounted'); r.removeAttribute('style'); });
+    // and waits behind its Start card again.
+    c.querySelectorAll<HTMLElement>('[data-sim-start]').forEach((b) => { b.hidden = false; const r = b.parentElement?.querySelector<HTMLElement>('.sim-root'); if (r) { r.hidden = true; r.setAttribute('data-wait', ''); } });
     return c.innerHTML;
   };
   (async () => {
