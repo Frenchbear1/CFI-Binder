@@ -1,0 +1,9 @@
+/* Import from Notion sheet (import.ts) */
+.notion-sheet .new-kind { margin: 4px 0 12px; }
+.ni-in { width: 100%; box-sizing: border-box; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); border-radius: 10px; padding: 11px 12px; font: inherit; font-size: 16px; outline: none; }
+.ni-in:focus { border-color: var(--accent); }
+.ni-file { position: relative; display: flex; align-items: center; justify-content: center; min-height: 64px; border: 1.5px dashed var(--line); border-radius: 12px; background: var(--surface-2); color: var(--ink-2); font-size: .95rem; cursor: pointer; padding: 10px; text-align: center; }
+.ni-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.ni-file:focus-within { border-color: var(--accent); }
+.ni-note[data-kind="err"] { color: #d0453a; }
+.ni-note[data-kind="busy"] { color: var(--ink-2); }
