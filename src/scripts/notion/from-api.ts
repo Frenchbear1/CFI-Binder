@@ -16,11 +16,15 @@ export type RawNode = {
   children: RawNode[];
 };
 
+const VERCEL_SITE = 'cfi-binder-coral.vercel.app';
+
 function apiUrl(): string {
   return new URL(`${document.body.dataset.base || '/'}api/notion`, document.baseURI).href;
 }
 
 export async function readNotionLink(url: string, progress: Progress): Promise<ImportPage> {
+  // The GitHub Pages copy of the binder is only files: it has no server, so it can't reach Notion.
+  if (/\.github\.io$/i.test(location.hostname)) throw new Error(`This is the GitHub Pages copy of the binder, which can’t reach Notion. Open ${VERCEL_SITE} and import there.`);
   progress('Reading Notion…');
   const endpoint = apiUrl();
   let r: Response;
@@ -39,7 +43,7 @@ export async function readNotionLink(url: string, progress: Progress): Promise<I
   if (!r.ok || !j?.root) {
     if (r.status === 401 || r.redirected) throw new Error('Sign in first, then try again.');
     if (j?.message) throw new Error(j.message);
-    if (r.status === 404) throw new Error('The binder’s Notion connection isn’t on the site yet. Redeploy the site on Vercel, then try again.');
+    if (r.status === 404) throw new Error(`This copy of the binder has no Notion connection. Open ${VERCEL_SITE} and import there.`);
     // Say exactly what came back, so a failure can be traced.
     const why = r.headers.get('x-vercel-error') || raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
     throw new Error(`Reading Notion failed (${r.status}${why ? `: ${why}` : ''}).`);

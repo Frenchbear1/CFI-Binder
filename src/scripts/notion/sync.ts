@@ -67,6 +67,8 @@ export async function syncToNotion(say: (t: string) => void = () => {}): Promise
   const map = await loadMap();
   const slugs = Object.keys(map.pages).filter((s) => isStaged(`src/content/lessons/${s}.mdx`));
   if (!slugs.length) return '';
+  // The GitHub Pages copy has no server to reach Notion; the changes go next time you Upload from the Vercel site.
+  if (/\.github\.io$/i.test(location.hostname)) return 'Notion wasn’t updated: this GitHub Pages copy can’t reach it. Upload from cfi-binder-coral.vercel.app to send those changes.';
   const { mdToNotion } = await import('./to-notion');
   const origin = location.origin;
   let changed = 0, kept = 0;
