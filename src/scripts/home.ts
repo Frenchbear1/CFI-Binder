@@ -6,6 +6,8 @@
 import { withKey, kebab } from './gh';
 import { stage, readLocal, index as outboxIndex, isStaged, upload, type LocalPage } from './outbox';
 import interactives from '../data/interactives.json';
+import { initNotionImport } from './notion/import';
+import { syncToNotion } from './notion/sync';
 import { treeHtml, allFolders, nodeAt, listOf, isFolder, pagesIn, foldersOf, type Folder, type Node } from '../data/tree';
 
 type Outline = { _about?: string; areas: Folder[] };
@@ -35,7 +37,7 @@ async function current(): Promise<Outline> {
   if (!o) throw new Error('Couldn’t find the binder’s folder list. Check your connection and try again.');
   return JSON.parse(o);
 }
-const saveOutline = (data: Outline, note: string, files: { path: string; content: string }[] = [], extra = {}) =>
+const saveOutline = (data: Outline, note: string, files: { path: string; content: string | { base64: string } }[] = [], extra = {}) =>
   stage([...files, { path: OUTLINE, content: JSON.stringify(data, null, 2) + '\n' }], note, extra);
 
 /* ---------- folders remember whether they're open ---------- */
@@ -223,6 +225,19 @@ async function create() {
 }
 form.addEventListener('submit', (e) => { e.preventDefault(); create(); });
 
+/* ---------- Import from Notion (in the compose menu) ---------- */
+initNotionImport(menu, {
+  areas: () => areas,
+  current,
+  save: saveOutline,
+  done: (data, opened, msg) => {
+    areas = data.areas;
+    opened.forEach(openFold);
+    render(); renderRecents(); refreshUpload();
+    toast(msg);
+  },
+});
+
 /* ---------- drag to move: onto a folder puts it inside, between rows reorders ---------- */
 // Mouse: press and move. Touch: hold for a moment, then drag (a quick swipe still scrolls).
 type Where = 'before' | 'after' | 'into' | 'start';
@@ -349,11 +364,14 @@ function refreshUpload() {
 async function doUpload() {
   upBtn.disabled = true; upBtn.textContent = 'Uploading…'; upNote.textContent = ''; upNote.dataset.kind = '';
   try {
+    // Pages that came from a Notion link: send their changes to Notion first (the map rides along in this upload).
+    let notionNote = '';
+    try { notionNote = await syncToNotion((t) => (upBtn.textContent = t)); } catch (e: any) { notionNote = `Notion: ${e?.message || e}`; }
     const sent = isStaged(OUTLINE) ? await current() : null;
     const done = await withKey(async () => upload(), doUpload);
     if (!done) { refreshUpload(); return; }
     if (sent) store.set('cfi.upOutline', { at: Date.now(), data: sent });
-    store.set('cfi.notice', `Uploaded ${done.count} change${done.count === 1 ? '' : 's'}. The site shows them in about 2 minutes.`);
+    store.set('cfi.notice', `Uploaded ${done.count} change${done.count === 1 ? '' : 's'}. The site shows them in about 2 minutes.${notionNote ? ' ' + notionNote : ''}`);
     location.reload();
   } catch (err: any) {
     upNote.textContent = err.message || 'Couldn’t upload. Your changes are still saved here.'; upNote.dataset.kind = 'err';
