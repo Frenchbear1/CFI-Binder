@@ -7,7 +7,8 @@
 //   GET  ?file=<url>      → the bytes of a Notion-hosted file (its signed links are short-lived and not readable cross-origin)
 //
 // Vercel's hobby plan stops a function at 60 s, so a very large workspace may need importing a sub-page at a time.
-export const config = { maxDuration: 60 };
+// The 60 s limit is set in vercel.json (functions → api/notion.js). This file exports only GET and POST,
+// like the other api/ routes: other exports here kept the route from being served (the app got 404/405).
 
 const API = 'https://api.notion.com/v1';
 const VERSION = '2022-06-28';
@@ -29,7 +30,7 @@ class NotionError extends Error {
 class Friendly extends Error {}
 
 // ---- the page or database id in a link ----
-export function notionId(input) {
+function notionId(input) {
   const s = String(input || '').trim();
   let path = s;
   try {
