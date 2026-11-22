@@ -8,6 +8,8 @@ const fixUrl = (u: string) => {
   if (portable && abs.pathname.endsWith('/')) abs.pathname += 'index.html';
   return abs.href;
 };
+import { bindModePill, onModeChange, compileOpts, prefs as sp } from './search-mode';
+import { compile, MODES } from '../lib/is/search.js';
 import { applyReadingTheme, openThemeBar, THEME_DEFAULTS } from '../lib/is/themes.js';
 
 /* ---------- Reading themes (Instant Search's) ---------- */
@@ -180,6 +182,10 @@ function loadPagefind() {
   return pfLoading;
 }
 const input = document.querySelector<HTMLInputElement>('[data-search-input]');
+// Search type (Any, All, Exact, Near, Boolean), like Instant Search. "All" with no extras is Pagefind's own
+// search (forgiving: it matches word endings); the others check each page's text with Instant Search's engine.
+{ const pill = document.querySelector<HTMLElement>('[data-mode-pill-main]'); if (pill) bindModePill(pill); }
+onModeChange(() => input?.dispatchEvent(new Event('input')));
 const out = document.querySelector<HTMLElement>('[data-search-results]');
 let seq = 0;
 input?.addEventListener('keydown', (e) => {
@@ -194,6 +200,7 @@ input?.addEventListener('input', async () => {
   if (portable) { renderSimple(q, my); return; }
   const lib = pf || (await loadPagefind());
   if (!lib) { out.innerHTML = '<p class="muted">Search index is built with <code>npm run build</code>. It isn’t available in dev mode.</p>'; return; }
+  if (sp.mode !== 'all' || sp.matchCase || sp.wholeWord) { await modeSearch(lib, q, my); return; }
   const res = await lib.search(q);
   const data = await Promise.all(res.results.slice(0, 8).map((r) => r.data()));
   if (my !== seq) return;
@@ -206,6 +213,48 @@ input?.addEventListener('input', async () => {
     </div>`;
   }).join('');
 });
+
+// Any / Exact / Near / Boolean (or match case, whole words): find the pages that hold the words with
+// Pagefind, then keep the ones that really match and show where.
+async function modeSearch(lib: PF, q: string, my: number) {
+  if (!out) return;
+  const m = compile(q, compileOpts());
+  if (!m || 'error' in m) { out.innerHTML = `<p class="muted">${m ? m.error : ''}</p>`; return; }
+  const words = [...new Set(q.replace(/\b(AND|OR|NOT)\b/g, ' ').replace(/[()"“”*]/g, ' ').split(/\s+/).filter((w) => w.length > 1))];
+  const seen = new Map<string, { data: () => Promise<any> }>();
+  for (const w of words.slice(0, 8)) {
+    const r = await lib.search(w);
+    r.results.slice(0, 40).forEach((x: any) => seen.set(x.id, x));
+  }
+  const pages = await Promise.all([...seen.values()].map((r) => r.data()));
+  if (my !== seq) return;
+  const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  const hits = pages.map((d) => {
+    const text: string = d.content || '';
+    const r = m.match(text);
+    if (!r || !r.length) return null;
+    // The first few places it matches, each with a little text around it.
+    const spots: string[] = [];
+    let last = -1;
+    for (const [s0, e0] of r) {
+      if (s0 < last + 120) continue;
+      const a = Math.max(0, s0 - 60), b = Math.min(text.length, e0 + 90);
+      let ex = '', at = a;
+      for (const [s1, e1] of r) if (s1 >= a && e1 <= b && s1 >= at) { ex += esc(text.slice(at, s1)) + `<mark>${esc(text.slice(s1, e1))}</mark>`; at = e1; }
+      ex += esc(text.slice(at, b));
+      spots.push(`${a > 0 ? '…' : ''}${ex}${b < text.length ? '…' : ''}`);
+      last = s0;
+      if (spots.length === 3) break;
+    }
+    const first = text.slice(r[0][0], r[0][1]);
+    return { d, n: r.length, spots, frag: `#:~:text=${encodeURIComponent(first)}` };
+  }).filter(Boolean).sort((a: any, b: any) => b.n - a.n).slice(0, 10) as { d: any; n: number; spots: string[]; frag: string }[];
+  if (!hits.length) { out.innerHTML = `<p class="muted">No ${MODES[sp.mode].label.toLowerCase()} matches for “${esc(q)}”.</p>`; return; }
+  out.innerHTML = hits.map((h) => `<div class="hit">
+      <a class="hit-title" href="${fixUrl(h.d.url)}${h.frag}">${esc(h.d.meta?.title || 'Untitled')} <span class="muted small">· ${h.n} ${h.n === 1 ? 'match' : 'matches'}</span></a>
+      <ul>${h.spots.map((x) => `<li><a href="${fixUrl(h.d.url)}${h.frag}"><span class="hit-ex">${x}</span></a></li>`).join('')}</ul>
+    </div>`).join('');
+}
 
 // Fallback search for sandboxed previews (no Pagefind): plain substring matching over sections.
 let simple: { url: string; page: string; section: string; text: string }[] | null = null;

@@ -6,6 +6,7 @@
 // Speed: the PDF library, the sources and the cited pages are fetched and drawn ahead of time, so a tap
 // shows a page that's already drawn.
 import { compile } from '../lib/is/search.js';
+import { bindModePill, onModeChange, compileOpts } from './search-mode';
 import { renderPdfPage } from '../lib/is/pdf.js';
 
 type Ref = { doc: string; page: number; at?: string; find?: string; label: string; href: string; q: string };
@@ -294,7 +295,7 @@ async function runSearch(q: string) {
   const my = ++searchSeq;
   if (!q.trim()) { out.innerHTML = ''; return; }
   // Keywords: a page matching more of them ranks higher, then more hits.
-  const m = compile(q, { mode: 'any', wholeWord: false });
+  const m = compile(q, compileOpts());
   if (!m || 'error' in m) { out.innerHTML = m && 'error' in m ? `<p class="muted">${m.error}</p>` : ''; return; }
   const lib = await getLibrary();
   const hits: { doc: DocData; p: number; n: number; terms: number; ex: string }[] = [];
@@ -551,6 +552,7 @@ if (dlg) {
   });
   let t: number | undefined;
   inp.addEventListener('input', () => { clearTimeout(t); t = window.setTimeout(() => runSearch(inp.value), 150); });
+  { const pill = $('[data-mode-pill-rd]'); if (pill && !pill.dataset.modePill) { bindModePill(pill); onModeChange(() => { if (dlg.classList.contains('searching')) runSearch(inp.value); }); } }
   dlg.addEventListener('keydown', (e) => {
     if ((e.target as HTMLElement).matches('input')) return;
     if (e.key === 'ArrowRight' && curDoc && page < curDoc.pages.length - 1) show(idx, page + 1);
