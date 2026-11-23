@@ -114,15 +114,55 @@ function textBox(items, base) {
     y1 = Math.max(y1, tx[5] + fh * 0.3);
     count++;
   }
-  if (count < 3) return { x: null, y: null };
-  const a = Math.max(0, x0 / base.width - 0.025), b = Math.min(1, x1 / base.width + 0.025);
-  const c = Math.max(0, y0 / base.height - 0.02), d = Math.min(1, y1 / base.height + 0.02);
+  if (count < 3) return { x: null, y: null, ext: null };
+  return cropOf([x0 / base.width, x1 / base.width, y0 / base.height, y1 / base.height]);
+}
+// From content extents [left, right, top, bottom] (fractions of the page) to the crop: a little breathing
+// room, and a side is left alone (null) when its margins are too small to bother.
+function cropOf(ext) {
+  const [x0, x1, y0, y1] = ext;
+  const a = Math.max(0, x0 - 0.025), b = Math.min(1, x1 + 0.025);
+  const c = Math.max(0, y0 - 0.02), d = Math.min(1, y1 + 0.02);
   return {
+    ext,
     x: a + (1 - b) < 0.08 || b - a < 0.35 ? null : [a, b],
     y: c + (1 - d) < 0.05 || d - c < 0.2 ? null : [c, d],
   };
 }
-
+// Where anything at all is drawn on the rendered page (pictures, diagrams, rules, table lines, shaded boxes,
+// text), as [left, right, top, bottom] fractions, found from the pixels so nothing the text box misses
+// gets cut. Looks at a small copy of the page, so it costs about a millisecond. null if the page is blank.
+const inkCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+function inkBox(canvas) {
+  if (!inkCanvas || !canvas.width || !canvas.height) return null;
+  const W = 300, H = Math.max(1, Math.round((canvas.height / canvas.width) * W));
+  inkCanvas.width = W; inkCanvas.height = H;
+  const g = inkCanvas.getContext('2d', { willReadFrequently: true });
+  g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+  g.drawImage(canvas, 0, 0, W, H);
+  const px = g.getImageData(0, 0, W, H).data;
+  // The page's own paper colour (most pages are white; a few are tinted): the commonest edge pixel.
+  const tally = new Map();
+  const at = (x, y) => { const i = (y * W + x) * 4; return (px[i] >> 3) << 10 | (px[i + 1] >> 3) << 5 | (px[i + 2] >> 3); };
+  for (let x = 0; x < W; x += 3) { for (const y of [0, H - 1]) { const k = at(x, y); tally.set(k, (tally.get(k) || 0) + 1); } }
+  for (let y = 0; y < H; y += 3) { for (const x of [0, W - 1]) { const k = at(x, y); tally.set(k, (tally.get(k) || 0) + 1); } }
+  let paper = 0x7fff, best = -1;
+  for (const [k, n] of tally) if (n > best) { best = n; paper = k; }
+  const pr = ((paper >> 10) & 31) * 8 + 4, pg = ((paper >> 5) & 31) * 8 + 4, pb = (paper & 31) * 8 + 4;
+  // A row or column counts once it has a few pixels clearly different from the paper (one stray speck doesn't).
+  const rows = new Uint16Array(H), cols = new Uint16Array(W);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      if (Math.abs(px[i] - pr) + Math.abs(px[i + 1] - pg) + Math.abs(px[i + 2] - pb) > 36) { rows[y]++; cols[x]++; }
+    }
+  }
+  const first = (a, n) => { for (let i = 0; i < n; i++) if (a[i] >= 2) return i; return -1; };
+  const last = (a, n) => { for (let i = n - 1; i >= 0; i--) if (a[i] >= 2) return i; return -1; };
+  const top = first(rows, H), bottom = last(rows, H), left = first(cols, W), right = last(cols, W);
+  if (top < 0 || left < 0) return null;
+  return [left / W, (right + 1) / W, top / H, (bottom + 1) / H];
+}
 // Every piece of (unrotated) text as [left, right, top, bottom] fractions of the page, packed in one array.
 function textLines(items, base) {
   const out = [];
@@ -240,18 +280,11 @@ export async function renderPdfPage(pdf, n, host, ranges, width, { trim = false,
 
   // .pdf-frame is the visible box; .pdf-page inside it is the whole page, scaled and shifted when trimmed
   const frame = document.createElement('div');
-  frame.className = span ? 'pdf-frame trimmed' : 'pdf-frame';
+  frame.className = 'pdf-frame';
   const sheet = document.createElement('div');
   sheet.className = 'pdf-page';
   sheet.style.aspectRatio = `${base.width} / ${base.height}`;
-  if (span) { frame.style.setProperty('--ts', ts.toFixed(4)); frame.style.setProperty('--tx0', span[0].toFixed(4)); frame.dataset.tx = span.join(','); }
-  if (box.y) frame.dataset.ty = box.y.join(','); // where the text starts and ends down the page
-  // cropY: also cut the blank top and bottom (margin-top % is a share of the frame's width)
-  if (cropY && box.y) {
-    const [y0, y1] = box.y;
-    frame.style.aspectRatio = `${base.width} / ${(y1 - y0) * ts * base.height}`;
-    sheet.style.marginTop = `${-(y0 * ts * base.height / base.width) * 100}%`;
-  }
+  // The crop is set once the page is drawn, from everything on it (see placeCrop below).
   frame._lines = textLines(content.items, base); // where each piece of text sits, for finding columns
   const canvas = document.createElement('canvas');
   canvas.width = Math.floor(vp.width);
@@ -310,6 +343,25 @@ export async function renderPdfPage(pdf, n, host, ranges, width, { trim = false,
   let cancelled = false;
   try { await task.promise; } catch (e) { if (e?.name !== 'RenderingCancelledException') throw e; cancelled = true; }
   page.cleanup();
+  // Smart crop: grow the text's box to take in anything else drawn on the page (pictures, diagrams, lines,
+  // tables), so the crop only ever removes blank margin.
+  let crop = box;
+  if (trim && !cancelled) {
+    const ink = inkBox(canvas);
+    if (ink) {
+      const e = box.ext;
+      crop = cropOf(e ? [Math.min(e[0], ink[0]), Math.max(e[1], ink[1]), Math.min(e[2], ink[2]), Math.max(e[3], ink[3])] : ink);
+    }
+  }
+  const cx = crop.x, cts = cx ? 1 / (cx[1] - cx[0]) : 1;
+  if (cx) { frame.classList.add('trimmed'); frame.style.setProperty('--ts', cts.toFixed(4)); frame.style.setProperty('--tx0', cx[0].toFixed(4)); frame.dataset.tx = cx.join(','); }
+  if (crop.y) frame.dataset.ty = crop.y.join(','); // where the content starts and ends down the page
+  // cropY: also cut the blank top and bottom (margin-top % is a share of the frame's width)
+  if (cropY && crop.y) {
+    const [y0, y1] = crop.y;
+    frame.style.aspectRatio = `${base.width} / ${(y1 - y0) * cts * base.height}`;
+    sheet.style.marginTop = `${-(y0 * cts * base.height / base.width) * 100}%`;
+  }
   const cleanup = () => { task.cancel(); sizer.disconnect(); canvas.width = canvas.height = 0; frame.remove(); };
-  return { cleanup, frame, cancelled, trimmed: !!span, show: () => { if (!cancelled) host.replaceChildren(frame); } };
+  return { cleanup, frame, cancelled, trimmed: !!cx, show: () => { if (!cancelled) host.replaceChildren(frame); } };
 }
