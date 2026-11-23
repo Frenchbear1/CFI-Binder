@@ -325,6 +325,7 @@ async function show(i: number, pageOverride?: number) {
     prev.hidden = page === 0; next.hidden = page >= doc.pages.length - 1;
     prev.textContent = page > 0 ? `‹ ${unit}${doc.labels[page - 1]}` : '';
     next.textContent = page < doc.pages.length - 1 ? `${unit}${doc.labels[page + 1]} ›` : '';
+    syncScrub(doc, unit);
     stage.classList.remove('snap');
     if (doc.snap && (await showSnap(doc, page, ref.q, my))) {
       for (const r of [refs[idx + 1], refs[idx - 1]]) if (r) later(() => warmRef(r));
@@ -362,6 +363,94 @@ function scrollToHit() {
     const hit = host.querySelector<HTMLElement>('.box, mark');
     if (hit) stage.scrollTop = Math.max(0, hit.getBoundingClientRect().top - stage.getBoundingClientRect().top - stage.clientHeight * 0.3);
   });
+}
+
+/* ---------- page scrubber: drag along the bar to fly through the whole source ---------- */
+// The bubble follows your finger instantly; pages draw while you move (at most every ~90 ms, newest wins)
+// and the exact page lands the moment you let go.
+const scrub = $('[data-rd-scrub]');
+const scrubFill = $('[data-rd-scrub-fill]'), scrubThumb = $('[data-rd-scrub-thumb]'), scrubBubble = $('[data-rd-scrub-bubble]');
+let scrubUnit = '', scrubAt = -1, scrubbing = false;
+function placeScrub(n: number) {
+  if (!curDoc || !scrub) return;
+  const last = Math.max(1, curDoc.pages.length - 1), f = n / last;
+  scrubFill.style.transform = `scaleX(${f})`;
+  scrubThumb.style.transform = `translateX(${f * scrub.querySelector<HTMLElement>('.rd-scrub-track')!.clientWidth}px)`;
+  scrubBubble.innerHTML = `${esc(scrubUnit + (curDoc.labels[n] ?? n + 1))}<small>${n + 1}/${curDoc.pages.length}</small>`;
+  scrub.setAttribute('aria-valuenow', String(n + 1));
+  scrub.setAttribute('aria-valuetext', `${scrubUnit}${curDoc.labels[n] ?? n + 1}`);
+}
+function syncScrub(doc: DocData, unit: string) {
+  if (!scrub) return;
+  scrub.hidden = doc.pages.length < 2;
+  scrubUnit = unit;
+  scrub.setAttribute('aria-valuemin', '1');
+  scrub.setAttribute('aria-valuemax', String(doc.pages.length));
+  if (!scrubbing) { scrubAt = page; requestAnimationFrame(() => placeScrub(page)); }
+}
+function bindScrub() {
+  if (!scrub) return;
+  const track = scrub.querySelector<HTMLElement>('.rd-scrub-track')!;
+  let lastDraw = 0, drawT: number | undefined, box: DOMRect;
+  const goTo = (n: number) => { clearTimeout(drawT); lastDraw = performance.now(); if (n !== page) show(idx, n); };
+  const at = (x: number) => {
+    if (!curDoc) return;
+    const n = Math.round(Math.max(0, Math.min(1, (x - box.left) / box.width)) * (curDoc.pages.length - 1));
+    if (n === scrubAt) return;
+    scrubAt = n;
+    placeScrub(n);
+    (navigator as any).vibrate?.(3);
+    // Draw as you go, throttled so a fast drag never queues up work.
+    const wait = 90 - (performance.now() - lastDraw);
+    clearTimeout(drawT);
+    if (wait <= 0) goTo(n); else drawT = window.setTimeout(() => goTo(scrubAt), wait);
+  };
+  scrub.addEventListener('pointerdown', (e) => {
+    if (!curDoc || e.button > 0) return;
+    e.preventDefault();
+    scrub.setPointerCapture(e.pointerId);
+    scrubbing = true;
+    scrub.classList.add('active');
+    box = track.getBoundingClientRect();
+    scrubAt = page;
+    at(e.clientX);
+  });
+  scrub.addEventListener('pointermove', (e) => { if (scrubbing) at(e.clientX); });
+  const end = () => {
+    if (!scrubbing) return;
+    scrubbing = false;
+    scrub.classList.remove('active');
+    goTo(scrubAt);
+  };
+  scrub.addEventListener('pointerup', end);
+  scrub.addEventListener('pointercancel', end);
+  scrub.addEventListener('keydown', (e) => {
+    if (!curDoc) return;
+    const n = { ArrowRight: page + 1, ArrowUp: page + 1, ArrowLeft: page - 1, ArrowDown: page - 1, Home: 0, End: curDoc.pages.length - 1, PageUp: page + 10, PageDown: page - 10 }[e.key];
+    if (n === undefined) return;
+    e.preventDefault(); e.stopPropagation();
+    const c = Math.max(0, Math.min(curDoc.pages.length - 1, n));
+    scrubAt = c; placeScrub(c); show(idx, c);
+  });
+  addEventListener('resize', () => { if (dlg?.open && !scrubbing) placeScrub(page); });
+}
+
+/* ---------- full screen ---------- */
+// Fills the whole window edge to edge. Where the browser lets a page go truly fullscreen (iPad, Android,
+// desktop), it does that too; iPhone Safari only allows it for videos, so there the reader fills the window.
+const canFull = () => !!document.fullscreenEnabled && !!dlg?.requestFullscreen;
+function setExpanded(on: boolean, redraw = true) {
+  if (!dlg) return;
+  dlg.classList.toggle('expanded', on);
+  const btn = $('[data-rd-expand]');
+  btn.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen');
+  btn.title = on ? 'Exit full screen' : 'Full screen';
+  btn.innerHTML = on
+    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>'
+    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+  if (on && canFull() && !document.fullscreenElement && matchMedia('(pointer: coarse)').matches) dlg.requestFullscreen().catch(() => {});
+  if (!on && document.fullscreenElement === dlg) document.exitFullscreen().catch(() => {});
+  if (redraw) show(idx, page);
 }
 
 export function openReader(list: Ref[], at: number) {
@@ -610,7 +699,10 @@ if (dlg) {
   $('[data-rd-next]').addEventListener('click', () => show(idx + 1));
   $('[data-rd-prevpage]').addEventListener('click', () => show(idx, page - 1));
   $('[data-rd-nextpage]').addEventListener('click', () => show(idx, page + 1));
-  $('[data-rd-expand]').addEventListener('click', () => { dlg.classList.toggle('expanded'); show(idx, page); });
+  $('[data-rd-expand]').addEventListener('click', () => setExpanded(!dlg.classList.contains('expanded')));
+  // Leaving the browser's fullscreen (swipe, Esc) also leaves full screen here.
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && dlg.classList.contains('expanded') && dlg.open) setExpanded(false); });
+  bindScrub();
 
   const inp = $<HTMLInputElement>('[data-rd-q]');
   const chips = $('[data-rd-chips]');
@@ -644,6 +736,6 @@ if (dlg) {
     if (e.key === 'ArrowRight' && curDoc && page < curDoc.pages.length - 1) show(idx, page + 1);
     if (e.key === 'ArrowLeft' && page > 0) show(idx, page - 1);
   });
-  dlg.addEventListener('close', () => { resetZoom(); dlg.classList.remove('expanded', 'searching'); });
+  dlg.addEventListener('close', () => { resetZoom(); setExpanded(false, false); dlg.classList.remove('searching'); });
   bindGestures();
 }
