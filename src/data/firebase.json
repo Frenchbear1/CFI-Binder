@@ -1,0 +1,7 @@
+{
+  "_about": "The binder's Firebase project (public web config, safe to commit). Empty projectId = the old GitHub Upload flow. See README > Firebase.",
+  "apiKey": "",
+  "authDomain": "",
+  "projectId": "",
+  "appId": ""
+}

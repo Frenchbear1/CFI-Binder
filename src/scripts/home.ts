@@ -1,14 +1,16 @@
 // Home page, laid out like Notion's: folders you can open and close (folders can hold pages and more
 // folders, as deep as you like), recent pages, a search bar at the bottom and a compose button that makes
 // a new page or folder. Drag a folder or page to move it: onto a folder to put it inside, or between rows
-// to reorder. Everything is kept on this device; the Upload button under the folders sends it all to
-// GitHub in one commit (the site rebuilds in about 2 minutes).
+// to reorder. With cloud sync (cloud.ts) every change goes to Firestore and shows on your other devices
+// straight away. Without it, everything is kept on this device and the Upload button under the folders sends
+// it all to GitHub in one commit (the site rebuilds in about 2 minutes).
 import { withKey, kebab, syncKey } from './gh';
 import { stage, readLocal, index as outboxIndex, isStaged, upload, dropPage, hasPage, loadPage, savePage, type LocalPage } from './outbox';
 import interactives from '../data/interactives.json';
 import { initNotionImport } from './notion/import';
 import { referencesFolder } from './references';
 import { syncToNotion } from './notion/sync';
+import { cloudOn, ready, watch, hrefOf, saveHtml, syncState, signOutEverywhere, settle } from './cloud';
 import { treeHtml, allFolders, nodeAt, listOf, isFolder, pagesIn, foldersOf, type Folder, type Node } from '../data/tree';
 
 type Outline = { _about?: string; areas: Folder[] };
@@ -26,7 +28,7 @@ const FOLDER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 
 
 /* ---------- what the folder list looks like on this device ---------- */
 // Just uploaded: show the uploaded list until the site has rebuilt with it (pages not live yet say "Publishing…").
-let up = store.get<{ at: number; data: Outline } | null>('cfi.upOutline', null);
+let up = cloudOn ? null : store.get<{ at: number; data: Outline } | null>('cfi.upOutline', null);
 if (up && (Date.now() - up.at > 15 * 60e3 || JSON.stringify(up.data.areas) === JSON.stringify(built))) { up = null; try { localStorage.removeItem('cfi.upOutline'); } catch {} }
 const liveSlugs = new Set(pagesIn(built).map((p) => p.slug).filter(Boolean) as string[]);
 let areas: Folder[] = up ? up.data.areas : built;
@@ -70,14 +72,14 @@ const refsFold = referencesFolder(base, () => bindFolds());
 
 /* ---------- the folder list ---------- */
 const isLocal = (slug: string) => outboxIndex().news.some((n) => n.slug === slug);
-const pageHref = (slug: string) => (isLocal(slug) ? `${base}draft/?p=${encodeURIComponent(slug)}` : `${base}${slug}/`);
+const pageHref = (slug: string) => (cloudOn ? hrefOf(slug) : isLocal(slug) ? `${base}draft/?p=${encodeURIComponent(slug)}` : `${base}${slug}/`);
 function render() {
   const ix = outboxIndex();
   const edited = new Set(ix.pages.filter((p) => ix.files.includes(`src/content/lessons/${p}.mdx`)));
   const local = new Set(ix.news.map((n) => n.slug));
   tree.innerHTML = treeHtml(areas, {
     base, href: pageHref,
-    tag: (s) => (local.has(s) ? 'On this device' : !liveSlugs.has(s) ? 'building' : edited.has(s) ? 'Edited' : ''),
+    tag: (s) => (cloudOn ? '' : local.has(s) ? 'On this device' : !liveSlugs.has(s) ? 'building' : edited.has(s) ? 'Edited' : ''),
   });
   tree.append(sims, refsFold);
   bindFolds();
@@ -137,7 +139,7 @@ const titleIn = form.querySelector<HTMLInputElement>('[data-new-title]')!;
 const whereSel = form.querySelector<HTMLSelectElement>('[data-new-area]')!;
 const note = form.querySelector<HTMLElement>('[data-new-note]')!;
 const go = form.querySelector<HTMLButtonElement>('[data-new-go]')!;
-const NOTE = 'Saved on this device. Tap Upload on the home page to put it on the site.';
+const NOTE = cloudOn ? 'Saved to your binder on every device.' : 'Saved on this device. Tap Upload on the home page to put it on the site.';
 let mode: 'page' | 'folder' = 'page';
 let fromPlan = '';
 
@@ -196,6 +198,10 @@ updated: ${new Date().toLocaleDateString('en-US', { month: 'short', year: 'numer
 ---
 `;
 
+// A new page as shown, before anything's typed in it (the same parts as layouts/Lesson.astro).
+const newArticle = (title: string, area: string) =>
+  `<p class="crumbs" data-pagefind-ignore><a href="${base}">Binder</a> / ${esc(area)}</p><h1 data-pagefind-meta="title" data-fm="title">${esc(title)}</h1><p class="lede" data-fm="summary" data-ph="Add a one-line summary"></p><p class="meta-line" data-pagefind-ignore></p>`;
+
 async function create() {
   const title = titleIn.value.replace(/\s+/g, ' ').trim();
   if (!title) { titleIn.focus(); return; }
@@ -218,7 +224,7 @@ async function create() {
       render();
       dlg.close();
       tree.querySelector<HTMLElement>(`[data-fold="${CSS.escape([...path, title].join(' / '))}"]`)?.scrollIntoView({ block: 'nearest' });
-      toast(`Folder “${title}” added on this device. Use ••• on it to add pages or more folders.`);
+      toast(`Folder “${title}” added${cloudOn ? '' : ' on this device'}. Use ••• on it to add pages or more folders.`);
       refreshUpload();
       return;
     }
@@ -235,6 +241,7 @@ async function create() {
     const where = path.join(' / ');
     const np: LocalPage = { slug, title, area: where, levels, at: Date.now() };
     await saveOutline(data, `Add page “${title}” to ${where}`, [{ path: `src/content/lessons/${slug}.mdx`, content: lessonFile({ title, area: where, levels }) }], { news: [np] });
+    if (cloudOn) { await saveHtml(slug, newArticle(title, where)); await settle(); }
     // Straight into the new page, like Notion.
     location.href = `${base}draft/?p=${encodeURIComponent(slug)}&new=1`;
   } catch (err: any) {
@@ -371,7 +378,7 @@ async function rename(at: string, old: string, name: string) {
     await saveOutline(data, `Rename “${old}” to “${name}”`, files, extra);
     areas = data.areas;
     render(); renderRecents(); refreshUpload();
-    toast(`Renamed on this device. Tap Upload to put it on the site.`);
+    toast(cloudOn ? 'Renamed.' : `Renamed on this device. Tap Upload to put it on the site.`);
   } catch (err: any) { render(); toast(err.message || 'Couldn’t rename that.'); }
 }
 
@@ -392,7 +399,7 @@ async function removeNode(at: string) {
     areas = data.areas;
     render(); renderRecents(); refreshUpload();
     if (!store.get<unknown[]>('cfi.recent', []).length) document.querySelector<HTMLElement>('[data-recents]')!.hidden = true;
-    toast(`Deleted “${n.title}” on this device. Tap Upload to remove it from the site.`);
+    toast(cloudOn ? `Deleted “${n.title}”.` : `Deleted “${n.title}” on this device. Tap Upload to remove it from the site.`);
   } catch (err: any) { toast(err.message || 'Couldn’t delete that.'); }
 }
 
@@ -514,6 +521,7 @@ const foldPath = (all: Folder[], f: Folder) => {
 const upBtn = document.querySelector<HTMLButtonElement>('[data-upload]')!;
 const upNote = document.querySelector<HTMLElement>('[data-upload-note]')!;
 function refreshUpload() {
+  if (cloudOn) return;
   const n = outboxIndex().files.length;
   upBtn.disabled = !n;
   upBtn.textContent = n ? `Upload ${n} change${n === 1 ? '' : 's'}` : 'Everything’s uploaded';
@@ -541,13 +549,36 @@ window.addEventListener('cfi:outbox', refreshUpload);
 refreshUpload();
 
 /* ---------- a device that already has the GitHub key shares it with your other devices ---------- */
-syncKey();
+if (!cloudOn) syncKey();
+
+/* ---------- cloud sync: the folder list follows Firestore; no Upload button, just how syncing is going ---------- */
+if (cloudOn) {
+  upBtn.hidden = true;
+  document.querySelector('[data-signout]')?.addEventListener('click', (e) => { e.preventDefault(); signOutEverywhere(); });
+  const say = () => {
+    const s = syncState();
+    upNote.dataset.kind = s.error ? 'err' : '';
+    upNote.textContent = s.error ? s.error : s.inflight ? (navigator.onLine ? 'Syncing…' : 'Saved on this device. Syncs when you’re back online.') : 'Synced to your Google account';
+  };
+  window.addEventListener('cfi:sync', say); window.addEventListener('online', say); window.addEventListener('offline', say);
+  say();
+  ready().then(() => watch('binder/outline', (d) => {
+    if (!d?.json) return;
+    const next = JSON.parse(d.json).areas;
+    if (JSON.stringify(next) === JSON.stringify(areas)) return;
+    areas = next; render(); renderRecents();
+  })).then(() => {
+    // Pages that came from a Notion link: send your changes back to Notion (this used to happen on Upload).
+    const idle = (window as any).requestIdleCallback || ((f: () => void) => setTimeout(f, 1500));
+    idle(() => syncToNotion(() => {}).then((m) => { if (m) toast(m); }).catch(() => {}));
+  });
+}
 
 /* ---------- start: the built list first, then this device's version ---------- */
 render();
 renderRecents();
 (async () => {
-  if (!isStaged(OUTLINE)) return;
+  if (cloudOn || !isStaged(OUTLINE)) return;
   const t = await readLocal(OUTLINE);
   if (t) { areas = JSON.parse(t).areas; render(); renderRecents(); }
 })();

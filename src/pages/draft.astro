@@ -7,6 +7,9 @@ import Lesson from '../layouts/Lesson.astro';
   <script is:inline slot="after">
     (function () {
       var a = document.querySelector('[data-article]'), slug = new URLSearchParams(location.search).get('p') || '';
+      a.dataset.slug = slug; a.dataset.srcFile = 'src/content/lessons/' + slug + '.mdx'; a.dataset.draft = '';
+      // With cloud sync the page fills itself from Firestore (live.ts).
+      if (document.documentElement.dataset.cloud) { a.querySelector('.meta-line').textContent = ''; return; }
       var ob = {}; try { ob = JSON.parse(localStorage.getItem('cfi.outbox') || '{}'); } catch (e) {}
       var n = (ob.news || []).filter(function (x) { return x.slug === slug; })[0];
       if (!n) { var up = {}; try { up = JSON.parse(localStorage.getItem('cfi.uploaded') || '{}'); } catch (e) {}

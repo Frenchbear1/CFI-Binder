@@ -7,6 +7,7 @@
 import { pagesIn, isFolder, type Folder } from '../data/tree';
 import { kebab } from './gh';
 import { stage, readLocal, savePage, loadPage, hasPage, expire, dropPage, isStaged, index as outboxIndex } from './outbox';
+import { cloudOn, lesson, markStale, settle } from './cloud';
 
 const article = document.querySelector<HTMLElement>('[data-article]')!; // may be null off lesson pages; checked below
 const bar = document.querySelector<HTMLElement>('.editbar')!;
@@ -65,9 +66,15 @@ if (article && bar) {
     c.querySelectorAll('.sim-root[data-mounted]').forEach((r) => { r.replaceChildren(); r.removeAttribute('data-mounted'); r.removeAttribute('style'); });
     // and waits behind its Start card again.
     c.querySelectorAll<HTMLElement>('[data-sim-start]').forEach((b) => { b.hidden = false; const r = b.parentElement?.querySelector<HTMLElement>('.sim-root'); if (r) { r.hidden = true; r.setAttribute('data-wait', ''); } });
+    if (cloudOn) {
+      // Pictures added here are saved as their own files: the page keeps their address, not the picture itself.
+      c.querySelectorAll<HTMLElement>('[data-url]').forEach((w) => w.querySelectorAll('img[src^="data:"], audio[src^="data:"]').forEach((m) => m.setAttribute('src', w.dataset.url!)));
+      c.querySelectorAll<HTMLElement>('[data-up-path]').forEach((m) => { m.setAttribute(m.hasAttribute('src') ? 'src' : 'href', m.dataset.upPath!); m.removeAttribute('data-up-path'); });
+    }
     return c.innerHTML;
   };
-  (async () => {
+  // With cloud sync, live.ts shows the page from Firestore (and keeps it current).
+  if (!cloudOn) (async () => {
     try {
       if (hasPage(slug) && !(await expire(slug))) {
         const h = await loadPage(slug);
@@ -869,7 +876,7 @@ if (article && bar) {
 
   /* ---------- saving ---------- */
   let buildSrc: Promise<string> | null = null;
-  const builtFrom = () => (buildSrc ??= fetch(new URL(`source/${slug}.txt`, base)).then((r) => (r.ok ? r.text() : readLocal(file).then((t) => t || ''))));
+  const builtFrom = () => cloudOn ? lesson(slug).then((d) => d?.base ?? d?.mdx ?? readLocal(file).then((t) => t || '')) : (buildSrc ??= fetch(new URL(`source/${slug}.txt`, base)).then((r) => (r.ok ? r.text() : readLocal(file).then((t) => t || ''))));
   const yamlStr = (t: string) => JSON.stringify(t.replace(/\s+/g, ' ').trim());
   // The new blocks sitting right after an existing block, in order.
   const runAfter = (el: HTMLElement) => {
@@ -1073,8 +1080,8 @@ if (article && bar) {
       }
       if (local) await dropPage(slug, file);
       await stage(files, local ? '' : `Delete “${document.querySelector('h1')?.textContent?.trim()}”`);
-      try { localStorage.setItem('cfi.recent', JSON.stringify(JSON.parse(localStorage.getItem('cfi.recent') || '[]').filter((r: any) => r.slug !== slug))); localStorage.setItem('cfi.notice', 'Page deleted on this device. Tap Upload to remove it from the site.'); } catch {}
-      dirty.clear(); location.href = base;
+      try { localStorage.setItem('cfi.recent', JSON.stringify(JSON.parse(localStorage.getItem('cfi.recent') || '[]').filter((r: any) => r.slug !== slug))); localStorage.setItem('cfi.notice', cloudOn ? 'Page deleted.' : 'Page deleted on this device. Tap Upload to remove it from the site.'); } catch {}
+      dirty.clear(); if (cloudOn) await settle(); location.href = base;
     } catch (err: any) { say(err.message, 'err'); }
   }
 
@@ -1088,7 +1095,7 @@ if (article && bar) {
     srcNote.textContent = 'Loading…';
     try {
       srcText.value = (await readLocal(file)) ?? (await builtFrom());
-      srcNote.textContent = 'Includes changes saved on this device';
+      srcNote.textContent = cloudOn ? 'The page’s source, as saved' : 'Includes changes saved on this device';
     } catch {
       srcText.value = await builtFrom();
       srcNote.textContent = 'Version this page was built from';
@@ -1107,8 +1114,9 @@ if (article && bar) {
       srcNote.textContent = 'Saving…';
       try {
         await stage([{ path: file, content: srcText.value }], `Edit “${document.querySelector('h1')?.textContent?.trim() || slug}” source`);
+        if (cloudOn) await markStale(slug);
         try { localStorage.setItem(SRC_KEY, '1'); } catch {}
-        srcNote.textContent = 'Saved on this device. Tap Upload on the home page to put it on the site; the page shows it after that.';
+        srcNote.textContent = cloudOn ? 'Saved. The page shows it once Claude next renders it (or edit the blocks on the page instead).' : 'Saved on this device. Tap Upload on the home page to put it on the site; the page shows it after that.';
       } catch (err: any) { srcNote.textContent = err.message; }
     };
     go();

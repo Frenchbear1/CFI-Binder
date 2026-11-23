@@ -835,6 +835,10 @@ body.guest main { padding-bottom: 24px; }
 .signin-go:disabled { opacity: .7; }
 .signin .err { margin: 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, #d0453a 12%, transparent); color: #d0453a; font-size: .88rem; }
 .signin .err[hidden] { display: none; }
+.signin-google { display: grid; gap: 12px; }
+.signin-g { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
+.signin-g svg { width: 20px; height: 20px; }
+.signin form[hidden] { display: none; }
 .signin-alt { color: var(--ink-3); font-size: .9rem; text-decoration: none; }
 .signin-alt:hover { color: var(--ink); }
 

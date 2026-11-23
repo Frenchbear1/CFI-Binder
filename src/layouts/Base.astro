@@ -3,6 +3,8 @@ import '../styles/global.css';
 import { outline } from '../data/outline';
 import { pagesIn } from '../data/tree';
 import NavList from '../components/NavList.astro';
+import { getCollection } from 'astro:content';
+import fbFile from '../data/firebase.json';
 
 // guest: a page anyone can open without signing in (Interactives, sign-in). It carries none of the lessons:
 // no contents list, no search, no editor.
@@ -12,9 +14,13 @@ const nav = guest ? [] : outline;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
 const here = Astro.url.pathname.replace(/\/$/, '');
 const href = (slug: string) => base + slug + '/';
+// Cloud sync is on once the binder has a Firebase project (cloud.ts).
+const fb = import.meta.env.PUBLIC_FIREBASE_CONFIG ? JSON.parse(import.meta.env.PUBLIC_FIREBASE_CONFIG) : fbFile;
+const cloud = !!fb.projectId;
+const builtSlugs = guest ? [] : (await getCollection('lessons')).map((l) => l.id);
 ---
 <!doctype html>
-<html lang="en" data-level="pa" data-ac="both" data-panel="both">
+<html lang="en" data-level="pa" data-ac="both" data-panel="both" data-cloud={cloud ? '1' : undefined}>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -43,6 +49,11 @@ const href = (slug: string) => base + slug + '/';
         if (c.tint) { d.classList.add('doc-tint'); if (c.dark) d.classList.add('doc-dark'); }
         if (c.paper) d.classList.add('paper');
       } else d.classList.add('doc-tint');
+      // a page that's newer in the cloud (or a page made in the app): hide the built copy until the synced one is in
+      var hereP = decodeURIComponent(location.pathname), qp = new URLSearchParams(location.search).get('p');
+      if (document.documentElement.dataset.cloud && (qp || JSON.parse(localStorage.getItem('cfi.cloudEdited') || '[]').some(function (s) { return hereP.slice(-s.length - 2) === '/' + s + '/'; }))) {
+        d.classList.add('local-wait'); setTimeout(function () { d.classList.remove('local-wait'); }, 4000);
+      }
       // a page edited on this device: hide the live copy until the saved one is swapped in
       var ob = JSON.parse(localStorage.getItem('cfi.outbox') || '{}'), here = decodeURIComponent(location.pathname), q = new URLSearchParams(location.search).get('p');
       if ((ob.pages || []).some(function (s) { return here.slice(-s.length - 2) === '/' + s + '/' || q === s; })) {
@@ -297,7 +308,9 @@ const href = (slug: string) => base + slug + '/';
   </dialog>
 
   <script type="application/json" id="outline-data" set:html={JSON.stringify(nav)} />
+  <script type="application/json" id="built-slugs" set:html={JSON.stringify(builtSlugs)} />
   <script>
+    import '../scripts/live.ts';
     import '../scripts/app.ts';
     import '../scripts/reader.ts';
     import '../scripts/editor.ts';

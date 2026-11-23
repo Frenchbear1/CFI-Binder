@@ -6,6 +6,7 @@
 // then its sub-pages. Everything is saved on this device like any other change; Upload sends it to GitHub.
 import { kebab } from '../gh';
 import { savePage, type LocalPage } from '../outbox';
+import { cloudOn } from '../cloud';
 import { allFolders, nodeAt, isFolder, pagesIn, type Folder, type Node } from '../../data/tree';
 import { toBlocks } from './mdx';
 import type { ImportPage, Progress } from './types';
@@ -246,4 +247,4 @@ function tag(html: string, src: string, md: string) {
   return html.replace(/^<(\w+)/, `<$1 data-src="${src}"`);
 }
 const article = (title: string, area: string, body: string) =>
-  `<p class="crumbs" data-pagefind-ignore><a href="${base}">Binder</a> / ${esc(area)}</p><h1 data-pagefind-meta="title" data-fm="title">${esc(title)}</h1><p class="lede" data-fm="summary" data-ph="Add a one-line summary"></p><p class="meta-line" data-pagefind-ignore>Not uploaded yet · Imported from Notion</p>${body}`;
+  `<p class="crumbs" data-pagefind-ignore><a href="${base}">Binder</a> / ${esc(area)}</p><h1 data-pagefind-meta="title" data-fm="title">${esc(title)}</h1><p class="lede" data-fm="summary" data-ph="Add a one-line summary"></p><p class="meta-line" data-pagefind-ignore>${cloudOn ? '' : 'Not uploaded yet · '}Imported from Notion</p>${body}`;
