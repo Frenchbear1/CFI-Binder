@@ -1,19 +1,33 @@
 // Pages: network first, cache fallback (always fresh when online, still works with no signal).
-// Source library + PDF engine: served from the cache straight away and refreshed in the background, so a
-// reference opens instantly the second time (the library itself only changes weekly).
-const C = 'cfi-binder-v4';
+// Source library (the big FAA PDFs and saved web pages) + PDF engine: kept on the device in their own cache
+// that survives app updates. Served from there straight away; checked for a newer copy at most once a day,
+// in the background (the library itself only changes weekly). The lessons themselves sync through Firestore,
+// which keeps its own copy on the device.
+const C = 'cfi-binder-v5';
+const LIB = 'cfi-library-v1';
+const DAY = 864e5;
 self.addEventListener('install', (e) => { self.skipWaiting(); e.waitUntil(caches.open(C).then((c) => c.addAll(['./', 'manifest.webmanifest', 'favicon.svg', 'icon-192.png', 'icon-512.png']).catch(() => {}))); });
-self.addEventListener('activate', (e) => e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== C).map((k) => caches.delete(k)))).then(() => self.clients.claim())));
+self.addEventListener('activate', (e) => e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== C && k !== LIB).map((k) => caches.delete(k)))).then(() => self.clients.claim())));
 const keep = (r, res) => { if (res.ok && res.status === 200) { const copy = res.clone(); caches.open(C).then((c) => c.put(r, copy)).catch(() => {}); } return res; };
+// Stamp library copies with when they were saved, so they're only re-checked once a day.
+async function keepLib(r, res) {
+  if (!res.ok || res.status !== 200) return res;
+  const h = new Headers(res.headers); h.set('x-saved-at', String(Date.now()));
+  const body = await res.clone().arrayBuffer();
+  await caches.open(LIB).then((c) => c.put(r, new Response(body, { status: 200, statusText: 'OK', headers: h }))).catch(() => {});
+  return res;
+}
 self.addEventListener('fetch', (e) => {
   const r = e.request;
   const u = new URL(r.url);
   if (r.method !== 'GET' || u.origin !== location.origin || r.headers.has('range') || u.pathname.includes('/api/')) return;
   if (/\/(library|vendor)\//.test(u.pathname)) {
-    e.respondWith(caches.match(r).then((hit) => {
-      const net = fetch(r).then((res) => keep(r, res));
-      if (hit) { e.waitUntil(net.catch(() => {})); return hit; }
-      return net;
+    e.respondWith(caches.open(LIB).then((c) => c.match(r)).then((hit) => {
+      if (hit) {
+        if (Date.now() - Number(hit.headers.get('x-saved-at') || 0) > DAY) e.waitUntil(fetch(r, { cache: 'no-cache' }).then((res) => keepLib(r, res)).catch(() => {}));
+        return hit;
+      }
+      return fetch(r).then((res) => { e.waitUntil(keepLib(r, res.clone())); return res; });
     }));
     return;
   }

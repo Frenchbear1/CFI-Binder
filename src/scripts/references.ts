@@ -9,6 +9,7 @@ type Group = { key: string; title: string; strip?: RegExp; items: Entry[] };
 
 const FOLDER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
 const BOOK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/><path d="M8 7h7"/></svg>';
+const DOWN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg>';
 const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 
 // Folders in the order they show, FAA first. `match` picks the docs that belong; the first match wins.
@@ -74,6 +75,8 @@ export function referencesFolder(base: string, onFolds: () => void): HTMLDetails
         web.length ? fold('References / web', 'Web sources', web.map((g) => fold(`References / ${g.key}`, g.title, html(g), g.items.length)).join(''), web.reduce((n, g) => n + g.items.length, 0)) : '',
         other.length ? fold('References / other', 'Other', html(groups[groups.length - 1]), other.length) : '',
       ].join('') || '<li class="pg-empty">No references yet</li>';
+      if (lib.length) list.insertAdjacentHTML('beforeend', `<li><button type="button" class="pg refs-offline" data-offline><span class="ico">${DOWN}</span><span class="pg-t">Keep every source on this device</span><small data-offline-n></small></button></li>`);
+      all = lib;
       onFolds();
     })
     .catch(() => {
@@ -86,6 +89,33 @@ export function referencesFolder(base: string, onFolds: () => void): HTMLDetails
   // Warm the list once the page is idle, so the folder opens already filled.
   const idle = (window as any).requestIdleCallback || ((f: () => void) => setTimeout(f, 800));
   idle(() => load());
+
+  // Download every handbook and saved page once, so they all open instantly and with no signal. They stay
+  // in this device's storage (sw.js keeps anything under library/) and refresh when the library changes.
+  let all: Entry[] = [], saving = false;
+  list.addEventListener('click', async (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-offline]');
+    if (!b || saving) return;
+    saving = true; b.disabled = true;
+    const n = b.querySelector<HTMLElement>('[data-offline-n]')!, t = b.querySelector<HTMLElement>('.pg-t')!;
+    try { await navigator.storage?.persist?.(); } catch {}
+    const lib = new URL('library/', new URL(base, location.href));
+    let done = 0, bad = 0;
+    const one = async (d: Entry) => {
+      try {
+        const j = await fetch(new URL(`${d.id}.json`, lib)).then((r) => { if (!r.ok) throw 0; return r.json(); });
+        const more = j.kind === 'text' ? (j.snap ? `${d.id}.html` : '') : `${d.id}.pdf`;
+        if (more) { const r = await fetch(new URL(more, lib)); if (!r.ok) throw 0; await r.arrayBuffer(); }
+      } catch { bad++; }
+      n.textContent = `${++done} of ${all.length}`;
+    };
+    t.textContent = 'Saving sources on this device…';
+    const queue = [...all];
+    await Promise.all(Array.from({ length: 3 }, async () => { while (queue.length) await one(queue.shift()!); }));
+    t.textContent = bad ? `Saved ${all.length - bad} sources (${bad} couldn’t download, try again later)` : 'Every source is saved on this device';
+    n.textContent = '';
+    saving = false; b.disabled = !!(!bad);
+  });
 
   list.addEventListener('click', (e) => {
     const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[data-ref-g]');

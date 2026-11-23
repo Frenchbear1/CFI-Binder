@@ -4,7 +4,13 @@
 //   page:<slug>       → the edited lesson as it looks on screen, shown instead of the live copy until uploaded
 //   new:<slug>        → a page made on this device that isn't on the site yet
 // A small index in localStorage lets pages know straight away (before the database answers) what's waiting.
+//
+// Once the binder has a Firebase project (src/data/firebase.json), all of this goes to Firestore instead
+// (cloud.ts): every save syncs to your other devices by itself and there's no Upload. Anything still waiting
+// here from before is carried over the first time this device signs in with Google (migrateLegacy).
 import { commitFiles } from './gh';
+import * as C from './cloud';
+const cloudOn = C.cloudOn;
 
 export type Content = string | { base64: string } | null;
 export type LocalPage = { slug: string; title: string; area: string; levels: string[]; at: number };
@@ -33,6 +39,10 @@ const put = (k: string, v: unknown) => tx<void>('readwrite', (s) => { s.put(v, k
 const del = (k: string) => tx<void>('readwrite', (s) => { s.delete(k); });
 
 export function index(): Index {
+  if (cloudOn) return { files: [], pages: [], news: [], folders: [], notes: [] };
+  return legacyIndex();
+}
+function legacyIndex(): Index {
   let i: Partial<Index> = {};
   try { i = JSON.parse(localStorage.getItem(IDX) || '{}'); } catch {}
   return { files: i.files || [], pages: i.pages || [], news: i.news || [], folders: i.folders || [], notes: i.notes || [] };
@@ -48,6 +58,7 @@ const keepSafe = () => { if (asked) return; asked = true; navigator.storage?.per
 
 /** Keep these file changes on the device. note: a few words for the upload's description. */
 export async function stage(files: { path: string; content: Content }[], note: string, extra: Partial<Pick<Index, 'news' | 'folders'>> = {}) {
+  if (cloudOn) return C.writeFiles(files);
   keepSafe();
   for (const f of files) await put('file:' + f.path, { content: f.content, at: Date.now() });
   const i = index();
@@ -60,7 +71,8 @@ export async function stage(files: { path: string; content: Content }[], note: s
 
 /** A file as it stands with your changes: the staged copy, else the copy the site was built from. */
 export async function readLocal(path: string): Promise<string | null> {
-  const s = await get<{ content: Content }>('file:' + path);
+  if (cloudOn) { const t = await C.readText(path); if (t != null) return t; }
+  const s = cloudOn ? undefined : await get<{ content: Content }>('file:' + path);
   if (s) return typeof s.content === 'string' ? s.content : null;
   const url = path === 'src/data/outline.json' ? 'source/outline.json'
     : path.startsWith('src/content/lessons/') ? `source/${path.slice(20).replace(/\.mdx?$/, '')}.txt` : '';
@@ -68,19 +80,21 @@ export async function readLocal(path: string): Promise<string | null> {
   const r = await fetch(new URL(url, new URL(base, document.baseURI)), { cache: 'no-cache' }).catch(() => null);
   return r?.ok ? r.text() : null;
 }
-export const isStaged = (path: string) => index().files.includes(path);
+export const isStaged = (path: string) => cloudOn || index().files.includes(path);
 
 /** The edited lesson, as shown on screen. */
 export async function savePage(slug: string, html: string) {
+  if (cloudOn) return C.saveHtml(slug, html);
   await put('page:' + slug, { html, at: Date.now() });
   const i = index();
   if (!i.pages.includes(slug)) { i.pages.push(slug); setIndex(i); }
 }
-export const loadPage = async (slug: string) => (await get<{ html: string }>('page:' + slug))?.html ?? null;
-export const hasPage = (slug: string) => index().pages.includes(slug);
+export const loadPage = async (slug: string): Promise<string | null> => (cloudOn ? (await C.lesson(slug))?.html ?? null : (await get<{ html: string }>('page:' + slug))?.html ?? null);
+export const hasPage = (slug: string) => cloudOn || index().pages.includes(slug);
 
 /** Forget a page made on this device (e.g. it was deleted before it was ever uploaded). */
 export async function dropPage(slug: string, file: string) {
+  if (cloudOn) return C.writeFiles([{ path: file, content: null }]);
   await del('page:' + slug); await del('file:' + file);
   const i = index();
   i.pages = i.pages.filter((x) => x !== slug); i.files = i.files.filter((x) => x !== file); i.news = i.news.filter((x) => x.slug !== slug);
@@ -89,6 +103,7 @@ export async function dropPage(slug: string, file: string) {
 
 /** Send everything waiting to GitHub in one commit, then clear it. */
 export async function upload() {
+  if (cloudOn) return null;
   const i = index();
   if (!i.files.length) return null;
   const files: { path: string; content: Content }[] = [];
@@ -106,6 +121,7 @@ export async function upload() {
 
 /** Once an uploaded page is live, stop showing the device copy. */
 export async function expire(slug: string) {
+  if (cloudOn) return true;
   const v = await get<{ html: string; until?: number }>('page:' + slug);
   const i = index();
   if (!v || (v.until && Date.now() > v.until)) {
@@ -114,4 +130,22 @@ export async function expire(slug: string) {
     return true;
   }
   return false;
+}
+
+/** First Google sign-in on this device: send anything that was waiting for Upload to Firestore, then forget it here. */
+export async function migrateLegacy() {
+  const i = legacyIndex();
+  if (!cloudOn || (!i.files.length && !i.pages.length)) return 0;
+  const files: { path: string; content: Content }[] = [];
+  for (const p of i.files) { const s = await get<{ content: Content }>('file:' + p); if (s) files.push({ path: p, content: s.content }); }
+  // Pages made on this device go in first, so their pictures and folder places come with them.
+  await C.writeFiles(files);
+  for (const slug of i.pages) {
+    const v = await get<{ html: string; until?: number }>('page:' + slug);
+    if (v?.html && !v.until && i.files.includes(`src/content/lessons/${slug}.mdx`)) await C.saveHtml(slug, v.html);
+  }
+  for (const p of i.files) await del('file:' + p);
+  for (const s of i.pages) await del('page:' + s);
+  try { localStorage.removeItem(IDX); localStorage.removeItem('cfi.uploaded'); localStorage.removeItem('cfi.upOutline'); } catch {}
+  return files.length;
 }

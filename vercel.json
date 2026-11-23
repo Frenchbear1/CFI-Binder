@@ -6,6 +6,9 @@
   "functions": {
     "api/notion.js": {
       "maxDuration": 60
+    },
+    "api/login.js": {
+      "includeFiles": "src/data/firebase.json"
     }
   }
 }
