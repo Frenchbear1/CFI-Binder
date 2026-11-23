@@ -1,7 +1,7 @@
 {
   "_about": "The binder's Firebase project (public web config, safe to commit). Empty projectId = the old GitHub Upload flow. See README > Firebase.",
-  "apiKey": "",
-  "authDomain": "",
-  "projectId": "",
-  "appId": ""
+  "apiKey": "AIzaSyAU0WH6wi0aBKlzV_fnJdiAy_ZbuHk7ujw",
+  "authDomain": "aviation-binder.firebaseapp.com",
+  "projectId": "aviation-binder",
+  "appId": "1:112416444458:web:fa8d07b7ced6ed5faab353"
 }
