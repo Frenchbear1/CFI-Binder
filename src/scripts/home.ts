@@ -7,6 +7,7 @@ import { withKey, kebab, syncKey } from './gh';
 import { stage, readLocal, index as outboxIndex, isStaged, upload, dropPage, hasPage, loadPage, savePage, type LocalPage } from './outbox';
 import interactives from '../data/interactives.json';
 import { initNotionImport } from './notion/import';
+import { referencesFolder } from './references';
 import { syncToNotion } from './notion/sync';
 import { treeHtml, allFolders, nodeAt, listOf, isFolder, pagesIn, foldersOf, type Folder, type Node } from '../data/tree';
 
@@ -64,6 +65,9 @@ sims.className = 'fold'; sims.dataset.fold = 'Interactives';
   sims.innerHTML = `<summary><span class="chev" aria-hidden="true"></span><span class="ico">${FOLDER}</span><span class="fold-t">Interactives</span></summary><ul>${interactives.items.map((s) => `<li><a class="pg" href="${base}interactives/${s.id}/"><span class="ico">${SIM}</span><span class="pg-t">${esc(s.name)}</span><small>${esc(s.tag.split(' · ')[0])}</small></a></li>`).join('')}</ul>`;
 }
 
+/* ---------- References: every source in the library, by kind, each opens in the reader ---------- */
+const refsFold = referencesFolder(base, () => bindFolds());
+
 /* ---------- the folder list ---------- */
 const isLocal = (slug: string) => outboxIndex().news.some((n) => n.slug === slug);
 const pageHref = (slug: string) => (isLocal(slug) ? `${base}draft/?p=${encodeURIComponent(slug)}` : `${base}${slug}/`);
@@ -75,7 +79,7 @@ function render() {
     base, href: pageHref,
     tag: (s) => (local.has(s) ? 'On this device' : !liveSlugs.has(s) ? 'building' : edited.has(s) ? 'Edited' : ''),
   });
-  tree.append(sims);
+  tree.append(sims, refsFold);
   bindFolds();
   if (tree.querySelector('.building')) watchPublishing();
 }
@@ -206,7 +210,7 @@ async function create() {
     const list: Node[] = parent ? (parent as Folder).topics : data.areas;
     const path = parent ? allFolders(data.areas).find((f) => f.at === at)!.path : [];
     if (mode === 'folder') {
-      if (list.some((n) => isFolder(n) && n.title.toLowerCase() === title.toLowerCase()) || (!parent && title === 'Interactives')) throw new Error('There’s already a folder with that name here.');
+      if (list.some((n) => isFolder(n) && n.title.toLowerCase() === title.toLowerCase()) || (!parent && (title === 'Interactives' || title === 'References'))) throw new Error('There’s already a folder with that name here.');
       list.push({ title, topics: [] });
       await saveOutline(data, `Add folder “${title}”${path.length ? ` to ${path.join(' / ')}` : ''}`, [], { folders: [[...path, title].join(' / ')] });
       areas = data.areas;
@@ -341,7 +345,7 @@ async function rename(at: string, old: string, name: string) {
     const extra: { news?: LocalPage[] } = {};
     if (isFolder(n)) {
       const sibs = listOf(data.areas, at)!;
-      if (sibs.some((x) => x !== n && isFolder(x) && x.title.toLowerCase() === name.toLowerCase()) || (!at.includes('.') && name === 'Interactives')) throw new Error('There’s already a folder with that name here.');
+      if (sibs.some((x) => x !== n && isFolder(x) && x.title.toLowerCase() === name.toLowerCase()) || (!at.includes('.') && (name === 'Interactives' || name === 'References'))) throw new Error('There’s already a folder with that name here.');
       const oldKey = foldPath(data.areas, n);
       n.title = name;
       if (folds[oldKey] !== undefined) { folds[foldPath(data.areas, n)] = folds[oldKey]; session.set('cfi.folds', folds); }
