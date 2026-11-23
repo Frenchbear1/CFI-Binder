@@ -1,9 +1,11 @@
-// Pages: network first, cache fallback (always fresh when online, still works with no signal).
+// Pages: shown from the device straight away, refreshed in the background for next time (the lessons
+// themselves come from Firestore, so a page here is just the frame). Code and styles (/assets/, named by
+// their contents so they never change): from the device, fetched once.
 // Source library (the big FAA PDFs and saved web pages) + PDF engine: kept on the device in their own cache
 // that survives app updates. Served from there straight away; checked for a newer copy at most once a day,
 // in the background (the library itself only changes weekly). The lessons themselves sync through Firestore,
 // which keeps its own copy on the device.
-const C = 'cfi-binder-v5';
+const C = 'cfi-binder-v6';
 const LIB = 'cfi-library-v1';
 const DAY = 864e5;
 self.addEventListener('install', (e) => { self.skipWaiting(); e.waitUntil(caches.open(C).then((c) => c.addAll(['./', 'manifest.webmanifest', 'favicon.svg', 'icon-192.png', 'icon-512.png']).catch(() => {}))); });
@@ -28,6 +30,19 @@ self.addEventListener('fetch', (e) => {
         return hit;
       }
       return fetch(r).then((res) => { e.waitUntil(keepLib(r, res.clone())); return res; });
+    }));
+    return;
+  }
+  if (u.pathname.includes('/assets/')) {
+    e.respondWith(caches.match(r).then((hit) => hit || fetch(r).then((res) => keep(r, res))));
+    return;
+  }
+  // Pages: from the device at once when we have them, and a fresh copy saved for next time.
+  if (r.mode === 'navigate' && !/\/(login|screen)(\/|$)/.test(u.pathname)) {
+    e.respondWith(caches.match(r, { ignoreSearch: true }).then((hit) => {
+      const net = fetch(r).then((res) => (res.redirected ? res : keep(r, res)));
+      if (hit) { e.waitUntil(net.catch(() => {})); return hit; }
+      return net.catch(() => caches.match(r, { ignoreSearch: true }));
     }));
     return;
   }
