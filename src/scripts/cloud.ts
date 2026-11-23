@@ -74,10 +74,14 @@ export async function serverSignIn(user: User) {
   const r = await fetch(`${base}api/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ idToken: await user.getIdToken() }) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || 'Couldn’t sign in. Try again.');
+  await clearPages();
 }
+/** Saved copies of the site's pages (sw.js): dropped when you sign in or out, so the next page is the right one. */
+export const clearPages = () => (self.caches ? caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith('cfi-binder-')).map((k) => caches.delete(k)))).catch(() => {}) : Promise.resolve());
 export async function signOutEverywhere() {
   try { const { auth, A } = await firebase(); await A.signOut(auth); } catch {}
-  try { localStorage.removeItem('cfi.cloudEdited'); } catch {}
+  try { Object.keys(localStorage).filter((k) => k.startsWith('cfi.page.') || k === 'cfi.cloudEdited' || k === 'cfi.seeded').forEach((k) => localStorage.removeItem(k)); } catch {}
+  await clearPages();
   location.href = `${base}api/login?out=1`;
 }
 

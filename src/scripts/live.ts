@@ -21,6 +21,24 @@ const markEdited = (slug: string, v: boolean) => {
 };
 const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 
+// Instant: show this device's last copy of the page straight away (no waiting for Firebase to load);
+// Firestore then brings it up to date in the background if it changed somewhere else.
+const PAGE = (slug: string) => `cfi.page.${slug}`;
+const staticHtml = article?.innerHTML ?? '';
+let cachedHtml = '';
+if (cloudOn && !guest && article?.dataset.slug) {
+  try { cachedHtml = localStorage.getItem(PAGE(article.dataset.slug)) || ''; } catch {}
+  if (cachedHtml && cachedHtml !== article.innerHTML) { article.innerHTML = cachedHtml; document.dispatchEvent(new CustomEvent('cfi:article')); }
+  if (cachedHtml) html.classList.remove('local-wait');
+}
+function remember(slug: string, h: string) {
+  try { localStorage.setItem(PAGE(slug), h); }
+  catch {
+    // Full: forget the other pages' copies (they come back from Firestore's own copy next time).
+    try { Object.keys(localStorage).filter((k) => k.startsWith('cfi.page.') && k !== PAGE(slug)).forEach((k) => localStorage.removeItem(k)); localStorage.setItem(PAGE(slug), h); } catch {}
+  }
+}
+
 if (cloudOn && !guest) (async () => {
   const user = await currentUser().catch(() => null);
   if (!user) {
@@ -28,9 +46,13 @@ if (cloudOn && !guest) (async () => {
     location.replace(`${base}login/?next=${encodeURIComponent(location.pathname + location.search)}`);
     return;
   }
+  // Already set up on this device: don't wait on the network before showing anything.
+  const known = (() => { try { return localStorage.getItem('cfi.seeded') === '1'; } catch { return false; } })();
+  if (known) { if (article) showLesson(article); }
   if (!(await ready())) return;
+  try { localStorage.setItem('cfi.seeded', '1'); } catch {}
+  if (!known && article) showLesson(article);
   migrateLegacy().then((n) => { if (n) { try { localStorage.setItem('cfi.notice', `Moved ${n} change${n === 1 ? ' that was' : 's that were'} waiting on this device into your synced binder.`); } catch {} } }).catch((e) => console.warn('migrate', e));
-  if (article) showLesson(article);
   watch('binder/outline', (d) => { if (d?.json) navFrom(JSON.parse(d.json).areas); });
 })();
 
@@ -38,8 +60,8 @@ function showLesson(article: HTMLElement) {
   const slug = article.dataset.slug || '';
   if (!slug) { html.classList.remove('local-wait'); return; }
   const isDraft = !!document.querySelector('[data-draft]');
-  const built = isDraft ? '' : article.innerHTML;
-  let shown = '', first = true;
+  const built = isDraft ? '' : staticHtml;
+  let shown = cachedHtml, first = true;
   const stop = setTimeout(() => html.classList.remove('local-wait'), 4000);
   watch(lessonPath(slug), (d, m) => {
     const was = first; first = false;
@@ -49,19 +71,20 @@ function showLesson(article: HTMLElement) {
         html.classList.remove('local-wait');
         if (isDraft) { article.querySelector('h1')!.textContent = 'This page isn’t in your binder'; article.querySelector('.meta-line')!.textContent = ''; }
       }
-      if (!m.cache) markEdited(slug, false);
+      if (!m.cache) { markEdited(slug, false); try { localStorage.removeItem(PAGE(slug)); } catch {} }
       return;
     }
     if (!d.html) { html.classList.remove('local-wait'); return; }
     // Our own save coming back: the page already shows it.
-    if (!was && m.local) { shown = d.html; return; }
+    if (!was && m.local) { shown = d.html; remember(slug, d.html); return; }
     // Editing right now: don't pull the page out from under you (your next save wins).
-    if (html.classList.contains('editing')) { shown = d.html; return; }
-    if (d.html !== shown && !(was && d.html === built)) {
+    if (html.classList.contains('editing')) { shown = d.html; remember(slug, d.html); return; }
+    if (d.html !== shown && !(was && d.html === built && !cachedHtml)) {
       article.innerHTML = d.html;
       document.dispatchEvent(new CustomEvent('cfi:article'));
     }
     shown = d.html;
+    remember(slug, d.html);
     showUploads(article);
     if (!isDraft) markEdited(slug, d.html !== built);
     if (d.title) {
