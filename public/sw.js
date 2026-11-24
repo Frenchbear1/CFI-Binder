@@ -5,7 +5,7 @@
 // that survives app updates. Served from there straight away; checked for a newer copy at most once a day,
 // in the background (the library itself only changes weekly). The lessons themselves sync through Firestore,
 // which keeps its own copy on the device.
-const C = 'cfi-binder-v6';
+const C = 'cfi-binder-v7';
 const LIB = 'cfi-library-v1';
 const DAY = 864e5;
 self.addEventListener('install', (e) => { self.skipWaiting(); e.waitUntil(caches.open(C).then((c) => c.addAll(['./', 'manifest.webmanifest', 'favicon.svg', 'icon-192.png', 'icon-512.png']).catch(() => {}))); });
@@ -22,7 +22,8 @@ async function keepLib(r, res) {
 self.addEventListener('fetch', (e) => {
   const r = e.request;
   const u = new URL(r.url);
-  if (r.method !== 'GET' || u.origin !== location.origin || r.headers.has('range') || u.pathname.includes('/api/')) return;
+  if (r.method !== 'GET' || u.origin !== location.origin || r.headers.has('range') || u.pathname.includes('/api/') || /^\/(__|screen)(\/|$)/.test(u.pathname)) return;
+  // (/__/ is Google sign-in, which must always come from the network; the student screen never uses a saved page.)
   if (/\/(library|vendor)\//.test(u.pathname)) {
     e.respondWith(caches.open(LIB).then((c) => c.match(r)).then((hit) => {
       if (hit) {

@@ -2,11 +2,37 @@
 // The student screen: open this on the iPad (no sign-in). It shows a code; the instructor's phone pairs with it
 // and sends pictures, videos and interactives, which appear here full screen as slides. Nothing of the lessons
 // is on this page: it only shows what's sent. The relay is api/screen.js.
-import Base from '../../layouts/Base.astro';
+// It's a page of its own, not the binder's layout: no top bar, menus, lessons or binder scripts are in it at all,
+// so a refresh can never show any of the binder, even on an iPad that's signed in.
+import '../../styles/global.css';
 import Interactive from '../../components/Interactive.astro';
 import data from '../../data/interactives.json';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
 ---
-<Base title="Student screen" guest screen>
+<!doctype html>
+<html lang="en" data-level="pa" data-ac="both" data-panel="both" class="doc-tint">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Student screen</title>
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#f7f7f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#191919" media="(prefers-color-scheme: dark)" />
+  <link rel="icon" href={base + 'favicon.svg'} type="image/svg+xml" />
+  <link rel="manifest" href={base + 'screen.webmanifest'} />
+  <link rel="apple-touch-icon" href={base + 'icon-180.png'} />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Student screen" />
+  <script is:inline>
+    // The reading theme chosen on this device, before anything paints.
+    try {
+      var d = document.documentElement, c = JSON.parse(localStorage.getItem('cfi.theme') || 'null');
+      if (c && c.css && !c.auto) { d.setAttribute('style', c.css); d.dataset.theme = c.dark ? 'dark' : 'light'; if (!c.tint) d.classList.remove('doc-tint'); else if (c.dark) d.classList.add('doc-dark'); if (c.paper) d.classList.add('paper'); }
+    } catch (e) {}
+  </script>
+</head>
+<body class="guest screen-page" data-base={base}>
   <div class="scr" data-scr>
     <section class="scr-pair" data-pair>
       <div class="scr-qr" data-qr aria-label="Pairing code"></div>
@@ -34,7 +60,8 @@ import data from '../../data/interactives.json';
   <div class="scr-stash" data-stash hidden>
     {data.items.map((s) => <Interactive id={s.id} full />)}
   </div>
-</Base>
+</body>
+</html>
 
 <script>
   import qrcode from 'qrcode-generator';

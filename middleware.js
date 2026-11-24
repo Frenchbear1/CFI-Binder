@@ -7,8 +7,9 @@ import { validToken, readCookie, COOKIE, SCREEN_COOKIE } from './lib/auth.js';
 
 // Open to everyone: the sims and their pages, the sign-in page, the site's code/styles/icons, and the
 // reference library (FAA handbooks and regulations the sims cite), and the student screen (an iPad showing what
-// the instructor sends from the phone; api/screen checks the instructor's sign-in for sending).
-const OPEN = /^\/(interactives(\/|$)|login(\/|$)|screen\/?$|api\/login|api\/screen|assets\/|library\/|vendor\/|favicon|icon-|manifest\.webmanifest|sw\.js|robots\.txt)/;
+// the instructor sends from the phone; api/screen checks the instructor's sign-in for sending), and Google
+// sign-in's own pages under /__/ (passed through to Firebase, see vercel.json).
+const OPEN = /^\/(interactives(\/|$)|login(\/|$)|screen\/?$|api\/login|api\/screen|assets\/|library\/|vendor\/|favicon|icon-|manifest\.webmanifest|screen\.webmanifest|__\/|sw\.js|robots\.txt)/;
 
 export default async function middleware(req) {
   const url = new URL(req.url);

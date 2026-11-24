@@ -18,7 +18,7 @@ import cfgFile from '../data/firebase.json';
 import type { Firestore, DocumentReference } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 
-type Cfg = { apiKey: string; authDomain: string; projectId: string; appId: string };
+type Cfg = { apiKey: string; authDomain: string; projectId: string; appId: string; signInHosts?: string[] };
 const envCfg = import.meta.env.PUBLIC_FIREBASE_CONFIG as string | undefined;
 export const config: Cfg = envCfg ? JSON.parse(envCfg) : (cfgFile as Cfg);
 export const cloudOn = !!config.projectId;
@@ -34,10 +34,16 @@ const LESSON = /^src\/content\/lessons\/(.+)\.mdx?$/;
 const UPLOAD = /^public\/(uploads\/.+)$/;
 
 /* ---------- sign-in ---------- */
+// iPad, iPhone and Safari keep a site's sign-in apart from Google's firebaseapp.com page, so Google's answer never
+// comes back to the binder and you land on the sign-in page again. There, sign-in goes through the binder's own
+// address instead (/__/auth, which vercel.json hands to Firebase), as a full-page trip to Google and back.
+const ua = navigator.userAgent;
+export const apple = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) || (/Safari\//.test(ua) && !/Chrome|Chromium|CriOS|Edg|Firefox|FxiOS|OPR/.test(ua));
+const sameSite = !emu && apple && (config.signInHosts || []).includes(location.host);
 let fbP: Promise<{ auth: import('firebase/auth').Auth; A: typeof import('firebase/auth'); app: import('firebase/app').FirebaseApp }> | null = null;
 export const firebase = () => (fbP ??= (async () => {
   const [{ initializeApp }, A] = await Promise.all([import('firebase/app'), import('firebase/auth')]);
-  const app = initializeApp({ apiKey: config.apiKey, authDomain: config.authDomain, projectId: config.projectId, appId: config.appId });
+  const app = initializeApp({ apiKey: config.apiKey, authDomain: sameSite ? location.host : config.authDomain, projectId: config.projectId, appId: config.appId });
   const auth = A.getAuth(app);
   if (emu) A.connectAuthEmulator(auth, `http://${emu}:9099`, { disableWarnings: true });
   // Tests sign in without Google's window (the emulator takes a made-up Google account).
@@ -52,22 +58,25 @@ export async function currentUser(): Promise<User | null> {
   return auth.currentUser;
 }
 const standalone = () => matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
-/** Google's sign-in window (a full-page redirect in the home-screen app, where pop-ups don't come back). */
+export const REDIRECTING = 'cfi.gRedirect';
+/** Google's sign-in window (a full-page trip to Google and back in the home-screen app and on Apple devices). */
 export async function signInWithGoogle(): Promise<User | null> {
   const { auth, A } = await firebase();
   const p = new A.GoogleAuthProvider();
   p.setCustomParameters({ prompt: 'select_account' });
-  if (standalone()) { await A.signInWithRedirect(auth, p); return null; }
+  const away = async () => { try { sessionStorage.setItem(REDIRECTING, String(Date.now())); } catch {} await A.signInWithRedirect(auth, p); return null; };
+  if (sameSite || standalone()) return away();
   try { return (await A.signInWithPopup(auth, p)).user; }
   catch (e: any) {
-    if (/popup-blocked|operation-not-supported|web-storage-unsupported/.test(e?.code || '')) { await A.signInWithRedirect(auth, p); return null; }
+    if (/popup-blocked|operation-not-supported|web-storage-unsupported/.test(e?.code || '')) return away();
     throw e;
   }
 }
 /** Back from a redirect sign-in: the account, if that's what just happened. */
 export async function redirectUser(): Promise<User | null> {
   const { auth, A } = await firebase();
-  try { return (await A.getRedirectResult(auth))?.user || null; } catch { return null; }
+  try { return (await A.getRedirectResult(auth))?.user || null; }
+  catch (e: any) { console.warn('redirect sign-in', e); throw e; }
 }
 /** Show the binder's server who you are; it checks the account with Firestore and sets the sign-in cookie. */
 export async function serverSignIn(user: User) {
