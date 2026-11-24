@@ -10,5 +10,15 @@
     "api/login.js": {
       "includeFiles": "src/data/firebase.json"
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/__/auth/:path*",
+      "destination": "https://aviation-binder.firebaseapp.com/__/auth/:path*"
+    },
+    {
+      "source": "/__/firebase/:path*",
+      "destination": "https://aviation-binder.firebaseapp.com/__/firebase/:path*"
+    }
+  ]
 }

@@ -44,7 +44,7 @@ const google = !!fb.projectId;
     <a class="signin-alt" href={`${base}interactives/`}>Student? Open the Interactives <span aria-hidden="true">→</span></a>
   </div>
   {google && <script>
-    import { signInWithGoogle, redirectUser, currentUser, serverSignIn } from '../scripts/cloud';
+    import { signInWithGoogle, redirectUser, currentUser, serverSignIn, REDIRECTING } from '../scripts/cloud';
     const next = (() => { const n = new URLSearchParams(location.search).get('next') || '/'; return n.startsWith('/') && !n.startsWith('//') ? n : '/'; })();
     const btn = document.querySelector<HTMLButtonElement>('[data-google-go]')!;
     const err = document.querySelector<HTMLElement>('[data-gerr]')!;
@@ -59,8 +59,15 @@ const google = !!fb.projectId;
     // Back from Google (redirect), or already signed in with Google on this device: straight in.
     busy(true, 'Checking…');
     (async () => {
-      const u = (await redirectUser()) || (await currentUser().catch(() => null));
-      if (u) finish(u); else busy(false);
+      // Just back from Google's page? Then say so if the account didn't come back, rather than quietly showing
+      // the button again (which looks like sign-in starting over).
+      let back = false; try { back = Date.now() - Number(sessionStorage.getItem(REDIRECTING) || 0) < 10 * 60e3; sessionStorage.removeItem(REDIRECTING); } catch {}
+      let u = null, why = '';
+      try { u = await redirectUser(); } catch (e: any) { why = e?.code || e?.message || String(e); }
+      u ||= await currentUser().catch(() => null);
+      if (u) finish(u);
+      else if (back) fail(`Google didn’t send your account back to the binder${why ? ` (${why})` : ''}. Try again.`);
+      else busy(false);
     })();
     btn.addEventListener('click', async () => {
       err.hidden = true; busy(true);
