@@ -157,12 +157,14 @@ html[data-panel="glass"] [data-panel-only="analog"]:not([data-keep]), html[data-
 /* ===== Desktop / large tablet =====
    Same layout as the phone, just roomier: one reading column, the floating dock for contents, search and
    settings, and everything else in sheets. No side menus or rows of toggles. */
-@media (min-width: 1100px) {
-  .topbar { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 10px 24px; }
-  main { padding: 24px 48px calc(var(--dock-h) + 60px); }
+@media (min-width: 768px) {
   .sheet { margin: 12vh auto auto; max-width: 620px; border-radius: 16px; max-height: 72vh; }
   .sheet .grab { display: none; }
   .sheet-search { height: auto; min-height: 200px; }
+}
+@media (min-width: 1100px) {
+  .topbar { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 10px 24px; }
+  main { padding: 24px 48px calc(var(--dock-h) + 60px); }
   @keyframes up { from { transform: translateY(-8px); opacity: 0; } }
 }
 /* ===== Article typography (Notion-like) ===== */
@@ -702,6 +704,11 @@ body.home .topbar { display: none; }
 .nh-up.has { background: var(--accent); border-color: var(--accent); color: #fff; }
 .nh-up:disabled:not(.has) { opacity: .75; }
 .nh-upload [data-upload-note]:empty { display: none; }
+.nh-upload[hidden] { display: none; }
+.acct-row { cursor: default; }
+.acct-row span { color: var(--ink-2); font-size: .9rem; }
+.acct-row [data-kind="err"] { color: #c0392b; }
+.acct-row a { font-weight: 600; text-decoration: none; }
 .nh-upload [data-kind="err"] { color: #c0392b; } .nh-upload [data-kind="ok"] { color: #2e7d4f; }
 .pg small.is-local { color: var(--accent); opacity: .9; }
 /* sims */
@@ -724,7 +731,7 @@ body.home .topbar { display: none; }
 .sim figcaption { font-size: .8rem; color: var(--ink-3); margin-top: 6px; }
 .sim-page { max-width: 1240px; margin: 0 auto; padding: 0 4px 40px; }
 .sim-h { margin: 4px 0 14px; }
-.nh-bar { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 55%, transparent); max-width: 46rem; margin: 0 auto; pointer-events: none; }
+.nh-bar { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 18px max(16px, calc(50% - 23rem + 16px)) calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 45%, transparent); pointer-events: none; }
 .nh-bar > * { pointer-events: auto; }
 .nh-search { flex: 1; display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-3); font: inherit; font-size: .98rem; box-shadow: var(--shadow); }
 .nh-compose { width: 50px; height: 50px; flex: none; border: 0; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; box-shadow: var(--shadow); }
@@ -965,16 +972,26 @@ body.screen-page .shell { display: block !important; }
 .pk-tog i { font-style: normal; font-weight: 700; }
 .pk-tog[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); font-weight: 600; }
 
-/* ===== Windows / Mac (mouse and a big screen) =====
-   No bottom bar: everything sits in one quiet top bar (contents, actions, level chip, a small Mac-style
-   search field), and the lesson's headings are a column of short lines at the right, like Notion: hover it
-   for the full list. Phones and iPads keep the dock. */
-.top-contents, .top-spacer, .top-chip { display: none; }
-@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+/* ===== iPad, Windows, Mac (768px and wider) =====
+   No bottom bar: everything sits in one quiet top bar (binder panel button, actions, level chip, a small
+   Mac-style search field), and the lesson's headings are a column of short lines at the right, like Notion:
+   hover it (tap it on an iPad) for the full list. Home's folders sit in a side panel at the left that hides
+   with the top-left button. Phones keep the dock. */
+.top-contents, .top-spacer, .top-chip, .side-toggle, .side-scrim, .big-only { display: none; }
+@media (min-width: 768px) {
+  :root { --top-h: 54px; --side-w: 272px; }
+  .big-only { display: flex; }
+  p.big-only { display: block; }
   .dock { display: none !important; }
-  main { padding-bottom: 80px; }
-  .topbar { position: sticky; top: 0; z-index: 30; gap: 6px; padding: 8px 20px; min-height: 52px; background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+  main { padding: 20px clamp(20px, 4vw, 48px) 80px; }
+  html[data-width="full"] .article, html[data-width="full"] .nhome { max-width: none; }
+  html[data-width="full"] body:not(.home) main { padding-right: 64px; }
+  .topbar { position: sticky; top: 0; z-index: 30; gap: 6px; padding: env(safe-area-inset-top) 16px 0; height: calc(var(--top-h) + env(safe-area-inset-top)); min-height: 0; background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
   .topbar .brand { margin-right: 6px; font-size: .95rem; }
+  .topbar .side-toggle { order: -1; display: grid; place-items: center; width: 38px; height: 38px; margin-right: 2px; border: 0; border-radius: 10px; background: none; color: var(--ink-2); }
+  .topbar .side-toggle svg { width: 19px; height: 19px; stroke-width: 1.8; }
+  .topbar .side-toggle:hover, .topbar .side-toggle:active { background: var(--surface-2); color: var(--ink); }
+  html.side-open .topbar .side-toggle { color: var(--ink); }
   .topbar .top-spacer { display: block; flex: 1; order: 2; }
   .topbar .top-contents { order: 1; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: var(--ink-2); font: inherit; font-size: .88rem; }
   .topbar .top-contents svg { width: 17px; height: 17px; }
@@ -1009,15 +1026,55 @@ body.screen-page .shell { display: block !important; }
   .toc-rail .toc a::before { content: ""; display: block; width: 16px; height: 2px; margin-left: auto; border-radius: 2px; background: color-mix(in srgb, var(--ink) 18%, transparent); }
   .toc-rail .toc .t-h3 a::before { width: 10px; }
   .toc-rail .toc a.active::before { background: var(--ink); }
-  .toc-rail:hover, .toc-rail:focus-within { width: 280px; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); padding: 10px 6px; }
-  .toc-rail:hover .toc-title, .toc-rail:focus-within .toc-title { display: block; }
-  .toc-rail:hover .toc a, .toc-rail:focus-within .toc a { font-size: .86rem; line-height: 1.35; color: var(--ink-2); padding: 5px 8px; border-radius: 7px; }
-  .toc-rail:hover .toc .t-h3 a, .toc-rail:focus-within .toc .t-h3 a { padding-left: 20px; font-size: .82rem; }
-  .toc-rail:hover .toc a::before, .toc-rail:focus-within .toc a::before { display: none; }
-  .toc-rail:hover .toc a:hover, .toc-rail:focus-within .toc a:hover { background: var(--surface-2); color: var(--ink); }
-  .toc-rail:hover .toc a.active, .toc-rail:focus-within .toc a.active { color: var(--ink); font-weight: 600; }
+  .toc-rail.open, .toc-rail:focus-within { width: 280px; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); padding: 10px 6px; }
+  .toc-rail.open .toc-title, .toc-rail:focus-within .toc-title { display: block; }
+  .toc-rail.open .toc a, .toc-rail:focus-within .toc a { font-size: .86rem; line-height: 1.35; color: var(--ink-2); padding: 5px 8px; border-radius: 7px; }
+  .toc-rail.open .toc .t-h3 a, .toc-rail:focus-within .toc .t-h3 a { padding-left: 20px; font-size: .82rem; }
+  .toc-rail.open .toc a::before, .toc-rail:focus-within .toc a::before { display: none; }
+  .toc-rail.open .toc a:hover, .toc-rail:focus-within .toc a:hover { background: var(--surface-2); color: var(--ink); }
+  .toc-rail.open .toc a.active, .toc-rail:focus-within .toc a.active { color: var(--ink); font-weight: 600; }
   html.editing .toc-rail { display: none; }
+  .toc-rail { top: calc(var(--top-h) + env(safe-area-inset-top) + 40px); }
+
+  /* Side panel: Home's folders, with "Find a page" at the top */
+  .sidenav { display: flex; flex-direction: column; position: fixed; z-index: 28; left: 0; bottom: 0; top: calc(var(--top-h) + env(safe-area-inset-top)); width: var(--side-w); padding: 10px 8px calc(16px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); overflow-y: auto; overscroll-behavior: contain; background: color-mix(in srgb, var(--ink) 3%, var(--bg)); border-right: 1px solid color-mix(in srgb, var(--line) 70%, transparent); transform: translateX(-100%); visibility: hidden; transition: transform .22s cubic-bezier(.2,.8,.2,1), visibility 0s .22s; }
+  .sidenav > * { flex: none; }
+  html.side-open .sidenav { transform: none; visibility: visible; transition: transform .22s cubic-bezier(.2,.8,.2,1); }
+  html.editing .sidenav { display: none; }
+  .side-find { position: sticky; top: 0; box-shadow: 0 -10px 0 color-mix(in srgb, var(--ink) 3%, var(--bg)); z-index: 1; display: flex; align-items: center; gap: 7px; height: 34px; margin: 0 2px 8px; padding: 0 10px; border-radius: 9px; background: color-mix(in srgb, var(--ink) 6%, var(--bg)); color: var(--ink-3); }
+  .side-find svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+  .side-find input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; padding: 0; color: var(--ink); font: inherit; font-size: 16px; outline: none; -webkit-appearance: none; appearance: none; }
+  .side-find input::-webkit-search-cancel-button { display: none; }
+  .side-tree .fold > summary { padding: 5px 6px; font-size: .9rem; }
+  .side-tree .pg { padding: 5px 6px; font-size: .88rem; }
+  .side-tree .ico { width: 18px; height: 18px; }
+  .side-tree svg { width: 17px; height: 17px; }
+  .side-tree .fold ul { padding-left: 16px; }
+  .side-tree .pg small { display: none; }
+  .side-tree .pg[aria-current="page"] { background: color-mix(in srgb, var(--ink) 8%, transparent); font-weight: 600; }
+  .side-tree .pg.planned { cursor: default; }
+  .side-tree .pg.planned:hover { background: none; }
+  .side-tree .f-hide { display: none !important; }
+  .side-tree .pg-empty { padding-left: 30px; font-size: .82rem; }
+  .sidenav.filtering .pg-empty { display: none; }
+  .side-none { margin: 6px 10px; font-size: .85rem; color: var(--ink-3); }
+  .side-none[hidden] { display: none; }
+  .side-more { margin: 10px 4px 0; padding: 7px 8px; border: 0; border-radius: 8px; background: none; color: var(--ink-3); font: inherit; font-size: .82rem; text-align: left; }
+  .side-more:hover { background: var(--surface-2); color: var(--ink); }
+  .sidenav:not(.filtering) .side-more { display: none; }
+  /* Laptop / landscape iPad: beside the page. Portrait iPad: over it, tap outside to close. */
+  .shell { transition: margin-left .22s cubic-bezier(.2,.8,.2,1); }
+  html.editing .shell { margin-left: 0 !important; }
+  .side-scrim { position: fixed; inset: 0; z-index: 27; background: rgba(0,0,0,.22); }
 }
+@media (min-width: 768px) and (max-width: 1023px) {
+  html.side-open:not(.editing) body.has-side .side-scrim { display: block; }
+  .sidenav { box-shadow: var(--shadow); }
+}
+@media (min-width: 1024px) {
+  html.side-open body.has-side .shell { margin-left: var(--side-w); }
+}
+@media (pointer: coarse) { .topbar .searchfield kbd { display: none; } }
 /* References folder on Home: how many sources each folder holds */
 .fold-n { font-size: .72rem; font-weight: 500; color: var(--ink-3); margin-left: auto; padding-left: 6px; }
 
