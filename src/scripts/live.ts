@@ -114,9 +114,9 @@ function navFrom(areas: Folder[]) {
   const key = JSON.stringify(areas);
   if (key === lastNav) return; lastNav = key;
   const here = article?.dataset.slug || '';
-  const side = document.querySelector<HTMLElement>('.sidenav');
-  if (side) side.innerHTML = areas.map((a) => `<div class="nav-area"><p class="nav-area-title">${esc(a.title)}</p>${list(a.topics, here)}</div>`).join('');
   const sheet = document.querySelector<HTMLElement>('.sheet-nav');
   if (sheet) sheet.innerHTML = areas.map((a) => `<details${pagesIn(a.topics).some((t) => t.slug === here) ? ' open' : ''}><summary>${esc(a.title)}</summary>${list(a.topics, here)}</details>`).join('');
   const data = document.getElementById('outline-data'); if (data) data.textContent = JSON.stringify(areas);
+  // the side panel (sidepanel.ts) redraws its folder tree
+  window.dispatchEvent(new CustomEvent('cfi:outline', { detail: areas }));
 }

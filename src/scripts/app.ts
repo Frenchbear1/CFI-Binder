@@ -8,6 +8,7 @@ const fixUrl = (u: string) => {
   if (portable && abs.pathname.endsWith('/')) abs.pathname += 'index.html';
   return abs.href;
 };
+import { cloudOn, syncState, signOutEverywhere } from './cloud';
 import { bindModePill, onModeChange, compileOpts, prefs as sp } from './search-mode';
 import { compile, MODES } from '../lib/is/search.js';
 import { applyReadingTheme, openThemeBar, THEME_DEFAULTS } from '../lib/is/themes.js';
@@ -28,8 +29,9 @@ function applyPrefs() {
   const lvl = root.dataset.level || 'pa';
   const ac = root.dataset.ac || 'both';
   const panel = root.dataset.panel || 'both';
+  const width = root.dataset.width || 'full';
   document.querySelectorAll<HTMLElement>('[data-pref]').forEach((g) => {
-    const v = g.dataset.pref === 'level' ? lvl : g.dataset.pref === 'panel' ? panel : ac;
+    const v = g.dataset.pref === 'level' ? lvl : g.dataset.pref === 'panel' ? panel : g.dataset.pref === 'width' ? width : ac;
     g.querySelectorAll<HTMLButtonElement>('button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === v)));
   });
   document.querySelectorAll('[data-chip-level]').forEach((e) => (e.textContent = LEVEL_SHORT[lvl]));
@@ -41,7 +43,7 @@ document.querySelectorAll<HTMLElement>('[data-pref]').forEach((g) => {
   g.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest('button');
     if (!b?.dataset.v) return;
-    const key = g.dataset.pref === 'level' ? 'level' : g.dataset.pref === 'panel' ? 'panel' : 'ac';
+    const key = g.dataset.pref === 'level' ? 'level' : g.dataset.pref === 'panel' ? 'panel' : g.dataset.pref === 'width' ? 'width' : 'ac';
     root.dataset[key] = b.dataset.v;
     try { localStorage.setItem('cfi.' + key, b.dataset.v); } catch {}
     applyPrefs();
@@ -343,3 +345,35 @@ document.addEventListener('click', (e) => {
 
 // The search field's shortcut, as this computer writes it.
 if (/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)) document.querySelectorAll('[data-kbd]').forEach((k) => (k.textContent = '⌘K'));
+
+/* ---------- The headings column at the right (iPad, Windows, Mac) ----------
+   With a mouse it opens while the pointer is over it; on an iPad the first tap opens it, a tap on a heading
+   goes there and closes it, and a tap anywhere else closes it. */
+{
+  const rail = document.querySelector<HTMLElement>('.toc-rail');
+  if (rail) {
+    const hover = matchMedia('(hover: hover) and (pointer: fine)');
+    rail.addEventListener('mouseenter', () => { if (hover.matches) rail.classList.add('open'); });
+    rail.addEventListener('mouseleave', () => { if (hover.matches) rail.classList.remove('open'); });
+    rail.addEventListener('click', (e) => {
+      if (hover.matches) return;
+      if (!rail.classList.contains('open')) { e.preventDefault(); e.stopPropagation(); rail.classList.add('open'); return; }
+      if ((e.target as HTMLElement).closest('a')) rail.classList.remove('open');
+    }, true);
+    document.addEventListener('click', (e) => { if (!rail.contains(e.target as Node)) rail.classList.remove('open'); });
+  }
+}
+
+/* ---------- Settings: how syncing is going, and Sign out ---------- */
+if (cloudOn) {
+  const note = document.querySelector<HTMLElement>('[data-sync-note]');
+  const say = () => {
+    if (!note) return;
+    const s = syncState();
+    note.dataset.kind = s.error ? 'err' : '';
+    note.textContent = s.error ? s.error : s.inflight ? (navigator.onLine ? 'Syncing…' : 'Saved on this device. Syncs when you’re back online.') : 'Synced to your Google account';
+  };
+  window.addEventListener('cfi:sync', say); window.addEventListener('online', say); window.addEventListener('offline', say);
+  say();
+  document.querySelector('[data-signout]')?.addEventListener('click', (e) => { e.preventDefault(); signOutEverywhere(); });
+}

@@ -3,6 +3,7 @@ import '../styles/global.css';
 import { outline } from '../data/outline';
 import { pagesIn } from '../data/tree';
 import NavList from '../components/NavList.astro';
+import { treeHtml } from '../data/tree';
 import { getCollection } from 'astro:content';
 import fbFile from '../data/firebase.json';
 
@@ -18,9 +19,11 @@ const href = (slug: string) => base + slug + '/';
 const fb = import.meta.env.PUBLIC_FIREBASE_CONFIG ? JSON.parse(import.meta.env.PUBLIC_FIREBASE_CONFIG) : fbFile;
 const cloud = !!fb.projectId;
 const builtSlugs = guest ? [] : (await getCollection('lessons')).map((l) => l.id);
+// The side panel (iPad, Windows, Mac): Home's folders beside any page but Home itself.
+const sidePanel = !guest && !isHome && !screen;
 ---
 <!doctype html>
-<html lang="en" data-level="pa" data-ac="both" data-panel="both" data-cloud={cloud ? '1' : undefined}>
+<html lang="en" data-level="pa" data-ac="both" data-panel="both" data-width="full" data-cloud={cloud ? '1' : undefined}>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -42,6 +45,9 @@ const builtSlugs = guest ? [] : (await getCollection('lessons')).map((l) => l.id
       var d = document.documentElement, l = localStorage.getItem('cfi.level'), a = localStorage.getItem('cfi.ac');
       if (l) d.dataset.level = l; if (a) d.dataset.ac = a;
       var pn = localStorage.getItem('cfi.panel'); if (pn) d.dataset.panel = pn;
+      // page width (narrow / full, like Notion) and the side panel, open unless you closed it (laptop, landscape iPad)
+      var w = localStorage.getItem('cfi.width'); if (w) d.dataset.width = w;
+      if (innerWidth >= 1024 && localStorage.getItem('cfi.side') !== 'closed') d.classList.add('side-open');
       // reading theme (Instant Search's), before anything paints
       var c = JSON.parse(localStorage.getItem('cfi.theme') || 'null');
       if (c && c.css && !c.auto) {
@@ -62,15 +68,15 @@ const builtSlugs = guest ? [] : (await getCollection('lessons')).map((l) => l.id
     } catch (e) {}
   </script>
 </head>
-<body class:list={[{ home: isHome, guest, 'screen-page': screen }]} data-base={base} data-repo={import.meta.env.GITHUB_REPOSITORY || process.env.GITHUB_REPOSITORY || 'Frenchbear1/CFI-Binder'}>
+<body class:list={[{ home: isHome, guest, 'screen-page': screen, 'has-side': sidePanel }]} data-base={base} data-repo={import.meta.env.GITHUB_REPOSITORY || process.env.GITHUB_REPOSITORY || 'Frenchbear1/CFI-Binder'}>
   <a class="skip" href="#main">Skip to content</a>
 
   <header class="topbar">
+    {sidePanel && <button class="side-toggle" type="button" data-side-toggle aria-label="Show or hide the binder" aria-expanded="false" title="Show the binder (Ctrl \)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button>}
     <a class="brand" href={base}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" fill="currentColor"/></svg>
       <span>Aviation Binder</span>
     </a>
-    {!guest && !isHome && <button class="top-contents" type="button" data-open="nav" aria-label="Contents" title="Contents"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Contents</span></button>}
     <span class="top-spacer" aria-hidden="true"></span>
     <button class="searchfield" type="button" data-open="search" aria-label="Search the binder" title="Search (Ctrl K)">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -89,14 +95,16 @@ const builtSlugs = guest ? [] : (await getCollection('lessons')).map((l) => l.id
   </header>
 
   <div class="shell">
-    <nav class="sidenav" aria-label="Binder contents">
-      {nav.map((area) => (
-        <div class="nav-area">
-          <p class="nav-area-title">{area.title}</p>
-          <NavList nodes={area.topics} here={here} />
-        </div>
-      ))}
-    </nav>
+    {sidePanel && <nav class="sidenav" aria-label="Binder" data-side inert>
+      <div class="side-find">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="search" placeholder="Find a page" aria-label="Find a page in the binder" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" data-side-q />
+      </div>
+      <div class="tree side-tree" data-side-tree set:html={treeHtml(nav, { base })}></div>
+      <p class="side-none" data-side-none hidden>No page by that name.</p>
+      <button type="button" class="side-more" data-side-search>Search inside the lessons ›</button>
+    </nav>}
+    {sidePanel && <div class="side-scrim" data-side-scrim aria-hidden="true"></div>}
 
     <main id="main">
       <slot />
@@ -168,6 +176,11 @@ const builtSlugs = guest ? [] : (await getCollection('lessons')).map((l) => l.id
       <button role="radio" data-v="c172">C172</button>
       <button role="radio" data-v="pa28">PA-28-181</button>
     </div>
+    <p class="sheet-h big-only">Page width</p>
+    <div class="seg seg-full big-only" role="radiogroup" aria-label="Page width" data-pref="width">
+      <button role="radio" data-v="narrow">Narrow</button>
+      <button role="radio" data-v="full">Full width</button>
+    </div>
     <p class="sheet-h">Instrument panel</p>
     <div class="seg seg-full" role="radiogroup" aria-label="Instrument panel" data-pref="panel">
       <button role="radio" data-v="both">Both</button>
@@ -177,6 +190,7 @@ const builtSlugs = guest ? [] : (await getCollection('lessons')).map((l) => l.id
     {isLesson && <button type="button" class="sheet-row" data-edit-toggle><span>Edit this lesson</span><span>Change anything ›</span></button>}
     <button type="button" class="sheet-row" data-open="theme"><span>Reading theme</span><span>Colours, paper ›</span></button>
     {!guest && <button type="button" class="sheet-row" data-open="screen"><span>Student screen</span><span data-scr-row>Connect an iPad ›</span></button>}
+    {!guest && cloud && <div class="sheet-row acct-row"><span data-sync-note>Synced to your Google account</span><a href={base + 'api/login?out=1'} data-signout>Sign out</a></div>}
   </dialog>
 
   {!guest && <dialog class="sheet scr-sheet" id="sheet-screen" aria-label="Student screen">
@@ -310,6 +324,7 @@ const builtSlugs = guest ? [] : (await getCollection('lessons')).map((l) => l.id
   <script type="application/json" id="outline-data" set:html={JSON.stringify(nav)} />
   <script type="application/json" id="built-slugs" set:html={JSON.stringify(builtSlugs)} />
   <script>
+    import '../scripts/sidepanel.ts';
     import '../scripts/live.ts';
     import '../scripts/app.ts';
     import '../scripts/reader.ts';

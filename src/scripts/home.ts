@@ -118,10 +118,10 @@ function renderRecents() {
   }).join('');
 }
 
-/* ---------- on a computer the search + new-page bar lives in the top bar (no bottom bar) ---------- */
+/* ---------- on an iPad or a computer the search + new-page bar lives in the top bar (no bottom bar) ---------- */
 {
   const bar = document.querySelector<HTMLElement>('.nh-bar'), top = document.querySelector<HTMLElement>('.topbar');
-  const desk = matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)');
+  const desk = matchMedia('(min-width: 768px)'); // iPad, Windows, Mac: same as global.css
   const place = () => { if (!bar || !top) return; if (desk.matches) { if (bar.parentElement !== top) top.append(bar); } else if (bar.parentElement === top) document.body.append(bar); };
   place(); desk.addEventListener?.('change', place);
 }
@@ -553,15 +553,8 @@ if (!cloudOn) syncKey();
 
 /* ---------- cloud sync: the folder list follows Firestore; no Upload button, just how syncing is going ---------- */
 if (cloudOn) {
-  upBtn.hidden = true;
-  document.querySelector('[data-signout]')?.addEventListener('click', (e) => { e.preventDefault(); signOutEverywhere(); });
-  const say = () => {
-    const s = syncState();
-    upNote.dataset.kind = s.error ? 'err' : '';
-    upNote.textContent = s.error ? s.error : s.inflight ? (navigator.onLine ? 'Syncing…' : 'Saved on this device. Syncs when you’re back online.') : 'Synced to your Google account';
-  };
-  window.addEventListener('cfi:sync', say); window.addEventListener('online', say); window.addEventListener('offline', say);
-  say();
+  // how syncing is going and Sign out live in Settings (app.ts)
+  document.querySelector<HTMLElement>('.nh-upload')!.hidden = true;
   ready().then(() => watch('binder/outline', (d) => {
     if (!d?.json) return;
     const next = JSON.parse(d.json).areas;
